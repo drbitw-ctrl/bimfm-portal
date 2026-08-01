@@ -95,13 +95,13 @@
   </div>
   {% endif %}
   <div class="modern-table-wrap smart-table-wrap{% if module_name == 'tasks' %} task-register-table-wrap{% endif %}">
-    <table class="modern-table smart-table{% if module_name == 'tasks' %} task-register-table{% endif %}" id="portalDataTable" data-card-table{% if module_name == 'tasks' and can_edit_tasks %} data-task-quick-edit-table{% endif %}>
+    <table class="modern-table smart-table{% if module_name == 'tasks' %} task-register-table{% endif %}" id="portalDataTable" data-card-table{% if module_name in ['tasks', 'my-work', 'calendar'] %} data-sortable-task-table{% endif %}{% if module_name == 'tasks' and can_edit_tasks %} data-task-quick-edit-table{% endif %}>
       <thead>
-        <tr>{% for column in columns %}<th>{{ column.label }}</th>{% endfor %}</tr>
+        <tr>{% for column in columns %}<th{% if column.get('sort') %} data-sort-type="{{ column.sort }}"{% endif %}>{{ column.label }}</th>{% endfor %}</tr>
       </thead>
       <tbody>
       {% for row in rows %}
-        <tr{% if row.get('_filters') %}{% for key, value in row['_filters'].items() %} data-filter-{{ key }}="{{ value }}"{% endfor %}{% endif %}>
+        <tr{% if row.get('_task_state') %} data-task-state="{{ row['_task_state'] }}"{% endif %}{% if row.get('_filters') %}{% for key, value in row['_filters'].items() %} data-filter-{{ key }}="{{ value }}"{% endfor %}{% endif %}>
         {% for column in columns %}
           {% set value = row[column.key] %}
           <td data-label="{{ column.label }}" data-column-key="{{ column.key }}">
@@ -243,6 +243,7 @@
         status.dataset.originalValue = status.value;
       }
       row.dataset.filterStatus = String(updates.status);
+      row.dataset.taskState = ['COMPLETED', 'CANCELLED'].includes(String(updates.status).toUpperCase()) ? 'closed' : 'ongoing';
     }
 
     if (updates.progress !== undefined) updatePercentage(row, 'progress', updates.progress);
@@ -267,6 +268,7 @@
     const statusValue = row.querySelector('[data-task-quick-field="status"]')?.value;
     const completedControl = row.querySelector('[data-task-quick-field="completion_date"]');
     if (completedControl) completedControl.disabled = statusValue !== 'COMPLETED';
+    table.dispatchEvent(new CustomEvent('bimfm:row-updated'));
   }
 
   async function save(control) {

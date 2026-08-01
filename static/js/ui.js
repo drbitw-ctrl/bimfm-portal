@@ -159,8 +159,142 @@
 
   document.querySelectorAll('[data-table-toolbar]').forEach(prepareTableFilter);
 
+  function prepareSortableTable(table) {
+    const body = table.tBodies[0];
+    if (!body) return;
+
+    const headers = Array.from(table.querySelectorAll('thead th'));
+    const originalOrder = new Map(
+      Array.from(body.rows).map((row, index) => [row, index])
+    );
+    const activeFirst = table.hasAttribute('data-sortable-task-table');
+    let activeColumn = -1;
+    let direction = 'asc';
+
+    function taskGroup(row) {
+      if (!activeFirst) return 0;
+      return row.dataset.taskState === 'closed' ? 1 : 0;
+    }
+
+    function rawCellValue(row, columnIndex) {
+      const cell = row.cells[columnIndex];
+      if (!cell) return '';
+      if (cell.dataset.sortValue !== undefined) return cell.dataset.sortValue;
+      const control = cell.querySelector('select, input, textarea');
+      if (control) {
+        if (control.tagName === 'SELECT') {
+          const selected = control.options[control.selectedIndex];
+          return control.value || selected?.textContent || '';
+        }
+        return control.value || '';
+      }
+      return cell.textContent.trim();
+    }
+
+    function comparable(value, type) {
+      const text = String(value ?? '').trim();
+      if (type === 'number') {
+        const parsed = Number.parseFloat(text.replace(/[^0-9.+-]/g, ''));
+        return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
+      }
+      if (type === 'date') {
+        if (!text || text === '—') return Number.POSITIVE_INFINITY;
+        const parsed = Date.parse(text);
+        return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
+      }
+      if (type === 'priority') {
+        const rank = { URGENT: 4, CRITICAL: 4, HIGH: 3, NORMAL: 2, MEDIUM: 2, LOW: 1 };
+        return rank[text.toUpperCase()] || 0;
+      }
+      if (type === 'status') {
+        const rank = {
+          IN_PROGRESS: 1,
+          'IN PROGRESS': 1,
+          NOT_STARTED: 2,
+          'NOT STARTED': 2,
+          FOR_REVIEW: 3,
+          'COMPLETED — FOR REVIEW': 3,
+          ON_HOLD: 4,
+          'ON HOLD': 4,
+          UNASSIGNED: 5,
+          COMPLETED: 6,
+          CANCELLED: 7
+        };
+        return rank[text.toUpperCase()] ?? 50;
+      }
+      return text.toLocaleLowerCase();
+    }
+
+    function compareValues(left, right, type) {
+      if (typeof left === 'number' && typeof right === 'number') return left - right;
+      return String(left).localeCompare(String(right), undefined, {
+        numeric: true,
+        sensitivity: 'base'
+      });
+    }
+
+    function applySort(columnIndex, nextDirection, updateIndicators) {
+      const header = headers[columnIndex];
+      if (!header) return;
+      const type = header.dataset.sortType || 'text';
+      const multiplier = nextDirection === 'desc' ? -1 : 1;
+      const rows = Array.from(body.rows);
+
+      rows.sort((leftRow, rightRow) => {
+        const groupDifference = taskGroup(leftRow) - taskGroup(rightRow);
+        if (groupDifference !== 0) return groupDifference;
+        const left = comparable(rawCellValue(leftRow, columnIndex), type);
+        const right = comparable(rawCellValue(rightRow, columnIndex), type);
+        const compared = compareValues(left, right, type);
+        if (compared !== 0) return compared * multiplier;
+        return (originalOrder.get(leftRow) || 0) - (originalOrder.get(rightRow) || 0);
+      });
+
+      rows.forEach((row) => body.appendChild(row));
+      activeColumn = columnIndex;
+      direction = nextDirection;
+
+      if (updateIndicators) {
+        headers.forEach((cell, index) => {
+          cell.setAttribute('aria-sort', index === columnIndex
+            ? (nextDirection === 'asc' ? 'ascending' : 'descending')
+            : 'none');
+          const indicator = cell.querySelector('[data-sort-indicator]');
+          if (indicator) indicator.textContent = index === columnIndex
+            ? (nextDirection === 'asc' ? '▲' : '▼')
+            : '↕';
+        });
+      }
+    }
+
+    headers.forEach((header, index) => {
+      if (!header.dataset.sortType || header.dataset.sortType === 'none') return;
+      const label = header.textContent.trim();
+      header.textContent = '';
+      header.setAttribute('aria-sort', 'none');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'table-sort-button';
+      button.innerHTML = `<span>${label}</span><em data-sort-indicator aria-hidden="true">↕</em>`;
+      button.addEventListener('click', () => {
+        const nextDirection = activeColumn === index && direction === 'asc' ? 'desc' : 'asc';
+        applySort(index, nextDirection, true);
+      });
+      header.appendChild(button);
+    });
+
+    table.addEventListener('bimfm:row-updated', () => {
+      if (activeColumn >= 0) applySort(activeColumn, direction, false);
+    });
+  }
+
+  document.querySelectorAll('table[data-sortable-table], table[data-sortable-task-table]').forEach(prepareSortableTable);
+
   function prepareResponsiveTable(table) {
-    const headings = Array.from(table.querySelectorAll('thead th')).map((cell) => cell.textContent.trim());
+    const headings = Array.from(table.querySelectorAll('thead th')).map((cell) => {
+      const sortLabel = cell.querySelector('.table-sort-button span');
+      return (sortLabel ? sortLabel.textContent : cell.textContent).trim();
+    });
     table.querySelectorAll('tbody tr').forEach((row) => {
       Array.from(row.children).forEach((cell, index) => {
         if (!cell.dataset.label && headings[index]) cell.dataset.label = headings[index];

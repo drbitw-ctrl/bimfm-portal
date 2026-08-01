@@ -1,0 +1,88 @@
+BIMFM Portal Release 20.20 Validation Report
+=============================================
+Application version: 2.3.15-release20.20-performance-reporting
+Validation date: 2026-08-01
+
+Result
+------
+67 checks passed
+0 failures
+0 errors
+
+Validated areas
+---------------
+
+Code and templates
+- Python application compilation
+- Jinja template parsing
+- Sortable-table JavaScript syntax
+- Reporting-chart JavaScript syntax
+- Application version identification
+
+Quality Score calibration
+- Raw 100 -> 92.0
+- Raw 95 -> 88.5
+- Raw 90 -> 85.0
+- Raw 85 -> 81.5
+- Raw 80 -> 78.0
+- Raw 70 -> 71.0
+- Raw values were not rewritten
+
+Performance leaderboards
+- Mapped legacy/direct assignment deduplication
+- Active members with zero task history remain visible
+- Quality ranking
+- Task-output ranking
+- Delivery-speed ranking
+- Completed, active, and for-review counts
+- Unique team rated-task count
+- Calibrated team average
+- Measured deliveries
+- Early/on-time rate
+- Management recommendation data
+
+Project Reports
+- Monthly reporting
+- Rolling twelve-month reporting
+- All-time reporting
+- Daily buckets for monthly charts
+- Twelve monthly buckets for rolling reports
+- Delivered-task totals
+- Calibrated Quality Score totals
+- Early/on-time delivery totals
+- Logged hours
+- Member ranking
+- Project ranking
+- Project output and hours
+- Current active and overdue workload
+
+Task-table sorting
+- Complete/Active/Recently Completed task register markup
+- My Work and Calendar task register support
+- Project Team active-task register
+- Freelancer daily-task register
+- Administrator monthly task review
+- DTR daily-task records
+- Ongoing-task priority grouping
+- Quick-edit status resort event
+- Sortable status, priority, progress, quality, and date columns
+
+Authenticated route checks
+- Administrator login and CSRF
+- /portal/performance
+- /portal/reports monthly
+- /portal/reports 12 months
+- /portal/reports all time
+- /portal/tasks
+- Performance formula presentation
+- Delivered, quality, on-time, and hours chart containers
+- Closed-task grouping marker
+
+Database safety
+---------------
+New business tables: None
+New business columns: None
+New Alembic revision: None
+Automatic backfill: None
+Task data rewrite: None
+Quality Score rewrite: None

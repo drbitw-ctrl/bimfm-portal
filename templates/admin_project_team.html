@@ -158,8 +158,8 @@
 <section class="dashboard-panel">
   <div class="panel-heading-modern"><div><span class="eyebrow">ACTIVE TASK REGISTER</span><h2>Open Tasks and Assignees</h2><p>Unmapped source identities are clearly identified. Mapped assignments show both the project member and HR freelancer.</p></div></div>
   {% if task_rows %}
-  <div class="modern-table-wrap"><table class="modern-table smart-table" data-card-table><thead><tr><th>Project</th><th>Task</th><th>Assignees</th><th>Status</th><th>Priority</th><th>Progress</th><th>Due</th></tr></thead><tbody>
-  {% for row in task_rows %}<tr><td><strong>{{ row.project_code }}</strong><small>{{ row.project_name }}</small></td><td>{{ row.title }}</td><td>{{ row.assignees }}</td><td>{{ row.status }}</td><td>{{ row.priority }}</td><td>{{ row.progress }}%</td><td>{{ row.due_date }}</td></tr>{% endfor %}
+  <div class="modern-table-wrap"><table class="modern-table smart-table" data-card-table data-sortable-task-table><thead><tr><th data-sort-type="text">Project</th><th data-sort-type="text">Task</th><th data-sort-type="text">Assignees</th><th data-sort-type="status">Status</th><th data-sort-type="priority">Priority</th><th data-sort-type="number">Progress</th><th data-sort-type="date">Due</th></tr></thead><tbody>
+  {% for row in task_rows %}<tr data-task-state="ongoing"><td><strong>{{ row.project_code }}</strong><small>{{ row.project_name }}</small></td><td>{{ row.title }}</td><td>{{ row.assignees }}</td><td>{{ row.status }}</td><td>{{ row.priority }}</td><td>{{ row.progress }}%</td><td>{{ row.due_date }}</td></tr>{% endfor %}
   </tbody></table></div>
   {% else %}<div class="dashboard-empty">No active portal tasks are available.</div>{% endif %}
 </section>

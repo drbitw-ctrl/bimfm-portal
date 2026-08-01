@@ -159,24 +159,24 @@
         <span class="table-result-count" data-result-count></span>
     </div>
     <div class="modern-table-wrap">
-    <table class="modern-table smart-table dense-table" id="dailyTaskTable" data-card-table>
+    <table class="modern-table smart-table dense-table" id="dailyTaskTable" data-card-table data-sortable-task-table>
         <thead>
             <tr>
-                <th>{{ t('Date') }}</th>
-                <th>Project</th>
-                <th>Source</th>
-                <th>Discipline</th>
-                <th>Task</th>
-                <th>Output</th>
-                <th>{{ t('Status') }}</th>
-                <th>Completion</th>
-                <th>{{ t('Hours') }}</th>
-                <th>Action</th>
+                <th data-sort-type="date">{{ t('Date') }}</th>
+                <th data-sort-type="text">Project</th>
+                <th data-sort-type="text">Source</th>
+                <th data-sort-type="text">Discipline</th>
+                <th data-sort-type="text">Task</th>
+                <th data-sort-type="text">Output</th>
+                <th data-sort-type="status">{{ t('Status') }}</th>
+                <th data-sort-type="number">Completion</th>
+                <th data-sort-type="number">{{ t('Hours') }}</th>
+                <th data-sort-type="none">Action</th>
             </tr>
         </thead>
         <tbody>
         {% for row in rows %}
-            <tr>
+            <tr data-task-state="{{ 'closed' if row.task_status in ['COMPLETED', 'CANCELLED'] else 'ongoing' }}">
                 <td><strong class="date-cell">{{ row.task_date }}</strong></td>
                 <td><div class="table-identity-cell"><div><strong>{{ row.project_name or 'Project' }}</strong></div></div></td>
                 <td>
@@ -189,7 +189,7 @@
                 <td>{{ row.accomplishment or '—' }}</td>
                 <td><span class="status-chip status-{{ row.task_status|lower|replace('_','-') }}">{{ row.task_status.replace('_',' ').title() }}</span></td>
                 <td><div class="table-progress-cell"><strong>{{ row.completion_percentage }}%</strong><span class="mini-progress"><i style="width: {{ row.completion_percentage }}%"></i></span></div></td>
-                <td><strong>{{ duration_label(row.minutes_spent) }}</strong></td>
+                <td data-sort-value="{{ row.minutes_spent }}"><strong>{{ duration_label(row.minutes_spent) }}</strong></td>
                 <td>
                     <div class="action-row">
                         <a class="button small secondary" href="/tasks/{{ row.id }}/edit">{{ t('Edit') }}</a>

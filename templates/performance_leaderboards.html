@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}Performance Leaderboards · {{ app_name }}{% endblock %}
+{% block content %}
+<section class="hero-panel performance-hero">
+  <div>
+    <span class="eyebrow">PERFORMANCE MANAGEMENT</span>
+    <h1>Performance Leaderboards</h1>
+    <p>Compare quality, task output, and delivery speed using the complete PostgreSQL task history.</p>
+  </div>
+  <div class="hero-actions">
+    <div class="hero-badge">Updated {{ performance.updated_at }}</div>
+  </div>
+</section>
+
+<section class="content-card leaderboard-control-card">
+  <div class="leaderboard-mode-switch" role="tablist" aria-label="Leaderboard category">
+    <button type="button" class="leaderboard-mode active" data-leaderboard-tab="quality" role="tab" aria-selected="true">
+      <span>01</span><strong>Quality Score</strong><small>Calibrated management score</small>
+    </button>
+    <button type="button" class="leaderboard-mode" data-leaderboard-tab="tasks" role="tab" aria-selected="false">
+      <span>02</span><strong>Total Tasks</strong><small>Assigned and delivered work</small>
+    </button>
+    <button type="button" class="leaderboard-mode" data-leaderboard-tab="speed" role="tab" aria-selected="false">
+      <span>03</span><strong>Delivery Speed</strong><small>Early and on-time delivery</small>
+    </button>
+  </div>
+  <label class="leaderboard-search">
+    <span>Search member</span>
+    <input type="search" placeholder="Type a member name or code" data-leaderboard-search autocomplete="off">
+  </label>
+</section>
+
+<section class="leaderboard-panel active" data-leaderboard-panel="quality">
+  <div class="stats-grid performance-summary-grid">
+    <article class="stat-card"><span>Quality leader</span><strong>{{ performance.quality_summary.leader }}</strong><small>Highest calibrated average</small></article>
+    <article class="stat-card"><span>Team average</span><strong>{{ '%.1f%%'|format(performance.quality_summary.team_average) if performance.quality_summary.team_average is not none else '—' }}</strong><small>Across rated portal tasks</small></article>
+    <article class="stat-card"><span>Rated tasks</span><strong>{{ performance.quality_summary.rated_tasks }}</strong><small>Valid whole-number Quality Scores</small></article>
+    <article class="stat-card"><span>Rating coverage</span><strong>{{ '%.1f%%'|format(performance.quality_summary.coverage) }}</strong><small>Rated tasks ÷ all tasks</small></article>
+  </div>
+
+  <div class="leaderboard-podium" aria-label="Top quality performers">
+    {% for row in performance.quality_ranked[:3] %}
+    <article class="podium-card podium-rank-{{ loop.index }}">
+      <span class="podium-medal">{{ '🥇' if loop.index == 1 else ('🥈' if loop.index == 2 else '🥉') }}</span>
+      <div><small>#{{ loop.index }} Quality</small><h2>{{ row.name }}</h2><p>{{ row.code or 'Team member' }}</p></div>
+      <strong>{{ '%.1f%%'|format(row.average_quality) if row.rated_tasks else '—' }}</strong>
+      <span>{{ row.rated_tasks }} rated task{{ '' if row.rated_tasks == 1 else 's' }}</span>
+    </article>
+    {% endfor %}
+  </div>
+
+  <section class="content-card data-register-card leaderboard-table-card">
+    <div class="section-heading"><div><span class="eyebrow">QUALITY RANKING</span><h2>Calibrated Quality Score</h2><p>{{ performance.quality_formula }}. Stored raw scores remain unchanged.</p></div></div>
+    <div class="modern-table-wrap">
+      <table class="modern-table smart-table leaderboard-table" data-sortable-table data-leaderboard-table data-card-table>
+        <thead><tr>
+          <th data-sort-type="number">Rank</th><th data-sort-type="text">Member</th><th data-sort-type="number">Rated</th><th data-sort-type="number">Total</th><th data-sort-type="number">Average Quality</th><th data-sort-type="number">Highest</th><th data-sort-type="number">Lowest</th><th data-sort-type="number">Coverage</th><th data-sort-type="text">Recommendation</th>
+        </tr></thead>
+        <tbody>
+        {% for row in performance.quality_ranked %}
+          <tr data-member-search="{{ (row.name ~ ' ' ~ row.code)|lower }}">
+            <td data-sort-value="{{ loop.index }}"><span class="leaderboard-rank">{{ '🥇' if loop.index == 1 else ('🥈' if loop.index == 2 else ('🥉' if loop.index == 3 else loop.index)) }}</span></td>
+            <td data-sort-value="{{ row.name }}"><div class="table-identity-cell"><span class="person-avatar">{{ row.name[:1]|upper }}</span><div><strong>{{ row.name }}</strong><small>{{ row.code or ('Legacy member' if row.is_legacy else 'Team member') }}</small></div></div></td>
+            <td data-sort-value="{{ row.rated_tasks }}"><strong>{{ row.rated_tasks }}</strong></td>
+            <td data-sort-value="{{ row.total_tasks }}">{{ row.total_tasks }}</td>
+            <td data-sort-value="{{ row.average_quality if row.rated_tasks else -1 }}">{% if row.rated_tasks %}<span class="leaderboard-score quality-score">{{ '%.1f%%'|format(row.average_quality) }}</span>{% else %}<span class="muted-cell">—</span>{% endif %}</td>
+            <td data-sort-value="{{ row.highest_quality if row.rated_tasks else -1 }}">{{ '%.1f%%'|format(row.highest_quality) if row.rated_tasks else '—' }}</td>
+            <td data-sort-value="{{ row.lowest_quality if row.rated_tasks else -1 }}">{{ '%.1f%%'|format(row.lowest_quality) if row.rated_tasks else '—' }}</td>
+            <td data-sort-value="{{ row.quality_coverage }}">{{ '%.1f%%'|format(row.quality_coverage) }}</td>
+            <td data-sort-value="{{ row.quality_recommendation }}"><span class="performance-recommendation">{{ row.quality_recommendation }}</span></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</section>
+
+<section class="leaderboard-panel" data-leaderboard-panel="tasks" hidden>
+  <div class="stats-grid performance-summary-grid">
+    <article class="stat-card"><span>Task leader</span><strong>{{ performance.task_summary.leader }}</strong><small>Most assigned portal tasks</small></article>
+    <article class="stat-card"><span>Total tasks</span><strong>{{ performance.task_summary.total_tasks }}</strong><small>All non-cancelled tasks</small></article>
+    <article class="stat-card"><span>Completed</span><strong>{{ performance.task_summary.completed_tasks }}</strong><small>Delivered task history</small></article>
+    <article class="stat-card"><span>Active work</span><strong>{{ performance.task_summary.active_tasks }}</strong><small>Current open assignments</small></article>
+  </div>
+
+  <div class="leaderboard-podium" aria-label="Top task-output performers">
+    {% for row in performance.task_ranked[:3] %}
+    <article class="podium-card podium-rank-{{ loop.index }}">
+      <span class="podium-medal">{{ '🥇' if loop.index == 1 else ('🥈' if loop.index == 2 else '🥉') }}</span>
+      <div><small>#{{ loop.index }} Output</small><h2>{{ row.name }}</h2><p>{{ row.code or 'Team member' }}</p></div>
+      <strong>{{ row.total_tasks }}</strong><span>{{ row.completed_tasks }} completed</span>
+    </article>
+    {% endfor %}
+  </div>
+
+  <section class="content-card data-register-card leaderboard-table-card">
+    <div class="section-heading"><div><span class="eyebrow">TASK OUTPUT RANKING</span><h2>Assigned and Delivered Work</h2><p>Ranking priority: Total Tasks, Completed Tasks, then Completion Rate.</p></div></div>
+    <div class="modern-table-wrap">
+      <table class="modern-table smart-table leaderboard-table" data-sortable-table data-leaderboard-table data-card-table>
+        <thead><tr><th data-sort-type="number">Rank</th><th data-sort-type="text">Member</th><th data-sort-type="number">Total Tasks</th><th data-sort-type="number">Completed</th><th data-sort-type="number">For Review</th><th data-sort-type="number">Active</th><th data-sort-type="number">Completion Rate</th><th data-sort-type="number">Quality</th><th data-sort-type="text">Recommendation</th></tr></thead>
+        <tbody>
+        {% for row in performance.task_ranked %}
+          <tr data-member-search="{{ (row.name ~ ' ' ~ row.code)|lower }}">
+            <td data-sort-value="{{ loop.index }}"><span class="leaderboard-rank">{{ '🥇' if loop.index == 1 else ('🥈' if loop.index == 2 else ('🥉' if loop.index == 3 else loop.index)) }}</span></td>
+            <td data-sort-value="{{ row.name }}"><div class="table-identity-cell"><span class="person-avatar">{{ row.name[:1]|upper }}</span><div><strong>{{ row.name }}</strong><small>{{ row.code or 'Team member' }}</small></div></div></td>
+            <td data-sort-value="{{ row.total_tasks }}"><strong>{{ row.total_tasks }}</strong></td><td data-sort-value="{{ row.completed_tasks }}">{{ row.completed_tasks }}</td><td data-sort-value="{{ row.for_review_tasks }}">{{ row.for_review_tasks }}</td><td data-sort-value="{{ row.active_tasks }}">{{ row.active_tasks }}</td>
+            <td data-sort-value="{{ row.completion_rate }}"><span class="metric-pill metric-good">{{ '%.1f%%'|format(row.completion_rate) }}</span></td>
+            <td data-sort-value="{{ row.average_quality if row.rated_tasks else -1 }}">{{ '%.1f%%'|format(row.average_quality) if row.rated_tasks else '—' }}</td>
+            <td data-sort-value="{{ row.task_recommendation }}"><span class="performance-recommendation">{{ row.task_recommendation }}</span></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</section>
+
+<section class="leaderboard-panel" data-leaderboard-panel="speed" hidden>
+  <div class="stats-grid performance-summary-grid">
+    <article class="stat-card"><span>Speed leader</span><strong>{{ performance.delivery_summary.leader }}</strong><small>Best average delivery variance</small></article>
+    <article class="stat-card"><span>Team average</span><strong>{% if performance.delivery_summary.average_days is none %}—{% elif performance.delivery_summary.average_days < 0 %}{{ '%.1f days early'|format(performance.delivery_summary.average_days|abs) }}{% elif performance.delivery_summary.average_days == 0 %}On time{% else %}{{ '%.1f days late'|format(performance.delivery_summary.average_days) }}{% endif %}</strong><small>Completion date versus deadline</small></article>
+    <article class="stat-card"><span>Early or on time</span><strong>{{ '%.1f%%'|format(performance.delivery_summary.delivery_rate) if performance.delivery_summary.delivery_rate is not none else '—' }}</strong><small>Across measured tasks</small></article>
+    <article class="stat-card"><span>Measured tasks</span><strong>{{ performance.delivery_summary.measured_tasks }}</strong><small>Tasks with deadline and completion date</small></article>
+  </div>
+
+  <div class="leaderboard-podium" aria-label="Top delivery-speed performers">
+    {% for row in performance.speed_ranked[:3] %}
+    <article class="podium-card podium-rank-{{ loop.index }}">
+      <span class="podium-medal">{{ '🥇' if loop.index == 1 else ('🥈' if loop.index == 2 else '🥉') }}</span>
+      <div><small>#{{ loop.index }} Delivery</small><h2>{{ row.name }}</h2><p>{{ row.code or 'Team member' }}</p></div>
+      <strong>{{ row.average_days_label }}</strong><span>{{ '%.1f%%'|format(row.delivery_rate) }} early/on-time</span>
+    </article>
+    {% endfor %}
+  </div>
+
+  <section class="content-card data-register-card leaderboard-table-card">
+    <div class="section-heading"><div><span class="eyebrow">DELIVERY SPEED RANKING</span><h2>Deadline Performance</h2><p>Negative average days means early delivery; positive average days means late delivery.</p></div></div>
+    <div class="modern-table-wrap">
+      <table class="modern-table smart-table leaderboard-table" data-sortable-table data-leaderboard-table data-card-table>
+        <thead><tr><th data-sort-type="number">Rank</th><th data-sort-type="text">Member</th><th data-sort-type="number">Measured</th><th data-sort-type="number">Early</th><th data-sort-type="number">On Time</th><th data-sort-type="number">Late</th><th data-sort-type="number">Average Days</th><th data-sort-type="number">Delivery Rate</th><th data-sort-type="text">Recommendation</th></tr></thead>
+        <tbody>
+        {% for row in performance.speed_ranked %}
+          <tr data-member-search="{{ (row.name ~ ' ' ~ row.code)|lower }}">
+            <td data-sort-value="{{ loop.index }}"><span class="leaderboard-rank">{{ '🥇' if loop.index == 1 else ('🥈' if loop.index == 2 else ('🥉' if loop.index == 3 else loop.index)) }}</span></td>
+            <td data-sort-value="{{ row.name }}"><div class="table-identity-cell"><span class="person-avatar">{{ row.name[:1]|upper }}</span><div><strong>{{ row.name }}</strong><small>{{ row.code or 'Team member' }}</small></div></div></td>
+            <td data-sort-value="{{ row.measured_tasks }}"><strong>{{ row.measured_tasks }}</strong></td><td data-sort-value="{{ row.early_tasks }}">{{ row.early_tasks }}</td><td data-sort-value="{{ row.on_time_tasks }}">{{ row.on_time_tasks }}</td><td data-sort-value="{{ row.late_tasks }}">{{ row.late_tasks }}</td>
+            <td data-sort-value="{{ row.average_days if row.measured_tasks else 99999 }}">{{ row.average_days_label }}</td>
+            <td data-sort-value="{{ row.delivery_rate }}"><span class="metric-pill {{ 'metric-good' if row.delivery_rate >= 90 else ('metric-warning' if row.delivery_rate < 70 else '') }}">{{ '%.1f%%'|format(row.delivery_rate) if row.measured_tasks else '—' }}</span></td>
+            <td data-sort-value="{{ row.speed_recommendation }}"><span class="performance-recommendation">{{ row.speed_recommendation }}</span></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</section>
+
+<script>
+(function () {
+  const tabs = Array.from(document.querySelectorAll('[data-leaderboard-tab]'));
+  const panels = Array.from(document.querySelectorAll('[data-leaderboard-panel]'));
+  const search = document.querySelector('[data-leaderboard-search]');
+
+  function activate(name) {
+    tabs.forEach((tab) => {
+      const active = tab.dataset.leaderboardTab === name;
+      tab.classList.toggle('active', active);
+      tab.setAttribute('aria-selected', String(active));
+    });
+    panels.forEach((panel) => {
+      const active = panel.dataset.leaderboardPanel === name;
+      panel.hidden = !active;
+      panel.classList.toggle('active', active);
+    });
+    applySearch();
+  }
+
+  function applySearch() {
+    const query = (search?.value || '').trim().toLocaleLowerCase();
+    const activePanel = panels.find((panel) => !panel.hidden);
+    if (!activePanel) return;
+    activePanel.querySelectorAll('tbody tr[data-member-search]').forEach((row) => {
+      row.hidden = Boolean(query) && !String(row.dataset.memberSearch || '').includes(query);
+    });
+  }
+
+  tabs.forEach((tab) => tab.addEventListener('click', () => activate(tab.dataset.leaderboardTab)));
+  if (search) search.addEventListener('input', applySearch);
+}());
+</script>
+{% endblock %}

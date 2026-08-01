@@ -23,6 +23,7 @@ from app.models import (
     PortalTaskAssignment,
     ProjectMember,
 )
+from app.performance_reporting import build_performance_dashboard, build_project_reports
 from app.portal_project_service import (
     active_task_overview_rows,
     project_data_health,
@@ -969,6 +970,8 @@ def create_portal_router(
         request: Request,
         module_name: str,
         view: str = "",
+        period: str = "month",
+        month: str = "",
         database: Session = Depends(get_db),
     ):
         account = get_current_admin(request, database)
@@ -979,6 +982,39 @@ def create_portal_router(
             module_name,
             ("BIMFM Portal", "Unified operations module."),
         )
+
+        if module_name == "performance":
+            performance = build_performance_dashboard(database)
+            return templates.TemplateResponse(
+                request=request,
+                name="performance_leaderboards.html",
+                context=template_context(
+                    request,
+                    account=account,
+                    page_title=page_title,
+                    page_description=description,
+                    performance=performance,
+                ),
+            )
+
+        if module_name == "reports":
+            report = build_project_reports(
+                database,
+                period=period,
+                month_key=month,
+            )
+            return templates.TemplateResponse(
+                request=request,
+                name="project_reports.html",
+                context=template_context(
+                    request,
+                    account=account,
+                    page_title=page_title,
+                    page_description=description,
+                    report=report,
+                ),
+            )
+
         health = project_data_health(database)
         completed_task_count = int(
             database.scalar(
@@ -1054,24 +1090,25 @@ def create_portal_router(
                 else "Search and filter the complete PostgreSQL task register."
             )
             columns = [
-                {"key": "project", "label": "Project", "type": "project"},
-                {"key": "title", "label": "Task", "type": "text"},
-                {"key": "assignees", "label": "Assigned Member", "type": "text"},
-                {"key": "status", "label": "Status", "type": "quick_status" if can_edit_tasks else "status"},
-                {"key": "priority", "label": "Priority", "type": "priority"},
-                {"key": "discipline", "label": "Discipline", "type": "text"},
-                {"key": "progress", "label": "Progress", "type": "quick_progress" if can_edit_tasks else "progress"},
-                {"key": "quality", "label": "Quality", "type": "quick_quality" if can_edit_tasks else "quality"},
-                {"key": "start_date", "label": "Start", "type": "date"},
-                {"key": "due_date", "label": "Deadline", "type": "date"},
-                {"key": "completion_date", "label": "Completed", "type": "quick_completed" if can_edit_tasks else "date"},
+                {"key": "project", "label": "Project", "type": "project", "sort": "text"},
+                {"key": "title", "label": "Task", "type": "text", "sort": "text"},
+                {"key": "assignees", "label": "Assigned Member", "type": "text", "sort": "text"},
+                {"key": "status", "label": "Status", "type": "quick_status" if can_edit_tasks else "status", "sort": "status"},
+                {"key": "priority", "label": "Priority", "type": "priority", "sort": "priority"},
+                {"key": "discipline", "label": "Discipline", "type": "text", "sort": "text"},
+                {"key": "progress", "label": "Progress", "type": "quick_progress" if can_edit_tasks else "progress", "sort": "number"},
+                {"key": "quality", "label": "Quality", "type": "quick_quality" if can_edit_tasks else "quality", "sort": "number"},
+                {"key": "start_date", "label": "Start", "type": "date", "sort": "date"},
+                {"key": "due_date", "label": "Deadline", "type": "date", "sort": "date"},
+                {"key": "completion_date", "label": "Completed", "type": "quick_completed" if can_edit_tasks else "date", "sort": "date"},
             ]
             if can_edit_tasks:
-                columns.append({"key": "action", "label": "Action", "type": "action"})
+                columns.append({"key": "action", "label": "Action", "type": "action", "sort": "none"})
             rows = []
             for row in source_rows:
                 item: dict[str, Any] = {
                     "_task_id": int(row["id"]),
+                    "_task_state": "closed" if str(row["status"]).upper() in {"COMPLETED", "CANCELLED"} else "ongoing",
                     "_completion_date_value": "" if row["completion_date"] == "—" else str(row["completion_date"]),
                     "_filters": {
                         "project": str(row["project_id"]),
@@ -1130,16 +1167,17 @@ def create_portal_router(
             }
         elif module_name == "my-work":
             columns = [
-                {"key": "project", "label": "Project", "type": "project"},
-                {"key": "title", "label": "Task", "type": "text"},
-                {"key": "assignees", "label": "Assignees", "type": "text"},
-                {"key": "status", "label": "Status", "type": "status"},
-                {"key": "priority", "label": "Priority", "type": "priority"},
-                {"key": "progress", "label": "Progress", "type": "progress"},
-                {"key": "due_date", "label": "Due", "type": "date"},
+                {"key": "project", "label": "Project", "type": "project", "sort": "text"},
+                {"key": "title", "label": "Task", "type": "text", "sort": "text"},
+                {"key": "assignees", "label": "Assignees", "type": "text", "sort": "text"},
+                {"key": "status", "label": "Status", "type": "status", "sort": "status"},
+                {"key": "priority", "label": "Priority", "type": "priority", "sort": "priority"},
+                {"key": "progress", "label": "Progress", "type": "progress", "sort": "number"},
+                {"key": "due_date", "label": "Due", "type": "date", "sort": "date"},
             ]
             rows = [
                 {
+                    "_task_state": "ongoing",
                     "project": {
                         "primary": row["project_name"],
                         "secondary": row.get("project_engineer", "") if row.get("project_engineer") != "—" else "",
@@ -1173,30 +1211,17 @@ def create_portal_router(
                 }
                 for row in team_assignment_rows(database)
             ]
-        elif module_name in {"performance", "reports"}:
-            columns = [
-                {"key": "indicator", "label": "Indicator", "type": "text"},
-                {"key": "result", "label": "Result", "type": "number"},
-                {"key": "meaning", "label": "Meaning", "type": "text"},
-            ]
-            rows = [
-                {"indicator": "Active projects", "result": health.project_count, "meaning": "Projects available in PostgreSQL"},
-                {"indicator": "Open tasks", "result": health.active_task_count, "meaning": "Not completed or cancelled"},
-                {"indicator": "Overdue tasks", "result": overdue_task_count, "meaning": "Open tasks past due date"},
-                {"indicator": "Members with projects", "result": health.assigned_member_count, "meaning": "Active project membership"},
-                {"indicator": "Members without projects", "result": health.unassigned_member_count, "meaning": "Needs assignment review"},
-                {"indicator": "Open tasks without assignees", "result": health.active_tasks_without_assignees, "meaning": "Needs task assignment"},
-            ]
         elif module_name == "calendar":
             columns = [
-                {"key": "due_date", "label": "Due Date", "type": "date"},
-                {"key": "project", "label": "Project", "type": "project"},
-                {"key": "title", "label": "Task", "type": "text"},
-                {"key": "status", "label": "Status", "type": "status"},
-                {"key": "progress", "label": "Progress", "type": "progress"},
+                {"key": "due_date", "label": "Due Date", "type": "date", "sort": "date"},
+                {"key": "project", "label": "Project", "type": "project", "sort": "text"},
+                {"key": "title", "label": "Task", "type": "text", "sort": "text"},
+                {"key": "status", "label": "Status", "type": "status", "sort": "status"},
+                {"key": "progress", "label": "Progress", "type": "progress", "sort": "number"},
             ]
             rows = [
                 {
+                    "_task_state": "ongoing",
                     "due_date": row["due_date"],
                     "project": {
                         "primary": row["project_name"],
