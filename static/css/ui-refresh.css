@@ -2713,3 +2713,13 @@ html[data-theme="dark"] .mapping-table .unmapped-row {
     background: transparent;
   }
 }
+
+
+/* Release 20.18: Quality keeps inline percentage editing without a progress bar. */
+.task-quality-editor {
+  gap: 0;
+}
+
+.task-quality-editor .task-percentage-editor-row {
+  margin: 0;
+}

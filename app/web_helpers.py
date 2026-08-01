@@ -83,6 +83,17 @@ def decimal_hours_input(minutes: object) -> str:
     value = total / 60
     return f"{value:.2f}".rstrip("0").rstrip(".")
 
+
+def discipline_label(value: object) -> str:
+    """Return the compact portal label without rewriting stored discipline data."""
+    text = str(value or "").strip()
+    normalized = text.casefold()
+    if normalized in {"architecture", "architectural", "ar"}:
+        return "AR"
+    if normalized in {"structure", "structural", "st"}:
+        return "ST"
+    return text or "—"
+
 def template_context(
     request: Request,
     **extra,
@@ -119,6 +130,7 @@ def template_context(
         "flash": pop_flash(request),
         "duration_label": duration_label,
         "hours_input": decimal_hours_input,
+        "discipline_label": discipline_label,
         "current_staff": current_staff,
         "current_staff_role": (str(getattr(current_staff, "role", "ADMIN") or "ADMIN").upper() if current_staff else None),
         "current_freelancer": current_freelancer,

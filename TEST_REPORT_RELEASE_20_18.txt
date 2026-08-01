@@ -1,0 +1,44 @@
+BIMFM Portal Release 20.18 Test Report
+======================================
+Version: 2.3.13-release20.18-discipline-label-quality-cleanup
+Date: 2026-08-01
+
+Validation checks
+-----------------
+PASS  Python compilation for the app package
+PASS  Release 20.18 version marker
+PASS  English and Traditional Chinese locale JSON parsing
+PASS  English Architecture label is AR
+PASS  English Structure label is ST
+PASS  Traditional Chinese Architecture label is AR
+PASS  Traditional Chinese Structure label is ST
+PASS  Jinja parsing for 36 templates
+PASS  Quality inline dropdown remains present
+PASS  Quality percentage text remains present
+PASS  Quality percentage bar is removed
+PASS  Progress percentage bar remains present
+PASS  Quick-edit JavaScript tolerates editors without a bar
+PASS  Discipline label 'Architecture' -> AR
+PASS  Discipline label 'Architectural' -> AR
+PASS  Discipline label 'AR' -> AR
+PASS  Discipline label 'Structure' -> ST
+PASS  Discipline label 'Structural' -> ST
+PASS  Discipline label 'ST' -> ST
+PASS  Discipline label 'MEP' -> MEP
+PASS  Discipline label 'GE' -> GE
+PASS  Discipline label None -> —
+PASS  Tasks register uses compact discipline display helper
+PASS  templates/freelancer_projects.html uses compact discipline display helper
+PASS  templates/freelancer_tasks.html uses compact discipline display helper
+PASS  templates/freelancer_task_edit.html uses compact discipline display helper
+PASS  templates/admin_tasks_monthly.html uses compact discipline display helper
+PASS  templates/admin_new_portal_task.html preserves stored discipline values while translating labels
+PASS  templates/admin_edit_portal_task.html preserves stored discipline values while translating labels
+PASS  JavaScript syntax: static/js/ui.js
+PASS  JavaScript syntax: static/js/i18n.js
+
+Result
+------
+31 checks passed
+0 failures
+0 errors

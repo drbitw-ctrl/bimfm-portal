@@ -134,8 +134,7 @@
                 <span class="mini-progress" aria-hidden="true"><i data-task-percent-bar style="width: {{ value }}%"></i></span>
               </div>
             {% elif column.type == 'quick_quality' %}
-              {% set quality_percent = value if value else 0 %}
-              <div class="task-percentage-editor" data-task-percentage-editor="quality_score">
+              <div class="task-percentage-editor task-quality-editor" data-task-percentage-editor="quality_score">
                 <div class="task-percentage-editor-row">
                   <select class="task-quick-control task-percentage-select"
                           aria-label="{{ t('Edit quality score') }}"
@@ -148,7 +147,6 @@
                   </select>
                   <strong data-task-percent-label>{% if value %}{{ value }}%{% else %}—{% endif %}</strong>
                 </div>
-                <span class="mini-progress" aria-hidden="true"><i data-task-percent-bar style="width: {{ quality_percent }}%"></i></span>
               </div>
             {% elif column.type == 'quick_completed' %}
               <input class="task-quick-control task-quick-date-control"
@@ -177,6 +175,8 @@
               </div>
             {% elif column.type == 'quality' %}
               {% if value %}<span class="metric-pill metric-good">{{ value }}%</span>{% else %}<span class="muted-cell">{{ t('Not Rated') }}</span>{% endif %}
+            {% elif column.key == 'discipline' %}
+              {{ discipline_label(value) }}
             {% elif column.type == 'warning_number' %}
               <span class="metric-pill {{ 'metric-warning' if value else 'metric-good' }}">{{ value }}</span>
             {% elif column.type == 'number' %}

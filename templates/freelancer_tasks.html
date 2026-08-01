@@ -41,7 +41,7 @@
     <div class="assignment-meta compact">
         <div>
             <span>Discipline</span>
-            <strong>{{ selected_project_task.discipline or '—' }}</strong>
+            <strong>{{ discipline_label(selected_project_task.discipline) }}</strong>
         </div>
         <div>
             <span>Deadline</span>
@@ -93,7 +93,7 @@
         <div>
             <label>Discipline</label>
             <input name="discipline"
-                   value="{{ selected_project_task.discipline if selected_project_task and selected_project_task.discipline else '' }}"
+                   value="{{ discipline_label(selected_project_task.discipline) if selected_project_task and selected_project_task.discipline else '' }}"
                    placeholder="AR / ST / MEP / GE"
                    {% if month_locked %}disabled{% endif %}>
         </div>
@@ -184,7 +184,7 @@
                     {% elif row.synced_project_task_id %}<span class="status-chip status-on-hold">Imported Task</span>
                     {% else %}<span class="status-chip status-not-started">Manual</span>{% endif %}
                 </td>
-                <td>{{ row.discipline or '—' }}</td>
+                <td>{{ discipline_label(row.discipline) }}</td>
                 <td>{{ row.task_description }}</td>
                 <td>{{ row.accomplishment or '—' }}</td>
                 <td><span class="status-chip status-{{ row.task_status|lower|replace('_','-') }}">{{ row.task_status.replace('_',' ').title() }}</span></td>

@@ -24,7 +24,7 @@
     <article class="panel assignment-card">
         <div class="assignment-card-header">
             <div>
-                <span class="eyebrow">{{ row.discipline }}</span>
+                <span class="eyebrow">{{ discipline_label(row.discipline) }}</span>
                 <h2>{{ row.project_name }}</h2>
             </div>
             <span class="badge {% if row.status|lower in ['completed','closed'] %}good{% endif %}">{{ row.status }}</span>
