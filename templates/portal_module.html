@@ -94,8 +94,8 @@
     {{ t('Quick edit: Status, Progress, Quality, and Completed save automatically.') }}
   </div>
   {% endif %}
-  <div class="modern-table-wrap smart-table-wrap">
-    <table class="modern-table smart-table" id="portalDataTable" data-card-table{% if module_name == 'tasks' and can_edit_tasks %} data-task-quick-edit-table{% endif %}>
+  <div class="modern-table-wrap smart-table-wrap{% if module_name == 'tasks' %} task-register-table-wrap{% endif %}">
+    <table class="modern-table smart-table{% if module_name == 'tasks' %} task-register-table{% endif %}" id="portalDataTable" data-card-table{% if module_name == 'tasks' and can_edit_tasks %} data-task-quick-edit-table{% endif %}>
       <thead>
         <tr>{% for column in columns %}<th>{{ column.label }}</th>{% endfor %}</tr>
       </thead>

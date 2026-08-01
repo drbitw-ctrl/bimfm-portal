@@ -2582,3 +2582,134 @@ html[data-theme="dark"] .mapping-table .unmapped-row {
     min-width: 0;
   }
 }
+
+/* Release 20.17: keep the Tasks register readable without changing its visual language. */
+.task-register-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-gutter: stable;
+  overscroll-behavior-inline: contain;
+}
+
+.task-register-table {
+  width: 100%;
+  min-width: 1300px;
+  table-layout: fixed;
+}
+
+.task-register-table th:nth-child(1),
+.task-register-table td:nth-child(1) { width: 145px; }
+.task-register-table th:nth-child(2),
+.task-register-table td:nth-child(2) { width: 150px; }
+.task-register-table th:nth-child(3),
+.task-register-table td:nth-child(3) { width: 110px; }
+.task-register-table th:nth-child(4),
+.task-register-table td:nth-child(4) { width: 135px; }
+.task-register-table th:nth-child(5),
+.task-register-table td:nth-child(5) { width: 72px; }
+.task-register-table th:nth-child(6),
+.task-register-table td:nth-child(6) { width: 82px; }
+.task-register-table th:nth-child(7),
+.task-register-table td:nth-child(7) { width: 118px; }
+.task-register-table th:nth-child(8),
+.task-register-table td:nth-child(8) { width: 118px; }
+.task-register-table th:nth-child(9),
+.task-register-table td:nth-child(9) { width: 92px; }
+.task-register-table th:nth-child(10),
+.task-register-table td:nth-child(10) { width: 92px; }
+.task-register-table th:nth-child(11),
+.task-register-table td:nth-child(11) { width: 122px; }
+.task-register-table th:nth-child(12),
+.task-register-table td:nth-child(12) { width: 64px; }
+
+.task-register-table .task-quick-status-editor,
+.task-register-table .task-quick-status-control,
+.task-register-table .task-percentage-editor,
+.task-register-table .task-percentage-select,
+.task-register-table .task-quick-date-control,
+.task-register-table .table-identity-cell {
+  min-width: 0;
+}
+
+.task-register-table th:first-child,
+.task-register-table td:first-child {
+  position: sticky;
+  left: 0;
+}
+
+.task-register-table th:first-child {
+  z-index: 5;
+  background: color-mix(in srgb, var(--ui-surface-soft) 97%, transparent);
+  box-shadow: 8px 0 12px -12px color-mix(in srgb, var(--ui-text-strong) 45%, transparent);
+}
+
+.task-register-table td:first-child {
+  z-index: 3;
+  background: var(--ui-surface);
+  box-shadow: 8px 0 12px -12px color-mix(in srgb, var(--ui-text-strong) 38%, transparent);
+}
+
+.task-register-table tbody tr:nth-child(even) td:first-child {
+  background: color-mix(in srgb, var(--ui-surface-soft) 58%, var(--ui-surface));
+}
+
+.task-register-table tbody tr:hover td:first-child {
+  background: color-mix(in srgb, var(--ui-brand-100) 56%, var(--ui-surface));
+}
+
+.task-register-table th:last-child,
+.task-register-table td:last-child {
+  position: sticky;
+  right: 0;
+}
+
+.task-register-table th:last-child {
+  z-index: 5;
+  background: color-mix(in srgb, var(--ui-surface-soft) 97%, transparent);
+  box-shadow: -8px 0 12px -12px color-mix(in srgb, var(--ui-text-strong) 45%, transparent);
+}
+
+.task-register-table td:last-child {
+  z-index: 3;
+  background: var(--ui-surface);
+  box-shadow: -8px 0 12px -12px color-mix(in srgb, var(--ui-text-strong) 38%, transparent);
+}
+
+.task-register-table tbody tr:nth-child(even) td:last-child {
+  background: color-mix(in srgb, var(--ui-surface-soft) 58%, var(--ui-surface));
+}
+
+.task-register-table tbody tr:hover td:last-child {
+  background: color-mix(in srgb, var(--ui-brand-100) 56%, var(--ui-surface));
+}
+
+.task-register-table .table-action-button {
+  width: 100%;
+  padding-inline: 8px;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .task-register-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: auto;
+  }
+
+  .task-register-table th:first-child,
+  .task-register-table td:first-child,
+  .task-register-table th:last-child,
+  .task-register-table td:last-child {
+    position: static;
+    width: auto;
+    box-shadow: none;
+  }
+
+  .task-register-table tbody tr:nth-child(even) td:first-child,
+  .task-register-table tbody tr:nth-child(even) td:last-child,
+  .task-register-table tbody tr:hover td:first-child,
+  .task-register-table tbody tr:hover td:last-child {
+    background: transparent;
+  }
+}

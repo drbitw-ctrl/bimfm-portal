@@ -1,0 +1,57 @@
+BIMFM Portal Release 20.17 Test Report
+======================================
+Version: 2.3.12-release20.17-task-table-member-assignment
+Date: 2026-08-01
+
+Static validation
+-----------------
+PASS  Python compilation for the app package
+PASS  Jinja parsing for 36 templates
+PASS  JavaScript syntax: static/js/ui.js
+PASS  JavaScript syntax: static/js/i18n.js
+PASS  Release 20.17 version marker
+
+Tasks register validation
+-------------------------
+PASS  Tasks register receives a dedicated responsive wrapper class
+PASS  Tasks table receives fixed desktop column sizing
+PASS  Project column has sticky-left behavior
+PASS  Rightmost column has sticky-right behavior
+PASS  Mobile card mode disables desktop sticky positioning
+PASS  Progress percentage bar remains present
+PASS  Quality percentage bar remains present
+
+Freelancer assignment regression test
+-------------------------------------
+PASS  Administrator login
+PASS  New freelancer account creation
+PASS  Assignable ProjectMember row created in the same transaction
+PASS  New member appears in the New Task Assigned Member dropdown
+PASS  New task can be assigned to the new freelancer
+PASS  PortalTaskAssignment stores the freelancer PostgreSQL ID
+PASS  PortalProjectMember membership is created
+PASS  Existing same-name legacy source member maps without duplication
+PASS  Resolved assignment IDs include both HR and legacy source identities
+PASS  Disabling an HR account disables its portal-native directory row
+PASS  Re-enabling an HR account re-enables its portal-native directory row
+PASS  Deleting an unused test account removes its portal-native directory row
+
+Selective quick-edit regression test
+------------------------------------
+PASS  Progress quick edit persists
+PASS  Quality quick edit persists
+PASS  Status quick edit persists
+PASS  Completed date quick edit persists
+PASS  Completing a task forces progress to 100 percent
+
+Database validation
+-------------------
+PASS  No new Alembic revision
+PASS  No new table or column
+PASS  Existing project/task records are not rewritten by member repair
+
+Result
+------
+32 checks passed
+0 failures
+0 errors

@@ -129,6 +129,7 @@ from app.portal_project_service import (
     project_member_rows,
     hr_freelancer_choices,
     map_project_member,
+    ensure_hr_project_members,
 )
 
 
@@ -199,6 +200,8 @@ async def lifespan(app: FastAPI):
         ensure_default_schedule(database)
         ensure_default_policy(database)
         initialize_missing_calculations(database)
+        if ensure_hr_project_members(database):
+            database.commit()
     app.state.ready = True
     try:
         yield

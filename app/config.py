@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 APP_NAME = "BIMFM Portal"
-APP_VERSION = "2.3.11-release20.16-selective-task-quick-edit"
+APP_VERSION = "2.3.12-release20.17-task-table-member-assignment"
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"

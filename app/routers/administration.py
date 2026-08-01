@@ -88,8 +88,9 @@ def _freelancer_delete_summary(database, freelancer_id: int) -> dict[str, object
     directory_count = int(
         database.scalar(
             select(func.count(ProjectMember.id)).where(
+                ProjectMember.source_freelancer_id.is_not(None),
                 (ProjectMember.freelancer_id == freelancer_id)
-                | (ProjectMember.source_freelancer_id == freelancer_id)
+                | (ProjectMember.source_freelancer_id == freelancer_id),
             )
         )
         or 0
@@ -538,6 +539,12 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
             database.add(account)
             database.flush()
 
+            ensure_hr_project_members(
+                database,
+                admin_id=admin.id,
+                freelancer_ids={int(freelancer.id)},
+            )
+
             write_audit(
                 database,
                 actor_type="HR_ADMIN",
@@ -620,6 +627,14 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
 
             if freelancer.account is not None:
                 freelancer.account.is_active = new_status
+
+            for member in database.scalars(
+                select(ProjectMember).where(
+                    ProjectMember.freelancer_id == freelancer.id,
+                    ProjectMember.source_freelancer_id.is_(None),
+                )
+            ).all():
+                member.is_active = new_status
 
             write_audit(
                 database,
@@ -849,6 +864,16 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                 target_id=target_id,
                 details=f"Deleted unused member {deleted_name} ({deleted_code}).",
             )
+            # Remove the portal-native project-directory entry created for an
+            # unused account. Imported source-member rows are protected above.
+            for member in database.scalars(
+                select(ProjectMember).where(
+                    ProjectMember.freelancer_id == freelancer.id,
+                    ProjectMember.source_freelancer_id.is_(None),
+                )
+            ).all():
+                database.delete(member)
+
             # The Freelancer.account relationship is configured with
             # delete-orphan cascade, so deleting the member removes the login
             # account in the same transaction without issuing duplicate deletes.

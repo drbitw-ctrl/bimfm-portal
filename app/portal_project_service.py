@@ -70,6 +70,139 @@ class ProjectDataHealth:
     unmapped_project_member_count: int = 0
 
 
+def _normalize_project_member_name(value: str) -> str:
+    """Normalize a member name using the project-directory identity rules."""
+    return " ".join(str(value or "").strip().split()).casefold()
+
+
+def ensure_hr_project_members(
+    database: Session,
+    *,
+    admin_id: int | None = None,
+    freelancer_ids: set[int] | None = None,
+) -> int:
+    """Ensure every HR freelancer has an assignable project-member row.
+
+    Imported project members keep their original placeholder identity so legacy
+    assignments remain intact. Portal-native freelancer accounts receive a
+    direct directory row whose assignment identity is the freelancer's own
+    PostgreSQL ID. Existing unmapped imported members with the same normalized
+    name are mapped instead of duplicated.
+
+    The caller owns the transaction and must commit.
+    """
+    placeholder_ids = {
+        int(value)
+        for value in database.scalars(
+            select(ProjectMember.source_freelancer_id).where(
+                ProjectMember.source_freelancer_id.is_not(None)
+            )
+        ).all()
+        if value is not None
+    }
+
+    statement = select(Freelancer).order_by(Freelancer.id)
+    if placeholder_ids:
+        statement = statement.where(Freelancer.id.notin_(placeholder_ids))
+    if freelancer_ids:
+        selected_ids = tuple(int(value) for value in freelancer_ids)
+        statement = statement.where(Freelancer.id.in_(selected_ids))
+
+    freelancers = list(database.scalars(statement).all())
+    if not freelancers:
+        return 0
+
+    existing_members = list(
+        database.scalars(
+            select(ProjectMember).order_by(ProjectMember.id)
+        ).all()
+    )
+    by_freelancer_id = {
+        int(member.freelancer_id): member
+        for member in existing_members
+        if member.freelancer_id is not None
+    }
+    by_source_key = {member.source_key: member for member in existing_members}
+    by_normalized_name = {
+        member.normalized_member_name: member for member in existing_members
+    }
+    occupied_names = set(by_normalized_name)
+
+    changed = 0
+    now = utc_now()
+    for freelancer in freelancers:
+        member = by_freelancer_id.get(int(freelancer.id))
+        source_key = f"PORTAL_HR:{int(freelancer.id)}"
+        if member is None:
+            member = by_source_key.get(source_key)
+
+        normalized_name = _normalize_project_member_name(freelancer.full_name)
+        same_name_member = by_normalized_name.get(normalized_name)
+
+        if member is None and same_name_member is not None:
+            if same_name_member.freelancer_id in (None, freelancer.id):
+                member = same_name_member
+
+        if member is None:
+            candidate = normalized_name or f"freelancer-{int(freelancer.id)}"
+            if candidate in occupied_names:
+                code_suffix = _normalize_project_member_name(freelancer.freelancer_code)
+                candidate = f"{candidate} [{code_suffix or int(freelancer.id)}]"
+            serial = 2
+            unique_candidate = candidate
+            while unique_candidate in occupied_names:
+                unique_candidate = f"{candidate} #{serial}"
+                serial += 1
+
+            member = ProjectMember(
+                source_key=source_key,
+                member_code=freelancer.freelancer_code,
+                member_name=freelancer.full_name,
+                normalized_member_name=unique_candidate,
+                email=freelancer.email,
+                is_active=bool(freelancer.is_active),
+                source_freelancer_id=None,
+                freelancer_id=freelancer.id,
+                mapped_by_admin_id=admin_id,
+                mapped_at=now,
+            )
+            database.add(member)
+            existing_members.append(member)
+            by_freelancer_id[int(freelancer.id)] = member
+            by_source_key[source_key] = member
+            by_normalized_name[unique_candidate] = member
+            occupied_names.add(unique_candidate)
+            changed += 1
+            continue
+
+        member_changed = False
+        if member.freelancer_id != freelancer.id:
+            member.freelancer_id = freelancer.id
+            member_changed = True
+        if not member.is_active and freelancer.is_active:
+            member.is_active = True
+            member_changed = True
+        if member.email is None and freelancer.email:
+            member.email = freelancer.email
+            member_changed = True
+        if member.member_code is None and freelancer.freelancer_code:
+            member.member_code = freelancer.freelancer_code
+            member_changed = True
+        if member.mapped_at is None:
+            member.mapped_at = now
+            member_changed = True
+        if admin_id is not None and member.mapped_by_admin_id != admin_id:
+            member.mapped_by_admin_id = admin_id
+            member_changed = True
+        if member_changed:
+            member.updated_at = now
+            changed += 1
+
+    if changed:
+        database.flush()
+    return changed
+
+
 def _project_member_records(database: Session) -> list[ProjectMember]:
     return list(
         database.scalars(
