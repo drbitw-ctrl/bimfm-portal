@@ -26,24 +26,13 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
             if access == "readonly" and str(getattr(admin, "role", "ADMIN")).upper() == "FINANCE":
                 set_flash(request, "Finance access is read-only. Operational changes require an Administrator account.", "info")
 
-            freelancer_count = int(
-                database.scalar(
-                    select(func.count(Freelancer.id))
-                )
-                or 0
-            )
-            active_freelancer_count = int(
-                database.scalar(
-                    select(func.count(Freelancer.id)).where(
-                        Freelancer.is_active.is_(True)
-                    )
-                )
-                or 0
+            hr_freelancers = hr_freelancer_choices(database)
+            freelancer_count = len(hr_freelancers)
+            active_freelancer_count = sum(
+                1 for freelancer in hr_freelancers if freelancer.is_active
             )
             today_rows = []
-            for freelancer in database.scalars(
-                select(Freelancer).order_by(Freelancer.full_name)
-            ).all():
+            for freelancer in hr_freelancers:
                 local_date = current_attendance_date(freelancer.timezone_name)
                 record = get_daily_attendance(
                     database,
@@ -257,15 +246,17 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                     status_code=303,
                 )
 
+            hr_ids = [row.id for row in hr_freelancer_choices(database)]
             freelancers = list(
                 database.scalars(
                     select(Freelancer)
                     .options(joinedload(Freelancer.account))
+                    .where(Freelancer.id.in_(hr_ids))
                     .order_by(Freelancer.full_name)
                 )
                 .unique()
                 .all()
-            )
+            ) if hr_ids else []
 
             return templates.TemplateResponse(
                 request=request,
@@ -650,11 +641,7 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
             if admin is None:
                 return RedirectResponse("/admin/login", status_code=303)
 
-            freelancers = list(
-                database.scalars(
-                    select(Freelancer).order_by(Freelancer.full_name)
-                ).all()
-            )
+            freelancers = hr_freelancer_choices(database)
             holidays = list(
                 database.scalars(
                     select(Holiday)

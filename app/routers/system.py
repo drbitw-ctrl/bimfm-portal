@@ -15,6 +15,7 @@ from app.models import (
     LeaveRecord, LeaveRequest, MonthlyDTR, OvertimeClaim, ProjectSourceMember,
     ProjectSyncRun, SyncedProjectTask, TaskMonthReview, WorkSchedule,
     PortalProject, PortalProjectMember, PortalTask, PortalTaskAssignment,
+    ProjectMember,
 )
 from app.web_helpers import admin_count, validate_csrf
 from app.i18n import SUPPORTED_LOCALES
@@ -106,6 +107,9 @@ def setup_status() -> dict[str, object]:
         "portal_project_members": select(func.count(PortalProjectMember.id)),
         "portal_tasks": select(func.count(PortalTask.id)),
         "portal_task_assignments": select(func.count(PortalTaskAssignment.id)),
+        "project_member_directory": select(func.count(ProjectMember.id)),
+        "mapped_project_members": select(func.count(ProjectMember.id)).where(ProjectMember.freelancer_id.is_not(None)),
+        "unmapped_project_members": select(func.count(ProjectMember.id)).where(ProjectMember.freelancer_id.is_(None)),
         "legacy_project_source_members": select(func.count(ProjectSourceMember.id)),
         "legacy_synced_project_tasks": select(func.count(SyncedProjectTask.id)),
         "legacy_project_sync_runs": select(func.count(ProjectSyncRun.id)),
@@ -130,7 +134,7 @@ def setup_status() -> dict[str, object]:
     return {
         "database_ready": database_is_available(),
         "database_dialect": DATABASE_DIALECT,
-        "project_mode": "postgresql_native",
+        "project_mode": "postgresql_native_member_mapping",
         "synchronization_required": False,
         "journal_mode": journal_mode,
         "foreign_keys_enabled": foreign_keys_enabled,

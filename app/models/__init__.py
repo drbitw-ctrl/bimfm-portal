@@ -14,6 +14,7 @@ from app.models.integration import ProjectSourceMember, ProjectSyncRun, SyncedPr
 from app.models.payroll import PayrollMonthSummary
 from app.models.audit import AuditLog
 from app.models.portal import PortalProject, PortalProjectMember, PortalTask, PortalTaskAssignment, PortalTaskUpdate
+from app.models.project_member import ProjectMember
 
 __all__ = [
     "utc_now",
@@ -50,4 +51,5 @@ __all__ = [
     "PortalTask",
     "PortalTaskAssignment",
     "PortalTaskUpdate",
+    "ProjectMember",
 ]

@@ -16,8 +16,7 @@
 <section class="panel assignment-info">
     <strong>Direct PostgreSQL project records</strong>
     <p class="muted">
-        These assignments come from the migrated portal project and task tables.
-        No projects.db synchronization or member-name mapping is required.
+        These assignments come from PostgreSQL. When your original project-member identity is connected to your HR account, its projects and tasks appear here automatically. No projects.db synchronization is required.
     </p>
 </section>
 
@@ -47,7 +46,7 @@
 {% else %}
 <section class="panel empty-state">
     <h2>No active project tasks are assigned to your account.</h2>
-    <p>Your member profile is available in PostgreSQL, but management has not assigned an active portal task to it yet.</p>
+    <p>No active project task is connected to this HR account yet. Management can review the project-member mapping on the Project Members page.</p>
 </section>
 {% endif %}
 {% endblock %}

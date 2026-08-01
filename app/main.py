@@ -70,6 +70,7 @@ from app.models import (
     CompLeaveTransaction,
     TaskMonthReview,
     WorkSchedule, PortalProject, PortalProjectMember, PortalTask, PortalTaskAssignment,
+    ProjectMember,
 )
 from app.security import (
     hash_password,
@@ -124,6 +125,9 @@ from app.portal_project_service import (
     project_data_health,
     project_overview_rows,
     team_assignment_rows,
+    project_member_rows,
+    hr_freelancer_choices,
+    map_project_member,
 )
 
 

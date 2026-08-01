@@ -31,13 +31,15 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
             if admin is None:
                 return RedirectResponse("/admin/login", status_code=303)
 
+            hr_ids = [row.id for row in hr_freelancer_choices(database)]
             freelancers = list(
                 database.scalars(
                     select(Freelancer)
                     .options(joinedload(Freelancer.account))
+                    .where(Freelancer.id.in_(hr_ids))
                     .order_by(Freelancer.full_name)
                 ).unique().all()
-            )
+            ) if hr_ids else []
 
             rows: list[dict[str, object]] = []
             for freelancer in freelancers:
@@ -113,11 +115,7 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
             if admin is None:
                 return RedirectResponse("/admin/login", status_code=303)
 
-            freelancers = list(
-                database.scalars(
-                    select(Freelancer).order_by(Freelancer.full_name)
-                ).all()
-            )
+            freelancers = hr_freelancer_choices(database)
 
             query = (
                 select(DailyAttendance, Freelancer)
@@ -832,13 +830,9 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
             if admin is None:
                 return RedirectResponse("/admin/login", status_code=303)
 
-            freelancers = list(
-                database.scalars(
-                    select(Freelancer)
-                    .where(Freelancer.is_active.is_(True))
-                    .order_by(Freelancer.full_name)
-                ).all()
-            )
+            freelancers = [
+                row for row in hr_freelancer_choices(database) if row.is_active
+            ]
             freelancer_map = {row.id: row for row in freelancers}
             dtrs = list(
                 database.scalars(
@@ -899,13 +893,9 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                 return RedirectResponse("/admin/login", status_code=303)
 
             if freelancer_id == 0:
-                freelancers = list(
-                    database.scalars(
-                        select(Freelancer)
-                        .where(Freelancer.is_active.is_(True))
-                        .order_by(Freelancer.full_name)
-                    ).all()
-                )
+                freelancers = [
+                    row for row in hr_freelancer_choices(database) if row.is_active
+                ]
             else:
                 freelancer = database.get(Freelancer, freelancer_id)
                 freelancers = [freelancer] if freelancer is not None else []

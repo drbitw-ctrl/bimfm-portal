@@ -262,7 +262,7 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
         with SessionLocal() as database:
             admin=get_current_admin(request,database)
             if admin is None:return RedirectResponse('/admin/login',303)
-            freelancers=list(database.scalars(select(Freelancer).order_by(Freelancer.full_name)).all())
+            freelancers=hr_freelancer_choices(database)
             query=select(DailyTask).where(DailyTask.task_date>=first,DailyTask.task_date<next_month)
             if freelancer_id: query=query.where(DailyTask.freelancer_id==freelancer_id)
             rows=list(database.scalars(query.order_by(DailyTask.task_date,DailyTask.freelancer_id,DailyTask.id)).all())
