@@ -95,6 +95,8 @@
     const rows = Array.from(table.querySelectorAll('tbody tr'));
     const search = toolbar.querySelector('[data-table-search]');
     const unmappedOnly = toolbar.querySelector('[data-unmapped-only]');
+    const filters = Array.from(toolbar.querySelectorAll('[data-table-filter]'));
+    const reset = toolbar.querySelector('[data-table-filter-reset]');
     const resultCount = toolbar.querySelector('[data-result-count]');
 
     function applyFilter() {
@@ -106,7 +108,17 @@
         const text = row.textContent.toLocaleLowerCase();
         const matchesQuery = !query || text.includes(query);
         const matchesMapping = !onlyUnmapped || row.dataset.mappingStatus === 'unmapped';
-        const show = matchesQuery && matchesMapping;
+        const matchesFilters = filters.every((control) => {
+          const selected = (control.value || '').trim().toLocaleLowerCase();
+          if (!selected) return true;
+          const key = control.dataset.filterKey || '';
+          const rowValue = (row.getAttribute(`data-filter-${key}`) || '').toLocaleLowerCase();
+          if (control.dataset.filterMode === 'token') {
+            return rowValue.includes(`|${selected}|`);
+          }
+          return rowValue === selected;
+        });
+        const show = matchesQuery && matchesMapping && matchesFilters;
         row.hidden = !show;
         if (show) visible += 1;
       });
@@ -121,6 +133,15 @@
 
     if (search) search.addEventListener('input', applyFilter);
     if (unmappedOnly) unmappedOnly.addEventListener('change', applyFilter);
+    filters.forEach((control) => control.addEventListener('change', applyFilter));
+    if (reset) {
+      reset.addEventListener('click', () => {
+        if (search) search.value = '';
+        if (unmappedOnly) unmappedOnly.checked = false;
+        filters.forEach((control) => { control.value = ''; });
+        applyFilter();
+      });
+    }
     applyFilter();
   }
 

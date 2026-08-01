@@ -59,6 +59,7 @@ class PortalTask(Base):
     priority: Mapped[str] = mapped_column(String(40), nullable=False, default="NORMAL")
     discipline: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     progress: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    quality_score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     due_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -2199,3 +2199,52 @@ html[data-theme="dark"] .mapping-table .unmapped-row {
   .task-form-actions { bottom: 7px; padding: 15px; }
   .progress-input-row { grid-template-columns: minmax(0, 1fr) 58px; }
 }
+
+/* Release 20.12 task-register presentation additions */
+.task-register-toolbar {
+  justify-content: flex-start;
+}
+
+.table-filter-select {
+  flex: 0 1 185px;
+  min-width: 150px;
+}
+
+.table-filter-select select {
+  width: 100%;
+  min-height: 42px;
+  border-radius: 13px;
+  background: var(--ui-surface-soft);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.table-filter-reset {
+  min-height: 42px;
+  padding-inline: 14px;
+  white-space: nowrap;
+}
+
+.table-action-button {
+  min-height: 34px;
+  padding: 7px 12px;
+  white-space: nowrap;
+  font-size: 0.7rem;
+}
+
+.muted-cell {
+  color: var(--ui-muted);
+  white-space: nowrap;
+  font-size: 0.7rem;
+}
+
+.danger-zone-card {
+  margin-top: 18px;
+  border-color: color-mix(in srgb, #c43f3f 38%, var(--ui-border));
+}
+
+@media (max-width: 1050px) {
+  .table-filter-select {
+    flex: 1 1 180px;
+  }
+}

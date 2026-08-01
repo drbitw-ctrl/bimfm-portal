@@ -50,14 +50,14 @@
       {% if can(Permission.PROJECT_EDIT) %}
       {{ nav_link('/portal/tasks/new', t('New Task'), '＋', true, 'nav-create-task') }}
       {% endif %}
-      {{ nav_link('/portal/projects', t('Projects'), '▦') }}
-      {{ nav_link('/portal/tasks', t('Tasks'), '☷') }}
-      {{ nav_link('/admin/project-team', t('Project Team'), '◎') }}
+      <a href="/portal/tasks" class="{% if request.url.path == '/portal/tasks' and not request.query_params.get('view') %}active{% endif %}" data-nav-path="/portal/tasks" data-nav-query=""><span class="nav-icon">☷</span><span>{{ t('Tasks') }}</span></a>
       {{ nav_link('/portal/team-workload', t('Team Availability / Workload'), '◫') }}
-      <a href="/portal/tasks?view=active" class="{% if request.url.path == '/portal/tasks' and request.query_params.get('view', 'active') == 'active' %}active{% endif %}" data-nav-path="/portal/tasks" data-nav-query="view=active"><span class="nav-icon">▶</span><span>{{ t('Active Tasks') }}</span></a>
+      <a href="/portal/tasks?view=active" class="{% if request.url.path == '/portal/tasks' and request.query_params.get('view') == 'active' %}active{% endif %}" data-nav-path="/portal/tasks" data-nav-query="view=active"><span class="nav-icon">▶</span><span>{{ t('Active Tasks') }}</span></a>
       <a href="/portal/tasks?view=completed" class="{% if request.url.path == '/portal/tasks' and request.query_params.get('view') == 'completed' %}active{% endif %}" data-nav-path="/portal/tasks" data-nav-query="view=completed"><span class="nav-icon">✓</span><span>{{ t('Recently Completed Tasks') }}</span></a>
       {{ nav_link('/portal/performance', t('Performance'), '↗') }}
+      {{ nav_link('/portal/projects', t('Projects'), '▦') }}
       {{ nav_link('/portal/reports', t('Project Reports'), '▤') }}
+      {{ nav_link('/admin/project-team', t('Project Team'), '◎') }}
       {{ nav_link('/portal/calendar', t('Calendar'), '□') }}
 
       {% if can(Permission.ATTENDANCE_VIEW_ALL) %}

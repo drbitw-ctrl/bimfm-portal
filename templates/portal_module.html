@@ -37,11 +37,55 @@
   </div>
 
   {% if rows %}
-  <div class="table-toolbar" data-table-toolbar data-table-target="#portalDataTable" data-record-singular="record" data-record-plural="records">
+  <div class="table-toolbar {% if module_name == 'tasks' %}task-register-toolbar{% endif %}"
+       data-table-toolbar
+       data-table-target="#portalDataTable"
+       data-record-singular="task"
+       data-record-plural="tasks">
     <label class="table-search">
       <span class="sr-only">{{ t('Search records') }}</span>
       <input type="search" data-table-search placeholder="{{ t('Search records') }}" autocomplete="off">
     </label>
+
+    {% if module_name == 'tasks' and task_filters %}
+    <label class="table-filter-select">
+      <span class="sr-only">{{ t('Filter by project') }}</span>
+      <select data-table-filter data-filter-key="project">
+        <option value="">{{ t('All Projects') }}</option>
+        {% for option in task_filters.projects %}<option value="{{ option.value }}">{{ option.label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="table-filter-select">
+      <span class="sr-only">{{ t('Filter by member') }}</span>
+      <select data-table-filter data-filter-key="member" data-filter-mode="token">
+        <option value="">{{ t('All Members') }}</option>
+        {% for option in task_filters.members %}<option value="{{ option.value }}">{{ option.label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="table-filter-select">
+      <span class="sr-only">{{ t('Filter by status') }}</span>
+      <select data-table-filter data-filter-key="status">
+        <option value="">{{ t('All Statuses') }}</option>
+        {% for option in task_filters.statuses %}<option value="{{ option.value }}">{{ t(option.label) }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="table-filter-select">
+      <span class="sr-only">{{ t('Filter by priority') }}</span>
+      <select data-table-filter data-filter-key="priority">
+        <option value="">{{ t('All Priorities') }}</option>
+        {% for option in task_filters.priorities %}<option value="{{ option.value }}">{{ t(option.label) }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="table-filter-select">
+      <span class="sr-only">{{ t('Filter by discipline') }}</span>
+      <select data-table-filter data-filter-key="discipline">
+        <option value="">{{ t('All Disciplines') }}</option>
+        {% for option in task_filters.disciplines %}<option value="{{ option.value }}">{{ t(option.label) }}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="button secondary table-filter-reset" type="button" data-table-filter-reset>{{ t('Clear Filters') }}</button>
+    {% endif %}
+
     <span class="table-result-count" data-result-count></span>
   </div>
   <div class="modern-table-wrap smart-table-wrap">
@@ -51,7 +95,7 @@
       </thead>
       <tbody>
       {% for row in rows %}
-        <tr>
+        <tr{% if row.get('_filters') %}{% for key, value in row['_filters'].items() %} data-filter-{{ key }}="{{ value }}"{% endfor %}{% endif %}>
         {% for column in columns %}
           {% set value = row[column.key] %}
           <td data-label="{{ column.label }}">
@@ -72,12 +116,16 @@
                 <strong>{{ value }}%</strong>
                 <span class="mini-progress"><i style="width: {{ value }}%"></i></span>
               </div>
+            {% elif column.type == 'quality' %}
+              {% if value %}<span class="metric-pill metric-good">{{ value }}%</span>{% else %}<span class="muted-cell">{{ t('Not Rated') }}</span>{% endif %}
             {% elif column.type == 'warning_number' %}
               <span class="metric-pill {{ 'metric-warning' if value else 'metric-good' }}">{{ value }}</span>
             {% elif column.type == 'number' %}
               <strong class="table-number">{{ value }}</strong>
             {% elif column.type == 'date' %}
               <span class="date-cell">{{ value }}</span>
+            {% elif column.type == 'action' %}
+              <a class="button secondary table-action-button" href="{{ value.href }}">{{ t(value.label) }}</a>
             {% else %}
               {{ value }}
             {% endif %}

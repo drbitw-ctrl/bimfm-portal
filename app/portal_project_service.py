@@ -756,21 +756,53 @@ def project_overview_rows(database: Session, *, limit: int = 100) -> list[dict[s
     ]
 
 
-def active_task_overview_rows(database: Session, *, limit: int = 200) -> list[dict[str, object]]:
-    task_rows = database.execute(
-        select(PortalTask, PortalProject)
-        .join(PortalProject, PortalProject.id == PortalTask.project_id)
-        .where(PortalTask.status.notin_(CLOSED_TASK_STATUSES))
-        .order_by(
+def task_overview_rows(
+    database: Session,
+    *,
+    status_mode: str = "all",
+    limit: int = 500,
+) -> list[dict[str, object]]:
+    """Return task-register rows with resolved member names.
+
+    ``status_mode`` accepts ``all``, ``active``, or ``completed``. Project
+    members are presented by their directory names only; internal placeholder
+    identities and mapping labels are never exposed in the task register.
+    """
+    normalized_mode = str(status_mode or "all").strip().lower()
+    statement = select(PortalTask, PortalProject).join(
+        PortalProject,
+        PortalProject.id == PortalTask.project_id,
+    )
+    if normalized_mode == "active":
+        statement = statement.where(PortalTask.status.notin_(CLOSED_TASK_STATUSES))
+        statement = statement.order_by(
             PortalTask.due_date.is_(None),
             PortalTask.due_date,
             PortalProject.name,
             PortalTask.id,
         )
-        .limit(max(1, min(int(limit), 500)))
+    elif normalized_mode == "completed":
+        statement = statement.where(PortalTask.status == "COMPLETED")
+        statement = statement.order_by(
+            PortalTask.updated_at.desc(),
+            PortalProject.name,
+            PortalTask.id.desc(),
+        )
+    else:
+        statement = statement.order_by(
+            PortalTask.status.in_(CLOSED_TASK_STATUSES),
+            PortalTask.due_date.is_(None),
+            PortalTask.due_date,
+            PortalProject.name,
+            PortalTask.id,
+        )
+
+    task_rows = database.execute(
+        statement.limit(max(1, min(int(limit), 1000)))
     ).all()
     task_ids = [task.id for task, _ in task_rows]
     assignee_names: dict[int, list[str]] = {task_id: [] for task_id in task_ids}
+    assignee_member_ids: dict[int, list[int]] = {task_id: [] for task_id in task_ids}
 
     if task_ids:
         by_source, _, _ = _member_resolution(database)
@@ -788,17 +820,6 @@ def active_task_overview_rows(database: Session, *, limit: int = 200) -> list[di
                 select(Freelancer).where(Freelancer.id.in_(freelancer_ids))
             ).all()
         } if freelancer_ids else {}
-        mapped_ids = {
-            int(member.freelancer_id)
-            for member in by_source.values()
-            if member.freelancer_id is not None
-        }
-        mapped_profiles = {
-            freelancer.id: freelancer
-            for freelancer in database.scalars(
-                select(Freelancer).where(Freelancer.id.in_(mapped_ids))
-            ).all()
-        } if mapped_ids else {}
 
         for task_id, assignment_id in database.execute(
             select(
@@ -811,33 +832,46 @@ def active_task_overview_rows(database: Session, *, limit: int = 200) -> list[di
             assignment_id = int(assignment_id)
             member = by_source.get(assignment_id)
             if member is not None:
-                if member.freelancer_id is not None:
-                    mapped = mapped_profiles.get(int(member.freelancer_id))
-                    label = (
-                        f"{member.member_name} → {mapped.full_name}"
-                        if mapped
-                        else f"{member.member_name} → unavailable HR profile"
-                    )
-                else:
-                    label = f"{member.member_name} (Unmapped)"
+                label = member.member_name
+                assignee_member_ids.setdefault(int(task_id), []).append(member.id)
             else:
                 profile = profiles.get(assignment_id)
-                label = profile.full_name if profile else f"Freelancer #{assignment_id}"
-            assignee_names.setdefault(int(task_id), []).append(label)
+                label = profile.full_name if profile else "Unassigned"
+            names = assignee_names.setdefault(int(task_id), [])
+            if label not in names:
+                names.append(label)
 
-    return [
-        {
-            "id": task.id,
-            "project_code": project.project_code,
-            "project_name": project.name,
-            "project_engineer": project.project_engineer or "—",
-            "title": task.title,
-            "status": task.status,
-            "priority": task.priority,
-            "discipline": task.discipline or project.discipline or "—",
-            "progress": int(task.progress or 0),
-            "due_date": task.due_date.isoformat() if task.due_date else "—",
-            "assignees": ", ".join(assignee_names.get(task.id, [])) or "Unassigned",
-        }
-        for task, project in task_rows
-    ]
+    rows: list[dict[str, object]] = []
+    for task, project in task_rows:
+        completed_date = (
+            task.completed_at.date().isoformat()
+            if task.completed_at is not None
+            else "—"
+        )
+        rows.append(
+            {
+                "id": task.id,
+                "project_id": project.id,
+                "project_name": project.name,
+                "project_engineer": project.project_engineer or "—",
+                "title": task.title,
+                "description": _clean_task_description(task.description, task.title),
+                "status": task.status,
+                "priority": task.priority,
+                "discipline": task.discipline or project.discipline or "—",
+                "progress": int(task.progress or 0),
+                "quality_score": task.quality_score,
+                "start_date": task.start_date.isoformat() if task.start_date else "—",
+                "due_date": task.due_date.isoformat() if task.due_date else "—",
+                "completion_date": completed_date,
+                "assignees": ", ".join(assignee_names.get(task.id, [])) or "Unassigned",
+                "assignee_member_ids": assignee_member_ids.get(task.id, []),
+                "updated_at": task.updated_at,
+            }
+        )
+    return rows
+
+
+def active_task_overview_rows(database: Session, *, limit: int = 200) -> list[dict[str, object]]:
+    """Backward-compatible active-task wrapper."""
+    return task_overview_rows(database, status_mode="active", limit=limit)

@@ -1,0 +1,85 @@
+BIMFM PORTAL RELEASE 20.12
+EDITABLE TASK REGISTER
+VALIDATION REPORT
+
+Application version:
+  2.3.7-release20.12-task-register-editing
+
+Date:
+  2026-08-01
+
+AUTOMATED REGRESSION SUITE
+--------------------------
+Command:
+  python -m unittest discover -s tests -v
+
+Result:
+  95 tests run
+  95 tests passed
+  0 failures
+  0 errors
+
+PYTHON COMPILATION
+------------------
+Command:
+  python -m compileall -q app tests tools alembic
+
+Result:
+  Passed
+
+RELEASE 20.12 COVERAGE
+----------------------
+  - Exact Project Management sidebar order
+  - Default Tasks view includes active and completed tasks
+  - Active Tasks focused view
+  - Recently Completed Tasks focused view
+  - Search filter
+  - Project filter
+  - Assigned-member filter
+  - Status filter
+  - Priority filter
+  - Discipline filter
+  - Clear Filters action
+  - Edit action available from the Task Register
+  - Full task editor fields
+  - Project Engineer manual-name editing
+  - Member names only; no LEGACY placeholder presentation
+  - Hidden internal project codes
+  - Completed status forces 100% progress
+  - Unassigned status forces 0% progress and clears task assignment
+  - Completion-date validation
+  - Optional whole-number Quality Score from 1 to 100
+  - Task update audit record
+  - Protected task deletion route
+  - Additive Alembic migration from 20260801_0004 to 20260801_0005
+
+INTEGRATED ACCEPTANCE SCENARIO
+------------------------------
+An isolated database was used to verify:
+
+  - Administrator authentication
+  - One active task and one completed task in the default Task Register
+  - Project/member presentation without internal identifiers
+  - Task Edit page rendering
+  - Project Engineer update
+  - Task title, dates, status, priority, discipline, member, progress,
+    quality score, and description update
+  - Completed task saved with 100% progress
+  - Quality Score 94 saved successfully
+  - Completion date saved successfully
+  - Task assignment remained valid
+
+DATABASE SAFETY
+---------------
+The Release 20.12 migration adds only:
+
+  portal_tasks.quality_score INTEGER NULL
+
+The migration contains no record deletion, table deletion, SQLite re-import,
+member repair, or automatic assignment rewrite.
+
+LIMITATION
+----------
+Validation used isolated test databases. A production acceptance check should
+be completed against one active and one completed real task after Render
+reports the deployment as Live.
