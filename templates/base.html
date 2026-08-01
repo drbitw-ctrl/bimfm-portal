@@ -3,72 +3,119 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#123a63">
   <title>{% block title %}{{ app_name }}{% endblock %}</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', path='/images/bimfm-mark.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}?v={{ app_version }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='/css/ui-refresh.css') }}?v={{ app_version }}">
+  <script>
+    (function () {
+      const savedTheme = localStorage.getItem('bimfm-theme');
+      const preferredDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.dataset.theme = savedTheme || (preferredDark ? 'dark' : 'light');
+    }());
+  </script>
 </head>
 <body class="{{ 'staff-layout' if current_staff else ('member-layout' if current_freelancer else 'public-layout') }}">
 {% if current_staff or current_freelancer %}
 <div class="app-frame">
-  <aside class="side-nav" id="sideNav">
-    <a class="side-brand" href="{{ '/admin' if current_staff else '/attendance' }}"><span class="brand-mark">B</span><span><strong>BIMFM Portal</strong><small>{{ t('Unified Operations') if current_staff else t('My Workspace') }}</small></span></a>
+  <div class="nav-scrim" data-nav-close></div>
+  <aside class="side-nav" id="sideNav" aria-label="{{ t('Primary navigation') }}">
+    <div class="side-nav-head">
+      <a class="side-brand" href="{{ '/admin' if current_staff else '/attendance' }}">
+        <img class="brand-logo" src="{{ url_for('static', path='/images/bimfm-mark.png') }}" alt="BIMFM">
+        <span class="brand-copy"><strong>BIMFM Portal</strong><small>{{ t('Unified Operations') if current_staff else t('My Workspace') }}</small></span>
+      </a>
+      <button class="nav-close" type="button" aria-label="{{ t('Close navigation') }}" data-nav-close>×</button>
+    </div>
+
+    <div class="side-workspace-card">
+      <span class="workspace-kicker">{{ t('Workspace') }}</span>
+      <strong>{{ t('Management Console') if current_staff else t('Freelancer Workspace') }}</strong>
+      <small>{{ t('PostgreSQL connected') }}</small>
+    </div>
+
     <nav>
       {% if current_staff %}
       <span class="nav-label">{{ t('Overview') }}</span>
-      <a href="/admin"><span class="nav-icon">⌂</span>{{ t('Dashboard') }}</a>
-      <a href="/portal/my-work"><span class="nav-icon">✓</span>{{ t('My Work') }}</a>
+      <a href="/admin"><span class="nav-icon">⌂</span><span>{{ t('Dashboard') }}</span></a>
+      <a href="/portal/my-work"><span class="nav-icon">✓</span><span>{{ t('My Work') }}</span></a>
+
       <span class="nav-label">{{ t('Project Management') }}</span>
-      <a href="/portal/projects"><span class="nav-icon">▦</span>{{ t('Projects') }}</a>
-      <a href="/portal/tasks"><span class="nav-icon">☷</span>{{ t('Tasks') }}</a>
-      <a href="/portal/team-workload"><span class="nav-icon">◎</span>{{ t('Team Availability / Workload') }}</a>
-      <a href="/portal/tasks?view=active"><span class="nav-icon">▶</span>{{ t('Active Tasks') }}</a>
-      <a href="/portal/tasks?view=completed"><span class="nav-icon">✓</span>{{ t('Recently Completed Tasks') }}</a>
-      <a href="/portal/performance"><span class="nav-icon">↗</span>{{ t('Performance') }}</a>
-      <a href="/portal/reports"><span class="nav-icon">▤</span>{{ t('Project Reports') }}</a>
-      <a href="/portal/calendar"><span class="nav-icon">□</span>{{ t('Calendar') }}</a>
+      <a href="/portal/projects"><span class="nav-icon">▦</span><span>{{ t('Projects') }}</span></a>
+      <a href="/portal/tasks"><span class="nav-icon">☷</span><span>{{ t('Tasks') }}</span></a>
+      <a href="/admin/project-team"><span class="nav-icon">◎</span><span>{{ t('Project Team') }}</span></a>
+      <a href="/portal/team-workload"><span class="nav-icon">◫</span><span>{{ t('Team Availability / Workload') }}</span></a>
+      <a href="/portal/tasks?view=active"><span class="nav-icon">▶</span><span>{{ t('Active Tasks') }}</span></a>
+      <a href="/portal/tasks?view=completed"><span class="nav-icon">✓</span><span>{{ t('Recently Completed Tasks') }}</span></a>
+      <a href="/portal/performance"><span class="nav-icon">↗</span><span>{{ t('Performance') }}</span></a>
+      <a href="/portal/reports"><span class="nav-icon">▤</span><span>{{ t('Project Reports') }}</span></a>
+      <a href="/portal/calendar"><span class="nav-icon">□</span><span>{{ t('Calendar') }}</span></a>
+
       {% if can(Permission.ATTENDANCE_VIEW_ALL) %}
       <span class="nav-label">{{ t('HR Management') }}</span>
-      <a href="/admin/attendance/today"><span class="nav-icon">◷</span>{{ t('Today’s Attendance') }}</a>
-      <a href="/admin/attendance/monthly"><span class="nav-icon">▦</span>{{ t('Monthly Attendance') }}</a>
-      <a href="/admin/tasks/monthly"><span class="nav-icon">✓</span>{{ t('Daily Task Reports') }}</a>
-      <a href="/admin/dtr"><span class="nav-icon">▤</span>{{ t('Monthly DTR') }}</a>
+      <a href="/admin/attendance/today"><span class="nav-icon">◷</span><span>{{ t('Today’s Attendance') }}</span></a>
+      <a href="/admin/attendance/monthly"><span class="nav-icon">▦</span><span>{{ t('Monthly Attendance') }}</span></a>
+      <a href="/admin/tasks/monthly"><span class="nav-icon">✓</span><span>{{ t('Daily Task Reports') }}</span></a>
+      <a href="/admin/dtr"><span class="nav-icon">▤</span><span>{{ t('Monthly DTR') }}</span></a>
       {% endif %}
+
       {% if can(Permission.LEAVE_APPROVE) or can(Permission.OVERTIME_APPROVE) %}
       <span class="nav-label">{{ t('Supervision') }}</span>
-      {% if can(Permission.LEAVE_APPROVE) %}<a href="/admin/leave-requests"><span class="nav-icon">↗</span>{{ t('Leave Requests') }}</a>{% endif %}
-      {% if can(Permission.OVERTIME_APPROVE) %}<a href="/admin/overtime"><span class="nav-icon">＋</span>{{ t('Overtime Claims') }}</a>{% endif %}
+      {% if can(Permission.LEAVE_APPROVE) %}<a href="/admin/leave-requests"><span class="nav-icon">↗</span><span>{{ t('Leave Requests') }}</span></a>{% endif %}
+      {% if can(Permission.OVERTIME_APPROVE) %}<a href="/admin/overtime"><span class="nav-icon">＋</span><span>{{ t('Overtime Claims') }}</span></a>{% endif %}
       {% endif %}
+
       {% if can(Permission.FINANCE_VIEW) %}
-      <span class="nav-label">{{ t('Administration') }}</span>
-      <a href="/admin/finance"><span class="nav-icon">₱</span>{{ t('Finance Center') }}</a>
+      <span class="nav-label">{{ t('Finance') }}</span>
+      <a href="/admin/finance"><span class="nav-icon">₱</span><span>{{ t('Finance Center') }}</span></a>
       {% endif %}
-      {% if can(Permission.SETTINGS_MANAGE) %}<a href="/admin/hr/calendar"><span class="nav-icon">□</span>{{ t('HR Calendar') }}</a>{% endif %}
-      {% if can(Permission.STAFF_MANAGE) %}
+
+      {% if can(Permission.SETTINGS_MANAGE) or can(Permission.STAFF_MANAGE) %}
       <span class="nav-label">{{ t('Administration') }}</span>
-      <a href="/admin/freelancers"><span class="nav-icon">◎</span>{{ t('Freelancer Accounts') }}</a>
-      <a href="/admin/staff-accounts"><span class="nav-icon">♙</span>{{ t('Staff Access') }}</a>
-      <a href="/admin/settings/work-schedule"><span class="nav-icon">◫</span>{{ t('Work Schedule') }}</a>
-      <a href="/admin/settings/hr-policy"><span class="nav-icon">⚙</span>{{ t('HR Policy') }}</a>
+      {% if can(Permission.SETTINGS_MANAGE) %}<a href="/admin/hr/calendar"><span class="nav-icon">□</span><span>{{ t('HR Calendar') }}</span></a>{% endif %}
+      {% if can(Permission.STAFF_MANAGE) %}
+      <a href="/admin/freelancers"><span class="nav-icon">◎</span><span>{{ t('Freelancer Accounts') }}</span></a>
+      <a href="/admin/staff-accounts"><span class="nav-icon">♙</span><span>{{ t('Staff Access') }}</span></a>
+      <a href="/admin/settings/work-schedule"><span class="nav-icon">◫</span><span>{{ t('Work Schedule') }}</span></a>
+      <a href="/admin/settings/hr-policy"><span class="nav-icon">⚙</span><span>{{ t('HR Policy') }}</span></a>
+      {% endif %}
       {% endif %}
       {% else %}
       <span class="nav-label">{{ t('My Workspace') }}</span>
-      <a href="/attendance">{{ t('Today’s Attendance') }}</a>
-      <a href="/attendance/history">{{ t('Attendance History') }}</a>
-      <a href="/tasks">{{ t('Daily Task Reports') }}</a>
-      <a href="/projects">{{ t('Assigned Projects') }}</a>
+      <a href="/attendance"><span class="nav-icon">◷</span><span>{{ t('Today’s Attendance') }}</span></a>
+      <a href="/attendance/history"><span class="nav-icon">▦</span><span>{{ t('Attendance History') }}</span></a>
+      <a href="/tasks"><span class="nav-icon">✓</span><span>{{ t('Daily Task Reports') }}</span></a>
+      <a href="/projects"><span class="nav-icon">▦</span><span>{{ t('Assigned Projects') }}</span></a>
       <span class="nav-label">{{ t('Requests') }}</span>
-      <a href="/overtime">{{ t('Overtime & Credits') }}</a>
-      <a href="/leave">{{ t('Leave Requests') }}</a>
+      <a href="/overtime"><span class="nav-icon">＋</span><span>{{ t('Overtime & Credits') }}</span></a>
+      <a href="/leave"><span class="nav-icon">↗</span><span>{{ t('Leave Requests') }}</span></a>
       <span class="nav-label">{{ t('Account') }}</span>
-      <a href="/change-password">{{ t('Change Password') }}</a>
+      <a href="/change-password"><span class="nav-icon">⚙</span><span>{{ t('Change Password') }}</span></a>
       {% endif %}
     </nav>
+
+    <div class="side-nav-foot">
+      <span class="system-dot"></span>
+      <div><strong>{{ t('System online') }}</strong><small>v{{ app_version }}</small></div>
+    </div>
   </aside>
+
   <div class="app-main">
     <header class="modern-topbar">
-      <button class="nav-toggle" type="button" aria-label="Toggle navigation" onclick="document.body.classList.toggle('nav-open')">☰</button>
-      <div class="topbar-title"><strong>{{ app_name }}</strong><span>{{ t('Unified operations workspace') if current_staff else t('Freelancer self-service portal') }}</span></div><div class="topbar-spacer"></div><a class="topbar-shortcut" href="{{ '/admin/leave-requests' if current_staff else '/leave' }}" title="{{ t('Open requests') }}"><span>⌁</span><em>{{ t('Requests') }}</em></a>
+      <button class="nav-toggle" type="button" aria-label="{{ t('Toggle navigation') }}" data-nav-toggle><span></span><span></span><span></span></button>
+      <div class="topbar-title">
+        <span class="topbar-kicker">{{ t('BIMFM OPERATIONS') }}</span>
+        <strong>{{ app_name }}</strong>
+        <span>{{ t('Unified operations workspace') if current_staff else t('Freelancer self-service portal') }}</span>
+      </div>
+      <div class="topbar-spacer"></div>
+      <div class="topbar-date" data-live-date aria-hidden="true"></div>
+      <a class="topbar-icon-button topbar-shortcut" href="{{ '/admin/leave-requests' if current_staff else '/leave' }}" title="{{ t('Open requests') }}" aria-label="{{ t('Open requests') }}"><span>⌁</span><em>{{ t('Requests') }}</em></a>
+      <button class="topbar-icon-button theme-toggle" type="button" data-theme-toggle aria-label="{{ t('Toggle theme') }}" title="{{ t('Toggle theme') }}"><span class="theme-icon-light">☀</span><span class="theme-icon-dark">☾</span></button>
       <form class="language-switcher" method="post" action="/language"><input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="next_url" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button name="locale" value="en" class="lang-button {{ 'active' if locale == 'en' else '' }}" type="submit">EN</button><span>/</span><button name="locale" value="zh_TW" class="lang-button {{ 'active' if locale == 'zh_TW' else '' }}" type="submit">繁中</button></form>
       <div class="user-menu">
+        <span class="user-avatar">{{ (current_staff.display_name if current_staff else current_freelancer.name)[:1]|upper }}</span>
         <div>
           <strong>{{ current_staff.display_name if current_staff else current_freelancer.name }}</strong>
           <span>{{ (t('Finance Head · Read only') if current_staff_role == 'FINANCE' else t('Administrator')) if current_staff else t('Freelancer account') }}</span>
@@ -76,15 +123,24 @@
         <form method="post" action="{{ '/admin/logout' if current_staff else '/logout' }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="ghost-button" type="submit">{{ t('Log out') }}</button></form>
       </div>
     </header>
+
     <main class="page-shell">
 {% else %}
-<header class="topbar"><div><div class="brand">{{ app_name }}</div><div class="subtitle">{{ t('Freelancer Attendance and HR Portal') }}</div></div><div class="public-tools"><form class="language-switcher" method="post" action="/language"><input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="next_url" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button name="locale" value="en" class="lang-button {{ 'active' if locale == 'en' else '' }}" type="submit">EN</button><span>/</span><button name="locale" value="zh_TW" class="lang-button {{ 'active' if locale == 'zh_TW' else '' }}" type="submit">繁中</button></form><div class="version">v{{ app_version }}</div></div></header>
-<main class="page-shell">
+<div class="public-background" aria-hidden="true"><span></span><span></span><span></span></div>
+<header class="topbar public-topbar">
+  <a class="public-brand" href="/"><img src="{{ url_for('static', path='/images/bimfm-mark.png') }}" alt="BIMFM"><div><div class="brand">{{ app_name }}</div><div class="subtitle">{{ t('Freelancer Attendance and HR Portal') }}</div></div></a>
+  <div class="public-tools">
+    <button class="topbar-icon-button theme-toggle" type="button" data-theme-toggle aria-label="{{ t('Toggle theme') }}"><span class="theme-icon-light">☀</span><span class="theme-icon-dark">☾</span></button>
+    <form class="language-switcher" method="post" action="/language"><input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="next_url" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button name="locale" value="en" class="lang-button {{ 'active' if locale == 'en' else '' }}" type="submit">EN</button><span>/</span><button name="locale" value="zh_TW" class="lang-button {{ 'active' if locale == 'zh_TW' else '' }}" type="submit">繁中</button></form>
+    <div class="version">v{{ app_version }}</div>
+  </div>
+</header>
+<main class="page-shell public-page-shell">
 {% endif %}
-      {% if flash %}<div class="flash {{ flash.category }}">{{ flash.message }}</div>{% endif %}
+      {% if flash %}<div class="flash {{ flash.category }}" role="status"><span class="flash-mark">{{ '✓' if flash.category == 'success' else '!' }}</span><span>{{ flash.message }}</span></div>{% endif %}
       {% block content %}{% endblock %}
     </main>
-    <footer>BIMFM Technology Co., Ltd. · BIMFM Portal · {{ t('Internal Use Only') }} · {{ t('Build') }} {{ app_version }}</footer>
+    <footer><span>BIMFM Technology Co., Ltd.</span><span>·</span><span>{{ t('Internal Use Only') }}</span><span>·</span><span>{{ t('Build') }} {{ app_version }}</span></footer>
 {% if current_staff or current_freelancer %}</div></div>{% endif %}
 <script>
 window.BIMFM_I18N = {
@@ -93,17 +149,6 @@ window.BIMFM_I18N = {
 };
 </script>
 <script src="{{ url_for('static', path='/js/i18n.js') }}?v={{ app_version }}"></script>
-<script>
-document.querySelectorAll('.side-nav nav a').forEach((link) => {
-  const href = link.getAttribute('href');
-  const path = window.location.pathname;
-  if (href === '/admin' ? path === '/admin' : path.startsWith(href)) link.classList.add('active');
-});
-document.addEventListener('click', (event) => {
-  if (document.body.classList.contains('nav-open') && !event.target.closest('#sideNav') && !event.target.closest('.nav-toggle')) {
-    document.body.classList.remove('nav-open');
-  }
-});
-</script>
+<script src="{{ url_for('static', path='/js/ui.js') }}?v={{ app_version }}"></script>
 </body>
 </html>

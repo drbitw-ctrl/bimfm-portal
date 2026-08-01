@@ -29,8 +29,16 @@
   </div>
 
   {% if project_member_rows %}
+  <div class="table-toolbar" data-table-toolbar data-table-target="#projectMemberTable" data-record-singular="{{ t('record') }}" data-record-plural="{{ t('records') }}">
+    <label class="table-search">
+      <span class="sr-only">{{ t('Search project members') }}</span>
+      <input type="search" data-table-search placeholder="{{ t('Search project members') }}" autocomplete="off">
+    </label>
+    <label class="table-filter-toggle"><input type="checkbox" data-unmapped-only> <span>{{ t('Show unmapped only') }}</span></label>
+    <span class="table-result-count" data-result-count></span>
+  </div>
   <div class="modern-table-wrap">
-    <table class="modern-table mapping-table">
+    <table class="modern-table mapping-table" id="projectMemberTable">
       <thead>
         <tr>
           <th>Project Member</th>
@@ -43,7 +51,7 @@
       </thead>
       <tbody>
       {% for row in project_member_rows %}
-        <tr class="{{ 'unmapped-row' if not row.freelancer_id else '' }}">
+        <tr class="{{ 'unmapped-row' if not row.freelancer_id else '' }}" data-mapping-status="{{ 'mapped' if row.freelancer_id else 'unmapped' }}">
           <td>
             <div class="person-cell">
               <span class="person-avatar">{{ row.member_name[:1]|upper }}</span>
@@ -91,7 +99,7 @@
   {% else %}
   <div class="dashboard-empty">
     <h3>No project-member records were found.</h3>
-    <p>Check <code>/setup-status</code> after the Release 20.8 migration completes. The <code>project_member_directory</code> count should be greater than zero when legacy members exist.</p>
+    <p>Check <code>/setup-status</code> and confirm that the project-member directory contains records. The <code>project_member_directory</code> count should be greater than zero when legacy members exist.</p>
   </div>
   {% endif %}
 </section>
