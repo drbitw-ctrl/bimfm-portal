@@ -118,35 +118,29 @@
                 <small class="task-quick-save-state" data-task-quick-save-state aria-live="polite">{{ t('Saved') }}</small>
               </div>
             {% elif column.type == 'quick_progress' %}
-              <div class="task-percentage-editor" data-task-percentage-editor="progress">
-                <div class="task-percentage-editor-row">
-                  <select class="task-quick-control task-percentage-select"
-                          aria-label="{{ t('Edit progress') }}"
-                          data-task-quick-field="progress"
-                          data-task-id="{{ row['_task_id'] }}">
-                    {% if value not in task_quick_edit_options.progress_values %}<option value="{{ value }}" selected>{{ value }}%</option>{% endif %}
-                    {% for option in task_quick_edit_options.progress_values %}
-                    <option value="{{ option }}" {% if value == option %}selected{% endif %}>{{ option }}%</option>
-                    {% endfor %}
-                  </select>
-                  <strong data-task-percent-label>{{ value }}%</strong>
-                </div>
+              <div class="task-percentage-editor task-progress-editor" data-task-percentage-editor="progress">
+                <select class="task-quick-control task-percentage-select"
+                        aria-label="{{ t('Edit progress') }}"
+                        data-task-quick-field="progress"
+                        data-task-id="{{ row['_task_id'] }}">
+                  {% if value not in task_quick_edit_options.progress_values %}<option value="{{ value }}" selected>{{ value }}%</option>{% endif %}
+                  {% for option in task_quick_edit_options.progress_values %}
+                  <option value="{{ option }}" {% if value == option %}selected{% endif %}>{{ option }}%</option>
+                  {% endfor %}
+                </select>
                 <span class="mini-progress" aria-hidden="true"><i data-task-percent-bar style="width: {{ value }}%"></i></span>
               </div>
             {% elif column.type == 'quick_quality' %}
               <div class="task-percentage-editor task-quality-editor" data-task-percentage-editor="quality_score">
-                <div class="task-percentage-editor-row">
-                  <select class="task-quick-control task-percentage-select"
-                          aria-label="{{ t('Edit quality score') }}"
-                          data-task-quick-field="quality_score"
-                          data-task-id="{{ row['_task_id'] }}">
-                    <option value="" {% if not value %}selected{% endif %}>{{ t('Not Rated') }}</option>
-                    {% for option in task_quick_edit_options.quality_values %}
-                    <option value="{{ option }}" {% if value == option %}selected{% endif %}>{{ option }}%</option>
-                    {% endfor %}
-                  </select>
-                  <strong data-task-percent-label>{% if value %}{{ value }}%{% else %}—{% endif %}</strong>
-                </div>
+                <select class="task-quick-control task-percentage-select"
+                        aria-label="{{ t('Edit quality score') }}"
+                        data-task-quick-field="quality_score"
+                        data-task-id="{{ row['_task_id'] }}">
+                  <option value="" {% if not value %}selected{% endif %}>{{ t('Not Rated') }}</option>
+                  {% for option in task_quick_edit_options.quality_values %}
+                  <option value="{{ option }}" {% if value == option %}selected{% endif %}>{{ option }}%</option>
+                  {% endfor %}
+                </select>
               </div>
             {% elif column.type == 'quick_completed' %}
               <input class="task-quick-control task-quick-date-control"

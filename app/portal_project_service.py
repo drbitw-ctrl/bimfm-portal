@@ -562,6 +562,89 @@ def active_task_counts_by_freelancer(database: Session) -> dict[int, int]:
     }
 
 
+def active_task_details_by_freelancer(
+    database: Session,
+) -> dict[int, list[dict[str, object]]]:
+    """Return each active HR member's current tasks for dashboard display.
+
+    Assignment identities are resolved through the project-member directory so
+    legacy imported assignments and portal-native freelancer accounts appear
+    under the same HR member. Duplicate task assignments are collapsed by task
+    ID before the rows are sorted.
+    """
+    _, source_to_hr, placeholder_ids = _member_resolution(database)
+    today = date.today()
+    rows_by_owner: dict[int, dict[int, dict[str, object]]] = {}
+
+    statement = (
+        select(
+            PortalTaskAssignment.freelancer_id,
+            PortalTask.id,
+            PortalTask.title,
+            PortalTask.status,
+            PortalTask.priority,
+            PortalTask.discipline,
+            PortalTask.progress,
+            PortalTask.due_date,
+            PortalProject.project_code,
+            PortalProject.name,
+        )
+        .join(PortalTask, PortalTask.id == PortalTaskAssignment.task_id)
+        .join(PortalProject, PortalProject.id == PortalTask.project_id)
+        .where(PortalTask.status.notin_(CLOSED_TASK_STATUSES))
+    )
+
+    for (
+        assignment_id,
+        task_id,
+        title,
+        status,
+        priority,
+        discipline,
+        progress,
+        due_date,
+        project_code,
+        project_name,
+    ) in database.execute(statement).all():
+        owner_id = _effective_owner(
+            int(assignment_id),
+            source_to_hr=source_to_hr,
+            placeholder_ids=placeholder_ids,
+        )
+        if owner_id is None:
+            continue
+        normalized_due_date = due_date if isinstance(due_date, date) else None
+        rows_by_owner.setdefault(owner_id, {})[int(task_id)] = {
+            "id": int(task_id),
+            "title": str(title or "Untitled task"),
+            "status": str(status or "NOT_STARTED"),
+            "priority": str(priority or "NORMAL"),
+            "discipline": str(discipline or ""),
+            "progress": max(0, min(100, int(progress or 0))),
+            "due_date": normalized_due_date,
+            "due_label": normalized_due_date.isoformat() if normalized_due_date else "No deadline",
+            "is_overdue": bool(normalized_due_date and normalized_due_date < today),
+            "project_code": str(project_code or ""),
+            "project_name": str(project_name or project_code or "Project"),
+        }
+
+    priority_rank = {"URGENT": 0, "HIGH": 1, "NORMAL": 2, "LOW": 3}
+    result: dict[int, list[dict[str, object]]] = {}
+    for owner_id, task_map in rows_by_owner.items():
+        tasks = list(task_map.values())
+        tasks.sort(
+            key=lambda row: (
+                not bool(row["is_overdue"]),
+                row["due_date"] is None,
+                row["due_date"] or date.max,
+                priority_rank.get(str(row["priority"]).upper(), 9),
+                str(row["title"]).casefold(),
+            )
+        )
+        result[owner_id] = tasks
+    return result
+
+
 def hr_freelancer_choices(database: Session) -> list[Freelancer]:
     """Return HR profiles, excluding imported LEGACY project placeholders."""
     placeholder_ids = {

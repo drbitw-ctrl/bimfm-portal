@@ -1,0 +1,55 @@
+BIMFM Portal Release 20.19 Test Report
+======================================
+Version: 2.3.14-release20.19-team-command-dashboard
+Date: 2026-08-01
+
+Validation checks
+-----------------
+PASS  Python compilation for the app package
+PASS  Release 20.19 version marker
+PASS  Jinja parsing for 36 templates
+PASS  JavaScript syntax: static/js/ui.js
+PASS  JavaScript syntax: static/js/i18n.js
+PASS  Tasks page renders for an Administrator
+PASS  Progress inline dropdown remains present
+PASS  Progress loading-style bar remains present
+PASS  Progress bar width is reduced for the Tasks register
+PASS  Duplicate bold Progress percentage text is removed
+PASS  Quality inline dropdown remains present
+PASS  Quality percentage bar remains removed
+PASS  Duplicate bold Quality percentage text is removed
+PASS  Status quick editing remains present
+PASS  Completed-date quick editing remains present
+PASS  Dashboard route renders successfully
+PASS  Dashboard title is Team Command Center
+PASS  Available member is shown in Available now section
+PASS  Busy member is shown in Busy current assignments section
+PASS  Current task title is shown on the busy-member card
+PASS  Current project name is shown on the busy-member card
+PASS  AR compact discipline label is shown on the Dashboard
+PASS  Current progress percentage is shown on the busy-member card
+PASS  Current task progress bar is shown on the busy-member card
+PASS  Current due date is shown on the busy-member card
+PASS  Overdue tasks sort before non-overdue tasks
+PASS  Completed and cancelled tasks are excluded from current assignments
+PASS  Legacy imported assignment resolves to the mapped HR member
+PASS  Direct portal-native assignment resolves to the HR member
+PASS  Duplicate task assignments are collapsed by task ID
+PASS  Team workload active-task counts remain consistent
+PASS  Attendance panel remains available
+PASS  Approval and assignment-health panels remain available
+PASS  No database schema migration is introduced
+
+Integrated route result
+-----------------------
+PASS  Administrator login
+PASS  Dashboard HTTP 200
+PASS  Tasks register HTTP 200
+PASS  Available and Busy sample members displayed correctly
+PASS  Current task and discipline label displayed correctly
+
+Result
+------
+39 checks passed
+0 failures
+0 errors

@@ -119,6 +119,7 @@ from app.hr_workflow import (
 )
 from app.portal_project_service import (
     active_task_counts_by_freelancer,
+    active_task_details_by_freelancer,
     active_task_overview_rows,
     current_freelancer_portal_projects,
     current_freelancer_portal_tasks,

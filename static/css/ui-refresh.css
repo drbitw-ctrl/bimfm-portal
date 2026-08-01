@@ -2723,3 +2723,550 @@ html[data-theme="dark"] .mapping-table .unmapped-row {
 .task-quality-editor .task-percentage-editor-row {
   margin: 0;
 }
+
+/* Release 20.19: compact task percentages and availability-first dashboard. */
+.task-register-table .task-progress-editor {
+  width: 82px;
+  max-width: 100%;
+  min-width: 0;
+  gap: 4px;
+}
+
+.task-register-table .task-progress-editor .task-percentage-select {
+  width: 82px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.task-register-table .task-progress-editor .mini-progress {
+  width: 70px;
+  max-width: calc(100% - 8px);
+  height: 5px;
+  margin-left: 4px;
+}
+
+.task-register-table .task-quality-editor {
+  width: 92px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.task-register-table .task-quality-editor .task-percentage-select {
+  width: 92px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.dashboard-command-hero {
+  grid-template-columns: minmax(0, 1.35fr) minmax(390px, 0.65fr);
+  min-height: 250px;
+}
+
+.command-snapshot {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.command-snapshot-item {
+  min-width: 0;
+  padding: 18px 15px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(5px);
+}
+
+.command-snapshot-item span,
+.command-snapshot-item small {
+  display: block;
+}
+
+.command-snapshot-item span {
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.command-snapshot-item strong {
+  display: block;
+  margin: 7px 0 4px;
+  color: #fff;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.command-snapshot-item small {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.command-snapshot-item.available { box-shadow: inset 0 3px 0 rgba(124, 226, 166, 0.9); }
+.command-snapshot-item.busy { box-shadow: inset 0 3px 0 rgba(115, 192, 245, 0.95); }
+.command-snapshot-item.risk { box-shadow: inset 0 3px 0 rgba(255, 196, 103, 0.95); }
+
+.team-command-panel {
+  margin-bottom: 20px;
+  padding: 24px;
+}
+
+.team-command-heading {
+  align-items: center;
+}
+
+.team-command-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.availability-legend,
+.availability-badge,
+.attendance-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-size: 0.66rem;
+  font-weight: 850;
+}
+
+.availability-legend {
+  padding: 6px 9px;
+  color: var(--ui-muted);
+  background: var(--ui-surface-soft);
+  border: 1px solid var(--ui-border);
+}
+
+.availability-legend i,
+.availability-badge i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.availability-legend.available i,
+.availability-badge.available i { background: var(--ui-success); }
+.availability-legend.busy i,
+.availability-badge.busy i { background: var(--ui-brand-600); }
+.availability-legend.overdue i { background: var(--ui-danger); }
+
+.team-command-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.team-command-stat {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 12px;
+  align-items: center;
+  min-width: 0;
+  padding: 15px 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: 15px;
+  color: inherit;
+  text-decoration: none;
+  background: var(--ui-surface-soft);
+  transition: border-color 0.16s ease, transform 0.16s ease, background 0.16s ease;
+}
+
+.team-command-stat:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--ui-brand-600) 36%, var(--ui-border));
+  background: color-mix(in srgb, var(--ui-brand-100) 42%, var(--ui-surface));
+}
+
+.team-command-stat span {
+  color: var(--ui-muted);
+  font-size: 0.67rem;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.team-command-stat strong {
+  grid-row: 1 / 3;
+  grid-column: 2;
+  font-size: 1.65rem;
+  line-height: 1;
+  color: var(--ui-text-strong);
+}
+
+.team-command-stat small {
+  color: var(--ui-muted);
+  font-size: 0.68rem;
+}
+
+.team-command-stat.available { box-shadow: inset 3px 0 0 var(--ui-success); }
+.team-command-stat.busy,
+.team-command-stat.tasks { box-shadow: inset 3px 0 0 var(--ui-brand-600); }
+.team-command-stat.risk { box-shadow: inset 3px 0 0 var(--ui-danger); }
+
+.availability-board {
+  display: grid;
+  grid-template-columns: minmax(270px, 0.72fr) minmax(560px, 1.55fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.availability-group {
+  min-width: 0;
+}
+
+.availability-group-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.availability-group-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.availability-group-heading h3 {
+  margin: 0;
+  color: var(--ui-text-strong);
+  font-size: 0.9rem;
+}
+
+.availability-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px var(--ui-surface-soft);
+}
+
+.availability-dot.available { background: var(--ui-success); }
+.availability-dot.busy { background: var(--ui-brand-600); }
+
+.availability-count {
+  display: grid;
+  place-items: center;
+  min-width: 30px;
+  height: 30px;
+  padding-inline: 8px;
+  border-radius: 10px;
+  color: var(--ui-text-strong);
+  background: var(--ui-surface-soft);
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.available-member-grid,
+.busy-member-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.busy-member-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.member-availability-card {
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--ui-border);
+  border-radius: 16px;
+  background: var(--ui-surface);
+}
+
+.member-availability-card.available {
+  border-color: color-mix(in srgb, var(--ui-success) 28%, var(--ui-border));
+  background: color-mix(in srgb, var(--ui-success-soft) 34%, var(--ui-surface));
+}
+
+.member-availability-card.busy {
+  border-color: color-mix(in srgb, var(--ui-brand-600) 20%, var(--ui-border));
+}
+
+.member-availability-card.has-overdue {
+  border-color: color-mix(in srgb, var(--ui-danger) 38%, var(--ui-border));
+}
+
+.member-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.member-command-avatar {
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+}
+
+.member-card-identity {
+  min-width: 0;
+  flex: 1;
+}
+
+.member-card-identity strong,
+.member-card-identity small {
+  display: block;
+}
+
+.member-card-identity strong {
+  overflow: hidden;
+  color: var(--ui-text-strong);
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-card-identity small {
+  margin-top: 2px;
+  color: var(--ui-muted);
+  font-size: 0.66rem;
+}
+
+.availability-badge {
+  flex: 0 0 auto;
+  padding: 6px 8px;
+}
+
+.availability-badge.available {
+  color: var(--ui-success);
+  background: var(--ui-success-soft);
+}
+
+.availability-badge.busy {
+  color: var(--ui-brand-700);
+  background: var(--ui-brand-100);
+}
+
+.availability-badge.overdue {
+  color: var(--ui-danger);
+  background: var(--ui-danger-soft);
+}
+
+.member-ready-state {
+  display: grid;
+  gap: 3px;
+  margin: 14px 0;
+  padding: 13px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ui-success-soft) 66%, var(--ui-surface));
+}
+
+.member-ready-state strong {
+  color: var(--ui-success);
+  font-size: 0.78rem;
+}
+
+.member-ready-state span {
+  color: var(--ui-muted);
+  font-size: 0.68rem;
+}
+
+.member-current-tasks {
+  display: grid;
+  gap: 8px;
+  margin-top: 13px;
+}
+
+.member-current-task {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--ui-border) 78%, transparent);
+  border-radius: 11px;
+  background: var(--ui-surface-soft);
+}
+
+.member-current-task.overdue {
+  border-color: color-mix(in srgb, var(--ui-danger) 30%, var(--ui-border));
+  background: color-mix(in srgb, var(--ui-danger-soft) 32%, var(--ui-surface));
+}
+
+.member-task-copy {
+  min-width: 0;
+}
+
+.member-task-copy strong,
+.member-task-copy small {
+  display: block;
+}
+
+.member-task-copy strong {
+  overflow: hidden;
+  color: var(--ui-text-strong);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-task-copy small {
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--ui-muted);
+  font-size: 0.62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-task-meta {
+  text-align: right;
+}
+
+.member-task-meta span,
+.member-task-meta small {
+  display: block;
+}
+
+.member-task-progress {
+  color: var(--ui-brand-700);
+  font-size: 0.68rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.member-task-meta small {
+  margin-top: 2px;
+  color: var(--ui-muted);
+  font-size: 0.58rem;
+  white-space: nowrap;
+}
+
+.member-task-meta .overdue-text {
+  color: var(--ui-danger);
+  font-weight: 800;
+}
+
+.member-task-bar {
+  grid-column: 1 / -1;
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ui-border) 72%, var(--ui-surface));
+}
+
+.member-task-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--ui-brand-600), #62b3e5);
+}
+
+.member-current-task.overdue .member-task-bar i {
+  background: var(--ui-danger);
+}
+
+.member-more-tasks {
+  justify-self: start;
+  color: var(--ui-brand-700);
+  font-size: 0.66rem;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.member-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ui-border);
+  color: var(--ui-muted);
+  font-size: 0.62rem;
+}
+
+.attendance-mini {
+  padding: 4px 7px;
+  color: var(--ui-muted);
+  background: var(--ui-surface-soft);
+}
+
+.attendance-mini.status-currently-working,
+.attendance-mini.status-complete {
+  color: var(--ui-success);
+  background: var(--ui-success-soft);
+}
+
+.attendance-mini.status-no-record {
+  color: var(--ui-warning);
+  background: var(--ui-warning-soft);
+}
+
+.dashboard-secondary-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.65fr);
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.dashboard-empty.compact {
+  padding: 18px;
+}
+
+@media (max-width: 1250px) {
+  .dashboard-command-hero {
+    grid-template-columns: minmax(0, 1fr) minmax(330px, 0.7fr);
+  }
+
+  .availability-board {
+    grid-template-columns: 1fr;
+  }
+
+  .available-member-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1000px) {
+  .dashboard-command-hero,
+  .dashboard-secondary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .team-command-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .command-snapshot,
+  .team-command-stats,
+  .available-member-grid,
+  .busy-member-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .team-command-panel {
+    padding: 18px;
+  }
+
+  .team-command-heading {
+    align-items: flex-start;
+  }
+
+  .team-command-legend {
+    justify-content: flex-start;
+  }
+
+  .member-current-task {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}

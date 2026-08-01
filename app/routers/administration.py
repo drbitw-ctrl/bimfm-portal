@@ -256,6 +256,46 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                 int(row["overdue_task_count"]) > 0
                 for row in project_team_rows
             )
+
+            attendance_by_member = {
+                int(row["freelancer_id"]): row for row in today_rows
+            }
+            task_details_by_member = active_task_details_by_freelancer(database)
+            member_workload_rows = []
+            for team_row in project_team_rows:
+                freelancer_id = int(team_row["freelancer_id"])
+                current_tasks = task_details_by_member.get(freelancer_id, [])
+                attendance_row = attendance_by_member.get(freelancer_id, {})
+                active_tasks = int(team_row["active_task_count"])
+                member_workload_rows.append(
+                    {
+                        **team_row,
+                        "availability_status": "Busy" if active_tasks else "Available",
+                        "attendance_status": attendance_row.get("status", "No Record"),
+                        "time_in": attendance_row.get("time_in", "—"),
+                        "current_tasks": current_tasks[:3],
+                        "remaining_task_count": max(0, len(current_tasks) - 3),
+                    }
+                )
+
+            available_member_rows = sorted(
+                (
+                    row for row in member_workload_rows
+                    if row["availability_status"] == "Available"
+                ),
+                key=lambda row: str(row["name"]).casefold(),
+            )
+            busy_member_rows = sorted(
+                (
+                    row for row in member_workload_rows
+                    if row["availability_status"] == "Busy"
+                ),
+                key=lambda row: (
+                    -int(row["overdue_task_count"]),
+                    -int(row["active_task_count"]),
+                    str(row["name"]).casefold(),
+                ),
+            )
             attendance_recorded_count = today_complete + today_working
 
             return templates.TemplateResponse(
@@ -286,6 +326,9 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                     team_available_count=team_available_count,
                     team_assigned_count=team_assigned_count,
                     team_with_overdue_count=team_with_overdue_count,
+                    available_member_rows=available_member_rows,
+                    busy_member_rows=busy_member_rows,
+                    member_workload_count=len(member_workload_rows),
                     attendance_recorded_count=attendance_recorded_count,
                 ),
             )
