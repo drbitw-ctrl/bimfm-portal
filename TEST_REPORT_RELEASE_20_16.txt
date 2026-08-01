@@ -1,0 +1,55 @@
+BIMFM Portal Release 20.16 — Validation Report
+Date: 2026-08-01
+Version: 2.3.11-release20.16-selective-task-quick-edit
+
+BASELINE
+- Built from Release 20.14 stable Render deployment
+- Broad Release 20.15 inline-edit implementation not used as the source base
+
+STATIC VALIDATION
+- Python compileall: PASS
+- Alembic Python compile: PASS
+- Jinja template parse: PASS
+- Fully rendered quick-edit JavaScript syntax (Node --check): PASS
+- Static UI JavaScript syntax (Node --check): PASS
+- English locale JSON: PASS
+- Traditional Chinese locale JSON: PASS
+
+SCOPE VALIDATION
+- Quick editing appears only on /portal/tasks: PASS
+- Project remains read-only: PASS
+- Task name remains read-only: PASS
+- Assigned Member remains read-only: PASS
+- Priority remains read-only: PASS
+- Discipline remains read-only: PASS
+- Start remains read-only: PASS
+- Deadline remains read-only: PASS
+- Status quick editing: PASS
+- Progress quick editing: PASS
+- Quality quick editing: PASS
+- Completed date quick editing: PASS
+- Progress percentage bar retained: PASS
+- Quality percentage bar retained: PASS
+
+AUTHENTICATED WORKFLOW TEST
+- Administrator login: PASS
+- Tasks page renders four approved quick-edit fields: PASS
+- Progress update persisted: PASS
+- Quality update persisted: PASS
+- Completed status forced Progress to 100%: PASS
+- Completed status created a completion date: PASS
+- Completion date update persisted: PASS
+- Priority quick-edit request rejected with HTTP 400: PASS
+
+PERMISSION AND PAGE ISOLATION
+- Supervisor Tasks page remains read-only: PASS
+- Projects page contains no quick-edit controls: PASS
+- Server field whitelist contains only status, progress, quality_score, completion_date: PASS
+
+DATABASE
+- New table: NONE
+- New column: NONE
+- New Alembic migration: NONE
+
+RESULT
+All Release 20.16 validation checks passed.

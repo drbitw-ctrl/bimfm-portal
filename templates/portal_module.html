@@ -89,14 +89,13 @@
     <span class="table-result-count" data-result-count></span>
   </div>
   {% if module_name == 'tasks' and can_edit_tasks %}
-  <input type="hidden" value="{{ csrf_token }}" data-inline-task-csrf>
-  <div class="inline-edit-note" role="note">
-    <strong>{{ t('Inline editing is active.') }}</strong>
-    <span>{{ t('Choose a dropdown value or change a date to save automatically. Task names save when you leave the field or press Enter.') }}</span>
+  <input type="hidden" value="{{ csrf_token }}" data-task-quick-edit-csrf>
+  <div class="task-quick-edit-note" role="note">
+    {{ t('Quick edit: Status, Progress, Quality, and Completed save automatically.') }}
   </div>
   {% endif %}
   <div class="modern-table-wrap smart-table-wrap">
-    <table class="modern-table smart-table{% if module_name == 'tasks' and can_edit_tasks %} inline-task-table{% endif %}" id="portalDataTable" data-card-table{% if module_name == 'tasks' and can_edit_tasks %} data-inline-task-table{% endif %}>
+    <table class="modern-table smart-table" id="portalDataTable" data-card-table{% if module_name == 'tasks' and can_edit_tasks %} data-task-quick-edit-table{% endif %}>
       <thead>
         <tr>{% for column in columns %}<th>{{ column.label }}</th>{% endfor %}</tr>
       </thead>
@@ -105,97 +104,60 @@
         <tr{% if row.get('_filters') %}{% for key, value in row['_filters'].items() %} data-filter-{{ key }}="{{ value }}"{% endfor %}{% endif %}>
         {% for column in columns %}
           {% set value = row[column.key] %}
-          <td data-label="{{ column.label }}">
-            {% if column.type == 'edit_project' %}
-              <select class="inline-task-control inline-project-control"
-                      aria-label="{{ t('Edit project') }}"
-                      data-inline-task-field="project_id"
-                      data-task-id="{{ row['_task_id'] }}">
-                {% for option in task_editor_options.projects %}
-                <option value="{{ option.id }}" {% if row['_project_id'] == option.id %}selected{% endif %}>{{ option.name }}</option>
-                {% endfor %}
-              </select>
-            {% elif column.type == 'edit_text' %}
-              <input class="inline-task-control inline-task-title"
-                     type="text"
-                     maxlength="300"
-                     value="{{ value }}"
-                     aria-label="{{ t('Edit task title') }}"
-                     data-inline-task-field="title"
-                     data-task-id="{{ row['_task_id'] }}">
-            {% elif column.type == 'edit_member' %}
-              <select class="inline-task-control inline-member-control"
-                      aria-label="{{ t('Edit assigned member') }}"
-                      data-inline-task-field="project_member_id"
-                      data-task-id="{{ row['_task_id'] }}">
-                {% if row['_multiple_assignees'] %}<option value="-1" selected disabled>{{ t('Multiple members — open details') }}</option>{% endif %}
-                <option value="0" {% if row['_project_member_id'] == 0 %}selected{% endif %}>{{ t('Unassigned') }}</option>
-                {% for option in task_editor_options.members %}
-                <option value="{{ option.id }}" {% if row['_project_member_id'] == option.id %}selected{% endif %}>{{ option.name }}</option>
-                {% endfor %}
-              </select>
-            {% elif column.type == 'edit_status' %}
-              <select class="inline-task-control"
-                      aria-label="{{ t('Edit status') }}"
-                      data-inline-task-field="status"
-                      data-task-id="{{ row['_task_id'] }}">
-                {% for option_value, option_label in task_editor_options.statuses %}
-                <option value="{{ option_value }}" {% if value == option_value %}selected{% endif %}>{{ t(option_label) }}</option>
-                {% endfor %}
-              </select>
-            {% elif column.type == 'edit_priority' %}
-              <select class="inline-task-control inline-compact-control"
-                      aria-label="{{ t('Edit priority') }}"
-                      data-inline-task-field="priority"
-                      data-task-id="{{ row['_task_id'] }}">
-                {% for option_value, option_label in task_editor_options.priorities %}
-                <option value="{{ option_value }}" {% if value == option_value %}selected{% endif %}>{{ t(option_label) }}</option>
-                {% endfor %}
-              </select>
-            {% elif column.type == 'edit_discipline' %}
-              <select class="inline-task-control"
-                      aria-label="{{ t('Edit discipline') }}"
-                      data-inline-task-field="discipline"
-                      data-task-id="{{ row['_task_id'] }}">
-                {% if value not in task_editor_options.disciplines %}<option value="{{ value }}" selected>{{ value }}</option>{% endif %}
-                {% for option in task_editor_options.disciplines %}
-                <option value="{{ option }}" {% if value == option %}selected{% endif %}>{{ t(option) }}</option>
-                {% endfor %}
-              </select>
-            {% elif column.type == 'edit_progress' %}
-              <select class="inline-task-control inline-number-control"
-                      aria-label="{{ t('Edit progress') }}"
-                      data-inline-task-field="progress"
-                      data-task-id="{{ row['_task_id'] }}">
-                {% if value not in task_editor_options.progress_values %}<option value="{{ value }}" selected>{{ value }}%</option>{% endif %}
-                {% for option in task_editor_options.progress_values %}
-                <option value="{{ option }}" {% if value == option %}selected{% endif %}>{{ option }}%</option>
-                {% endfor %}
-              </select>
-            {% elif column.type == 'edit_quality' %}
-              <select class="inline-task-control inline-number-control"
-                      aria-label="{{ t('Edit quality score') }}"
-                      data-inline-task-field="quality_score"
-                      data-task-id="{{ row['_task_id'] }}">
-                <option value="" {% if not value %}selected{% endif %}>{{ t('Not Rated') }}</option>
-                {% for option in task_editor_options.quality_values %}
-                <option value="{{ option }}" {% if value == option %}selected{% endif %}>{{ option }}%</option>
-                {% endfor %}
-              </select>
-            {% elif column.type == 'edit_date' %}
-              {% set date_value = row['_' ~ column.field ~ '_value'] %}
-              <input class="inline-task-control inline-date-control"
-                     type="date"
-                     value="{{ date_value }}"
-                     aria-label="{{ t('Edit') }} {{ column.label }}"
-                     data-inline-task-field="{{ column.field }}"
-                     data-task-id="{{ row['_task_id'] }}"
-                     {% if column.field == 'completion_date' and row['status'] != 'COMPLETED' %}disabled{% endif %}>
-            {% elif column.type == 'edit_action' %}
-              <div class="inline-task-action">
-                <span class="inline-save-state" data-inline-save-state aria-live="polite">{{ t('Saved') }}</span>
-                <a class="button secondary table-action-button" href="{{ value.href }}">{{ t(value.label) }}</a>
+          <td data-label="{{ column.label }}" data-column-key="{{ column.key }}">
+            {% if column.type == 'quick_status' %}
+              <div class="task-quick-status-editor">
+                <select class="task-quick-control task-quick-status-control"
+                        aria-label="{{ t('Edit status') }}"
+                        data-task-quick-field="status"
+                        data-task-id="{{ row['_task_id'] }}">
+                  {% for option_value, option_label in task_quick_edit_options.statuses %}
+                  <option value="{{ option_value }}" {% if value == option_value %}selected{% endif %}>{{ t(option_label) }}</option>
+                  {% endfor %}
+                </select>
+                <small class="task-quick-save-state" data-task-quick-save-state aria-live="polite">{{ t('Saved') }}</small>
               </div>
+            {% elif column.type == 'quick_progress' %}
+              <div class="task-percentage-editor" data-task-percentage-editor="progress">
+                <div class="task-percentage-editor-row">
+                  <select class="task-quick-control task-percentage-select"
+                          aria-label="{{ t('Edit progress') }}"
+                          data-task-quick-field="progress"
+                          data-task-id="{{ row['_task_id'] }}">
+                    {% if value not in task_quick_edit_options.progress_values %}<option value="{{ value }}" selected>{{ value }}%</option>{% endif %}
+                    {% for option in task_quick_edit_options.progress_values %}
+                    <option value="{{ option }}" {% if value == option %}selected{% endif %}>{{ option }}%</option>
+                    {% endfor %}
+                  </select>
+                  <strong data-task-percent-label>{{ value }}%</strong>
+                </div>
+                <span class="mini-progress" aria-hidden="true"><i data-task-percent-bar style="width: {{ value }}%"></i></span>
+              </div>
+            {% elif column.type == 'quick_quality' %}
+              {% set quality_percent = value if value else 0 %}
+              <div class="task-percentage-editor" data-task-percentage-editor="quality_score">
+                <div class="task-percentage-editor-row">
+                  <select class="task-quick-control task-percentage-select"
+                          aria-label="{{ t('Edit quality score') }}"
+                          data-task-quick-field="quality_score"
+                          data-task-id="{{ row['_task_id'] }}">
+                    <option value="" {% if not value %}selected{% endif %}>{{ t('Not Rated') }}</option>
+                    {% for option in task_quick_edit_options.quality_values %}
+                    <option value="{{ option }}" {% if value == option %}selected{% endif %}>{{ option }}%</option>
+                    {% endfor %}
+                  </select>
+                  <strong data-task-percent-label>{% if value %}{{ value }}%{% else %}—{% endif %}</strong>
+                </div>
+                <span class="mini-progress" aria-hidden="true"><i data-task-percent-bar style="width: {{ quality_percent }}%"></i></span>
+              </div>
+            {% elif column.type == 'quick_completed' %}
+              <input class="task-quick-control task-quick-date-control"
+                     type="date"
+                     value="{{ row['_completion_date_value'] }}"
+                     aria-label="{{ t('Edit completion date') }}"
+                     data-task-quick-field="completion_date"
+                     data-task-id="{{ row['_task_id'] }}"
+                     {% if row['status'] != 'COMPLETED' %}disabled{% endif %}>
             {% elif column.type in ['project', 'person'] %}
               <div class="table-identity-cell">
                 {% if column.type == 'person' %}<span class="person-avatar">{{ value.primary[:1]|upper }}</span>{% endif %}
@@ -223,6 +185,8 @@
               <span class="date-cell">{{ value }}</span>
             {% elif column.type == 'action' %}
               <a class="button secondary table-action-button" href="{{ value.href }}">{{ t(value.label) }}</a>
+            {% elif module_name == 'tasks' and column.key == 'assignees' %}
+              <span data-task-assignees>{{ value }}</span>
             {% else %}
               {{ value }}
             {% endif %}
@@ -244,14 +208,14 @@
 {% if module_name == 'tasks' and can_edit_tasks %}
 <script>
 (function () {
-  const table = document.querySelector('[data-inline-task-table]');
-  const csrfInput = document.querySelector('[data-inline-task-csrf]');
+  const table = document.querySelector('[data-task-quick-edit-table]');
+  const csrfInput = document.querySelector('[data-task-quick-edit-csrf]');
   if (!table || !csrfInput) return;
 
-  const controls = Array.from(table.querySelectorAll('[data-inline-task-field]'));
+  const controls = Array.from(table.querySelectorAll('[data-task-quick-field]'));
 
   function rowState(control) {
-    return control.closest('tr').querySelector('[data-inline-save-state]');
+    return control.closest('tr').querySelector('[data-task-quick-save-state]');
   }
 
   function setState(control, text, mode) {
@@ -261,116 +225,99 @@
     state.dataset.state = mode || '';
   }
 
-  function selectedLabel(select) {
-    const option = select.options[select.selectedIndex];
-    return option ? option.textContent.trim() : '';
+  function updatePercentage(row, field, value) {
+    const editor = row.querySelector(`[data-task-percentage-editor="${field}"]`);
+    if (!editor) return;
+    const control = editor.querySelector(`[data-task-quick-field="${field}"]`);
+    const label = editor.querySelector('[data-task-percent-label]');
+    const bar = editor.querySelector('[data-task-percent-bar]');
+    const textValue = value === null || value === undefined ? '' : String(value);
+    const numberValue = textValue === '' ? 0 : Math.max(0, Math.min(100, Number(textValue) || 0));
+    if (control) {
+      control.value = textValue;
+      control.dataset.originalValue = textValue;
+    }
+    if (label) label.textContent = textValue === '' ? '—' : `${numberValue}%`;
+    if (bar) bar.style.width = `${numberValue}%`;
   }
 
-  function updateRowFilters(row, updates) {
-    if (updates.filter_project !== undefined) row.dataset.filterProject = updates.filter_project;
-    if (updates.filter_member !== undefined) row.dataset.filterMember = updates.filter_member;
-    if (updates.filter_status !== undefined) row.dataset.filterStatus = updates.filter_status;
-    if (updates.filter_priority !== undefined) row.dataset.filterPriority = updates.filter_priority;
-    if (updates.filter_discipline !== undefined) row.dataset.filterDiscipline = updates.filter_discipline;
-  }
+  function applyUpdates(row, updates) {
+    if (updates.status !== undefined) {
+      const status = row.querySelector('[data-task-quick-field="status"]');
+      if (status) {
+        status.value = String(updates.status);
+        status.dataset.originalValue = status.value;
+      }
+      row.dataset.filterStatus = String(updates.status);
+    }
 
-  function applyCanonicalUpdates(row, updates) {
-    const fieldMap = {
-      project_id: 'project_id',
-      title: 'title',
-      project_member_id: 'project_member_id',
-      status: 'status',
-      priority: 'priority',
-      discipline: 'discipline',
-      progress: 'progress',
-      quality_score: 'quality_score',
-      start_date: 'start_date',
-      due_date: 'due_date',
-      completion_date: 'completion_date'
-    };
+    if (updates.progress !== undefined) updatePercentage(row, 'progress', updates.progress);
+    if (updates.quality_score !== undefined) updatePercentage(row, 'quality_score', updates.quality_score);
 
-    Object.entries(fieldMap).forEach(([updateKey, fieldName]) => {
-      if (updates[updateKey] === undefined) return;
-      const target = row.querySelector(`[data-inline-task-field="${fieldName}"]`);
-      if (!target) return;
-      target.value = String(updates[updateKey]);
-      target.dataset.originalValue = target.value;
-    });
-
-    const status = row.querySelector('[data-inline-task-field="status"]');
-    const completion = row.querySelector('[data-inline-task-field="completion_date"]');
-    if (status && completion) {
-      completion.disabled = status.value !== 'COMPLETED';
-      if (completion.disabled) {
-        completion.value = '';
-        completion.dataset.originalValue = '';
+    if (updates.completion_date !== undefined) {
+      const completed = row.querySelector('[data-task-quick-field="completion_date"]');
+      if (completed) {
+        completed.value = String(updates.completion_date || '');
+        completed.dataset.originalValue = completed.value;
       }
     }
-    updateRowFilters(row, updates);
-    const search = document.querySelector('[data-table-toolbar][data-table-target="#portalDataTable"] [data-table-search]');
-    if (search) search.dispatchEvent(new Event('input', {bubbles: true}));
+
+    if (updates.assignee_name !== undefined) {
+      const assignees = row.querySelector('[data-task-assignees]');
+      if (assignees) assignees.textContent = String(updates.assignee_name);
+      row.dataset.filterMember = updates.assignee_name === 'Unassigned'
+        ? '||'
+        : `|${String(updates.assignee_name).toLocaleLowerCase()}|`;
+    }
+
+    const statusValue = row.querySelector('[data-task-quick-field="status"]')?.value;
+    const completedControl = row.querySelector('[data-task-quick-field="completion_date"]');
+    if (completedControl) completedControl.disabled = statusValue !== 'COMPLETED';
   }
 
-  async function saveControl(control) {
-    if (control.disabled || control.dataset.saving === 'true') return;
-    const nextValue = control.value;
-    if (nextValue === control.dataset.originalValue) return;
-
-    const previousValue = control.dataset.originalValue || '';
+  async function save(control) {
     const row = control.closest('tr');
-    const body = new FormData();
-    body.append('csrf', csrfInput.value);
-    body.append('field', control.dataset.inlineTaskField);
-    body.append('value', nextValue);
+    const originalValue = control.dataset.originalValue ?? control.value;
+    const taskId = control.dataset.taskId;
+    const field = control.dataset.taskQuickField;
+    if (!row || !taskId || !field) return;
 
-    control.dataset.saving = 'true';
     control.disabled = true;
     setState(control, {{ t('Saving…')|tojson }}, 'saving');
 
+    const body = new FormData();
+    body.append('csrf', csrfInput.value);
+    body.append('field', field);
+    body.append('value', control.value);
+
     try {
-      const response = await fetch(`/portal/tasks/${control.dataset.taskId}/inline-edit`, {
+      const response = await fetch(`/portal/tasks/${taskId}/quick-edit`, {
         method: 'POST',
         body,
-        headers: {'Accept': 'application/json'}
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
       });
-      const payload = await response.json().catch(() => ({ok: false, message: 'Unable to read the server response.'}));
-      if (!response.ok || !payload.ok) throw new Error(payload.message || 'The task could not be saved.');
-      applyCanonicalUpdates(row, payload.updates || {});
-      if (!Object.prototype.hasOwnProperty.call(payload.updates || {}, control.dataset.inlineTaskField)) {
-        control.dataset.originalValue = control.value;
-      }
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) throw new Error(result.message || {{ t('Save failed')|tojson }});
+
+      applyUpdates(row, result.updates || {});
+      control.dataset.originalValue = control.value;
       setState(control, {{ t('Saved')|tojson }}, 'saved');
     } catch (error) {
-      control.value = previousValue;
+      control.value = originalValue;
+      if (field === 'progress' || field === 'quality_score') updatePercentage(row, field, originalValue);
       setState(control, error.message || {{ t('Save failed')|tojson }}, 'error');
     } finally {
-      control.dataset.saving = 'false';
-      control.disabled = false;
-      const status = row.querySelector('[data-inline-task-field="status"]');
-      const completion = row.querySelector('[data-inline-task-field="completion_date"]');
-      if (status && completion) completion.disabled = status.value !== 'COMPLETED';
+      const statusValue = row.querySelector('[data-task-quick-field="status"]')?.value;
+      control.disabled = field === 'completion_date' && statusValue !== 'COMPLETED';
     }
   }
 
   controls.forEach((control) => {
     control.dataset.originalValue = control.value;
-    if (control.tagName === 'SELECT' || control.type === 'date') {
-      control.addEventListener('change', () => saveControl(control));
-    } else {
-      control.addEventListener('blur', () => saveControl(control));
-      control.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          control.blur();
-        }
-        if (event.key === 'Escape') {
-          control.value = control.dataset.originalValue || '';
-          control.blur();
-        }
-      });
-    }
+    control.addEventListener('change', () => save(control));
   });
-}());
+})();
 </script>
 {% endif %}
 {% endblock %}
