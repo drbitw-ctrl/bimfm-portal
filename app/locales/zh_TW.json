@@ -560,5 +560,10 @@
   "record": "筆紀錄",
   "records": "筆紀錄",
   "submitted": "已送出",
-  "whole day": "全天"
+  "whole day": "全天",
+  "Example: 220.桃園長庚醫院": "範例：220.桃園長庚醫院",
+  "Project names are used throughout the portal. Internal database identifiers are never shown.": "整個入口網站僅顯示專案名稱，內部資料庫識別碼不會顯示。",
+  "Project Engineer": "專案工程師",
+  "Enter the project engineer name manually": "手動輸入專案工程師姓名",
+  "Project engineers are external or operational contacts and are not portal supervisors.": "專案工程師為專案聯絡人，並非入口網站主管帳號。"
 }

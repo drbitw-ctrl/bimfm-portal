@@ -36,7 +36,7 @@
 {% if selected_project_task %}
 <section class="panel linked-assignment-panel">
     <span class="eyebrow">SELECTED ASSIGNMENT</span>
-    <h2>{{ selected_project_task.project_code }}</h2>
+    <h2>{{ selected_project_task.project_name }}</h2>
     <p>{{ selected_project_task.task_description or 'No assignment description provided.' }}</p>
     <div class="assignment-meta compact">
         <div>
@@ -80,18 +80,13 @@
                    {% if month_locked %}disabled{% endif %}>
         </div>
 
-        <div>
-            <label>Project Code</label>
-            <input name="project_code"
-                   value="{{ selected_project_task.project_code if selected_project_task else '' }}"
-                   placeholder="Project 291" required
-                   {% if month_locked %}disabled{% endif %}>
-        </div>
+        <input type="hidden" name="project_code" value="{{ selected_project_task.project_code if selected_project_task else '' }}">
 
-        <div>
+        <div class="form-span">
             <label>Project Name</label>
             <input name="project_name"
                    value="{{ selected_project_task.project_name if selected_project_task and selected_project_task.project_name else '' }}"
+                   placeholder="Example: 220.桃園長庚醫院" required
                    {% if month_locked %}disabled{% endif %}>
         </div>
 
@@ -183,10 +178,10 @@
         {% for row in rows %}
             <tr>
                 <td><strong class="date-cell">{{ row.task_date }}</strong></td>
-                <td><div class="table-identity-cell"><div><strong>{{ row.project_code }}</strong><small>{{ row.project_name or '—' }}</small></div></div></td>
+                <td><div class="table-identity-cell"><div><strong>{{ row.project_name or 'Project' }}</strong></div></div></td>
                 <td>
                     {% if row.portal_task_id %}<span class="status-chip status-completed">Portal Task</span>
-                    {% elif row.synced_project_task_id %}<span class="status-chip status-on-hold">Legacy Link</span>
+                    {% elif row.synced_project_task_id %}<span class="status-chip status-on-hold">Imported Task</span>
                     {% else %}<span class="status-chip status-not-started">Manual</span>{% endif %}
                 </td>
                 <td>{{ row.discipline or '—' }}</td>

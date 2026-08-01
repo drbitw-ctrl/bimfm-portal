@@ -1,7 +1,15 @@
 """PostgreSQL-native project and daily-task routes."""
 from __future__ import annotations
 
+import hashlib
+
 from fastapi import APIRouter
+
+
+def _internal_daily_project_code(project_name: str) -> str:
+    normalized = " ".join(str(project_name or "").strip().split()).casefold()
+    digest = hashlib.sha1(normalized.encode("utf-8")).hexdigest()[:16]
+    return f"daily-{digest}"[:80]
 
 
 def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
@@ -18,23 +26,25 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
             if account.must_change_password:
                 return RedirectResponse("/change-password", status_code=303)
 
-            tasks = current_freelancer_portal_tasks(
+            projects = current_freelancer_portal_projects(
                 database,
                 freelancer_id=account.freelancer_id,
             )
             rows = [
                 {
                     "id": row.id,
-                    "project_code": row.project_code,
                     "project_name": row.project_name,
+                    "project_engineer": row.project_engineer or "Not specified",
                     "deadline": row.deadline.isoformat() if row.deadline else "No deadline",
-                    "status": row.project_status or "—",
+                    "status": row.status or "—",
                     "priority": row.priority or "—",
                     "discipline": row.discipline or "—",
                     "progress": row.progress,
-                    "task_description": row.task_description or "No task description provided.",
+                    "active_task_count": row.active_task_count,
+                    "next_task_id": row.next_task_id,
+                    "task_description": row.next_task_description,
                 }
-                for row in tasks
+                for row in projects
             ]
             return templates.TemplateResponse(
                 request=request,
@@ -99,8 +109,8 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
         request: Request,
         csrf: str = Form(...),
         task_date: str = Form(...),
-        project_code: str = Form(...),
-        project_name: str = Form(""),
+        project_name: str = Form(...),
+        project_code: str = Form(""),
         discipline: str = Form(""),
         task_description: str = Form(...),
         portal_task_id: int = Form(0),
@@ -123,8 +133,8 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
         except ValueError as exc:
             set_flash(request, str(exc), "error")
             return RedirectResponse(redirect_path, status_code=303)
-        if not project_code.strip() or not task_description.strip():
-            set_flash(request, "Project code and task description are required.", "error")
+        if not project_name.strip() or not task_description.strip():
+            set_flash(request, "Project name and task description are required.", "error")
             return RedirectResponse(redirect_path, status_code=303)
         normalized_task_status = task_status.strip().upper()
         if normalized_task_status not in {"COMPLETED", "IN_PROGRESS", "ON_HOLD"}:
@@ -156,14 +166,29 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
                 set_flash(request, "Daily tasks cannot be submitted for a future date.", "error")
                 return RedirectResponse(redirect_path, status_code=303)
 
+            resolved_project_name = (
+                linked_project_task.project_name
+                if linked_project_task is not None
+                else " ".join(project_name.strip().split())
+            )
+            resolved_project_code = (
+                linked_project_task.project_code
+                if linked_project_task is not None
+                else (project_code.strip() or _internal_daily_project_code(resolved_project_name))
+            )
+            resolved_discipline = (
+                linked_project_task.discipline
+                if linked_project_task is not None and linked_project_task.discipline
+                else discipline.strip() or None
+            )
             task = DailyTask(
                 freelancer_id=account.freelancer_id,
                 portal_task_id=linked_project_task.id if linked_project_task else None,
                 synced_project_task_id=None,
                 task_date=parsed_date,
-                project_code=project_code.strip(),
-                project_name=project_name.strip() or None,
-                discipline=discipline.strip() or None,
+                project_code=resolved_project_code,
+                project_name=resolved_project_name,
+                discipline=resolved_discipline,
                 task_description=task_description.strip(),
                 accomplishment=accomplishment.strip() or None,
                 task_status=normalized_task_status,
@@ -181,7 +206,7 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
                 request=request,
                 target_type="DAILY_TASK",
                 details=(
-                    f"{parsed_date} {project_code.strip()} {minutes_label(minutes)}; "
+                    f"{parsed_date} {resolved_project_name} {minutes_label(minutes)}; "
                     f"{completion}% complete; portal_task_id={task.portal_task_id or 'manual'}"
                 ),
             )
@@ -204,7 +229,7 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
     @router.post("/tasks/{task_id}/edit")
     def edit_task_submit(
         task_id: int, request: Request, csrf: str = Form(...),
-        project_code: str = Form(...), project_name: str = Form(""), discipline: str = Form(""),
+        project_name: str = Form(...), project_code: str = Form(""), discipline: str = Form(""),
         task_description: str = Form(...), accomplishment: str = Form(""),
         task_status: str = Form("COMPLETED"), hours_spent: str = Form(...),
         completion_percentage: str = Form(...), notes: str = Form(""),
@@ -215,8 +240,8 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
             completion = _parse_completion_percentage(completion_percentage)
         except ValueError as exc:
             set_flash(request,str(exc),"error"); return RedirectResponse(f"/tasks/{task_id}/edit",303)
-        if not project_code.strip() or not task_description.strip():
-            set_flash(request, "Project code and task description are required.", "error")
+        if not project_name.strip() or not task_description.strip():
+            set_flash(request, "Project name and task description are required.", "error")
             return RedirectResponse(f"/tasks/{task_id}/edit",303)
         normalized_task_status = task_status.strip().upper()
         if normalized_task_status not in {"COMPLETED", "IN_PROGRESS", "ON_HOLD"}:
@@ -231,7 +256,12 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
             month_key=task.task_date.strftime('%Y-%m')
             if month_is_locked(database,month_key):
                 set_flash(request,'This month is locked.', 'error'); return RedirectResponse(f'/tasks?month={month_key}',303)
-            task.project_code=project_code.strip(); task.project_name=project_name.strip() or None
+            cleaned_project_name=" ".join(project_name.strip().split())
+            task.project_name=cleaned_project_name
+            if project_code.strip():
+                task.project_code=project_code.strip()
+            elif not task.project_code:
+                task.project_code=_internal_daily_project_code(cleaned_project_name)
             task.discipline=discipline.strip() or None; task.task_description=task_description.strip()
             task.accomplishment=accomplishment.strip() or None; task.task_status=normalized_task_status
             task.minutes_spent=minutes; task.completion_percentage=completion; task.notes=notes.strip() or None

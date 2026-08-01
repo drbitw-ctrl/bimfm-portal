@@ -103,6 +103,7 @@ class ProjectRead(BaseModel):
     id: int
     project_code: str
     name: str
+    project_engineer: str | None
     description: str | None
     status: str
     priority: str

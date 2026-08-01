@@ -337,11 +337,10 @@ def build_dtr_workbook(
     attendance.page_setup.fitToWidth = 1
 
     tasks = wb.create_sheet("Daily Tasks")
-    title_row(tasks, "MONTHLY DAILY TASK REPORT", 11)
+    title_row(tasks, "MONTHLY DAILY TASK REPORT", 10)
     task_headers = [
         "Date",
-        "Project Code",
-        "Project Name",
+        "Project",
         "Discipline",
         "Task Description",
         "Accomplishment / Output",
@@ -355,8 +354,7 @@ def build_dtr_workbook(
     for row_number, line in enumerate(task_lines, 4):
         values = [
             line.task_date,
-            line.project_code,
-            line.project_name or "",
+            line.project_name or "Project",
             line.discipline or "",
             line.task_description,
             line.accomplishment or "",
@@ -370,13 +368,13 @@ def build_dtr_workbook(
             tasks.cell(row_number, column, value).border = Border(bottom=THIN_GRAY)
             tasks.cell(row_number, column).alignment = Alignment(
                 vertical="top",
-                wrap_text=column in {5, 6, 10},
+                wrap_text=column in {4, 5, 9},
             )
         tasks.cell(row_number, 1).number_format = "yyyy-mm-dd"
-        tasks.cell(row_number, 8).number_format = "0"
-    autosize(tasks, [12, 15, 24, 16, 42, 42, 15, 13, 14, 30, 11])
+        tasks.cell(row_number, 7).number_format = "0"
+    autosize(tasks, [12, 28, 16, 42, 42, 15, 13, 14, 30, 11])
     tasks.freeze_panes = "A4"
-    tasks.auto_filter.ref = f"A3:K{3 + len(task_lines)}"
+    tasks.auto_filter.ref = f"A3:J{3 + len(task_lines)}"
     tasks.page_setup.orientation = "landscape"
     tasks.page_setup.fitToWidth = 1
 

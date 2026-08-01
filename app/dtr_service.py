@@ -296,7 +296,7 @@ def generate_monthly_dtr(
         day_tasks = tasks_by_date.get(attendance_date, [])
         task_minutes = sum(task.minutes_spent for task in day_tasks)
         task_summary = "; ".join(
-            f"{task.project_code}: {task.task_description}" for task in day_tasks[:3]
+            f"{task.project_name or 'Project'}: {task.task_description}" for task in day_tasks[:3]
         ) or None
         if len(day_tasks) > 3:
             task_summary = f"{task_summary}; +{len(day_tasks) - 3} more"

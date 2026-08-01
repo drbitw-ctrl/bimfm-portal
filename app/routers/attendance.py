@@ -1226,7 +1226,8 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
             assigned_task_rows = [
                 {
                     "id": row.id,
-                    "project_code": row.project_code,
+                    "project_name": row.project_name,
+                    "project_engineer": row.project_engineer or "",
                     "deadline": (
                         row.deadline.isoformat()
                         if row.deadline

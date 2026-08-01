@@ -27,6 +27,9 @@ class PortalProject(Base):
     deadline: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     completion_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     progress: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Project engineers are operational contacts, not portal supervisors.
+    # The legacy supervisor link is retained for backward compatibility only.
+    project_engineer: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     supervisor_id: Mapped[Optional[int]] = mapped_column(ForeignKey("hr_admin_accounts.id", ondelete="SET NULL"), nullable=True)
     legacy_source_id: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)

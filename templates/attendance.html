@@ -118,7 +118,7 @@
             <span class="eyebrow">CURRENT PROJECT ASSIGNMENTS</span>
             <h2>My Assigned Tasks</h2>
             <p class="muted">
-                Live PostgreSQL assignments · No synchronization required
+                Current project assignments
             </p>
         </div>
         <a class="button secondary" href="/projects">View All Assignments</a>
@@ -129,7 +129,7 @@
         {% for task in assigned_tasks %}
         <article class="compact-assignment">
             <div>
-                <strong>{{ task.project_code }}</strong>
+                <strong>{{ task.project_name }}</strong>
                 <p>{{ task.task_description }}</p>
                 <small>
                     {{ task.status }} · {{ task.progress }}% ·

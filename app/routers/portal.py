@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+import hashlib
 from datetime import date, datetime, time as clock_time, timezone
 from typing import Any, Optional
 
@@ -79,6 +80,13 @@ def _normalized_progress(value: str, *, status: str) -> int:
     return progress
 
 
+def _internal_project_code(name: str) -> str:
+    """Create a stable internal identifier that is never shown in the UI."""
+    normalized = " ".join(str(name or "").strip().split()).casefold()
+    digest = hashlib.sha1(normalized.encode("utf-8")).hexdigest()[:16]
+    return f"project-{digest}"[:120]
+
+
 def _project_member_assignment_id(member: ProjectMember) -> Optional[int]:
     """Return the PostgreSQL identity used by project/task assignment tables."""
     if member.source_freelancer_id is not None:
@@ -146,7 +154,6 @@ def create_portal_router(
             database.scalars(
                 select(PortalProject).order_by(
                     PortalProject.status,
-                    PortalProject.project_code,
                     PortalProject.name,
                 )
             ).all()
@@ -163,18 +170,10 @@ def create_portal_router(
             for member in project_members
             if _project_member_assignment_id(member) is not None
         ]
-        engineers = list(
-            database.scalars(
-                select(HRAdminAccount)
-                .where(HRAdminAccount.is_active.is_(True))
-                .order_by(HRAdminAccount.display_name, HRAdminAccount.username)
-            ).all()
-        )
         defaults = {
             "existing_project_id": 0,
-            "project_code": "",
             "project_name": "",
-            "project_engineer_id": account.id,
+            "project_engineer": "",
             "task_title": "",
             "start_date": date.today().isoformat(),
             "deadline": "",
@@ -193,7 +192,6 @@ def create_portal_router(
             account=account,
             projects=projects,
             project_members=project_members,
-            engineers=engineers,
             task_statuses=TASK_STATUSES,
             task_priorities=TASK_PRIORITIES,
             task_disciplines=TASK_DISCIPLINES,
@@ -222,9 +220,8 @@ def create_portal_router(
         request: Request,
         csrf: str = Form(...),
         existing_project_id: int = Form(0),
-        project_code: str = Form(""),
         project_name: str = Form(""),
-        project_engineer_id: int = Form(0),
+        project_engineer: str = Form(""),
         task_title: str = Form(...),
         start_date: str = Form(""),
         deadline: str = Form(""),
@@ -251,9 +248,8 @@ def create_portal_router(
 
         form_values = {
             "existing_project_id": existing_project_id,
-            "project_code": project_code.strip(),
             "project_name": project_name.strip(),
-            "project_engineer_id": project_engineer_id,
+            "project_engineer": project_engineer.strip(),
             "task_title": task_title.strip(),
             "start_date": start_date.strip(),
             "deadline": deadline.strip(),
@@ -304,36 +300,30 @@ def create_portal_router(
             )
 
             project: Optional[PortalProject]
+            engineer_name = " ".join(form_values["project_engineer"].split())[:200]
             if existing_project_id:
                 project = database.get(PortalProject, existing_project_id)
                 if project is None:
                     raise ValueError("The selected project was not found.")
+                if engineer_name:
+                    project.project_engineer = engineer_name
             else:
-                code = form_values["project_code"]
-                name = form_values["project_name"]
-                if not code or not name:
-                    raise ValueError(
-                        "Project code and project name are required when creating a new project."
-                    )
+                name = " ".join(form_values["project_name"].split())
+                if not name:
+                    raise ValueError("Project name is required when creating a new project.")
                 duplicate = database.scalar(
                     select(PortalProject).where(
-                        func.lower(PortalProject.project_code) == code.casefold()
+                        func.lower(PortalProject.name) == name.casefold()
                     )
                 )
                 if duplicate is not None:
                     raise ValueError(
-                        "That project code already exists. Select the existing project instead."
+                        "That project name already exists. Select the existing project instead."
                     )
-                engineer = (
-                    database.get(HRAdminAccount, project_engineer_id)
-                    if project_engineer_id
-                    else None
-                )
-                if project_engineer_id and (engineer is None or not engineer.is_active):
-                    raise ValueError("The selected Project Engineer is unavailable.")
                 project = PortalProject(
-                    project_code=code[:120],
+                    project_code=_internal_project_code(name),
                     name=name[:300],
+                    project_engineer=engineer_name or None,
                     description=None,
                     status="ACTIVE",
                     priority=normalized_priority,
@@ -342,17 +332,11 @@ def create_portal_router(
                     deadline=parsed_deadline,
                     completion_date=(parsed_completion if normalized_status == "COMPLETED" else None),
                     progress=(normalized_progress if normalized_status == "COMPLETED" else 0),
-                    supervisor_id=engineer.id if engineer else None,
+                    supervisor_id=None,
                 )
                 database.add(project)
                 database.flush()
 
-            if project_engineer_id:
-                engineer = database.get(HRAdminAccount, project_engineer_id)
-                if engineer is None or not engineer.is_active:
-                    raise ValueError("The selected Project Engineer is unavailable.")
-                if project.supervisor_id is None:
-                    project.supervisor_id = engineer.id
             if not project.discipline:
                 project.discipline = normalized_discipline
             if project.start_date is None:
@@ -431,7 +415,7 @@ def create_portal_router(
                 target_type="PORTAL_TASK",
                 target_id=task.id,
                 details=(
-                    f"project={project.project_code}; title={task.title}; "
+                    f"project={project.name}; title={task.title}; "
                     f"status={task.status}; progress={task.progress}; "
                     f"assigned_member={assigned_member_name}"
                 ),
@@ -542,6 +526,7 @@ def create_portal_router(
         if module_name == "projects":
             columns = [
                 {"key": "project", "label": "Project", "type": "project"},
+                {"key": "project_engineer", "label": "Project Engineer", "type": "text"},
                 {"key": "status", "label": "Status", "type": "status"},
                 {"key": "progress", "label": "Progress", "type": "progress"},
                 {"key": "member_count", "label": "Members", "type": "number"},
@@ -550,7 +535,8 @@ def create_portal_router(
             ]
             rows = [
                 {
-                    "project": {"primary": row["code"], "secondary": row["name"]},
+                    "project": {"primary": row["name"], "secondary": ""},
+                    "project_engineer": row["project_engineer"],
                     "status": row["status"],
                     "progress": int(row["progress"]),
                     "member_count": row["member_count"],
@@ -580,8 +566,8 @@ def create_portal_router(
                 rows = [
                     {
                         "project": {
-                            "primary": project.project_code,
-                            "secondary": project.name,
+                            "primary": project.name,
+                            "secondary": project.project_engineer or "",
                         },
                         "title": task.title,
                         "assignees": "See Project Team",
@@ -596,8 +582,8 @@ def create_portal_router(
                 rows = [
                     {
                         "project": {
-                            "primary": row["project_code"],
-                            "secondary": row["project_name"],
+                            "primary": row["project_name"],
+                            "secondary": row.get("project_engineer", "") if row.get("project_engineer") != "—" else "",
                         },
                         "title": row["title"],
                         "assignees": row["assignees"],
@@ -619,7 +605,7 @@ def create_portal_router(
             ]
             rows = [
                 {
-                    "member": {"primary": row["name"], "secondary": row["code"]},
+                    "member": {"primary": row["name"], "secondary": ""},
                     "project_count": row["project_count"],
                     "active_task_count": row["active_task_count"],
                     "completed_task_count": row["completed_task_count"],
@@ -654,8 +640,8 @@ def create_portal_router(
                 {
                     "due_date": row["due_date"],
                     "project": {
-                        "primary": row["project_code"],
-                        "secondary": row["project_name"],
+                        "primary": row["project_name"],
+                        "secondary": row.get("project_engineer", "") if row.get("project_engineer") != "—" else "",
                     },
                     "title": row["title"],
                     "status": row["status"],

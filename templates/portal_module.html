@@ -58,7 +58,7 @@
             {% if column.type in ['project', 'person'] %}
               <div class="table-identity-cell">
                 {% if column.type == 'person' %}<span class="person-avatar">{{ value.primary[:1]|upper }}</span>{% endif %}
-                <div><strong>{{ value.primary }}</strong><small>{{ value.secondary }}</small></div>
+                <div><strong>{{ value.primary }}</strong>{% if value.secondary %}<small>{{ value.secondary }}</small>{% endif %}</div>
               </div>
             {% elif column.type == 'status' %}
               {% set status_text = value|string %}

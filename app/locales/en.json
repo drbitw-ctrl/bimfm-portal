@@ -861,5 +861,10 @@
   "records": "records",
   "submitted": "submitted",
   "whole day": "whole day",
-  "− Effective Deduction": "− Effective Deduction"
+  "− Effective Deduction": "− Effective Deduction",
+  "Example: 220.桃園長庚醫院": "Example: 220.桃園長庚醫院",
+  "Project names are used throughout the portal. Internal database identifiers are never shown.": "Project names are used throughout the portal. Internal database identifiers are never shown.",
+  "Project Engineer": "Project Engineer",
+  "Enter the project engineer name manually": "Enter the project engineer name manually",
+  "Project engineers are external or operational contacts and are not portal supervisors.": "Project engineers are external or operational contacts and are not portal supervisors."
 }

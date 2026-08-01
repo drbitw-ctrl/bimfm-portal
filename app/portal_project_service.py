@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Optional
 
-from sqlalchemy import distinct, func, select
+from sqlalchemy import exists, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -32,12 +32,28 @@ class AssignedPortalTask:
     id: int
     project_code: str
     project_name: str
+    project_engineer: Optional[str]
     deadline: Optional[date]
     project_status: str
     priority: str
     discipline: Optional[str]
     progress: int
     task_description: str
+
+
+@dataclass(frozen=True)
+class AssignedPortalProject:
+    id: int
+    project_name: str
+    project_engineer: Optional[str]
+    deadline: Optional[date]
+    status: str
+    priority: str
+    discipline: Optional[str]
+    progress: int
+    active_task_count: int
+    next_task_id: Optional[int]
+    next_task_description: str
 
 
 @dataclass(frozen=True)
@@ -120,34 +136,55 @@ def resolved_assignment_ids(
     return ids
 
 
+def _clean_task_description(value: Optional[str], fallback: str) -> str:
+    """Hide migration metadata while preserving the original task text."""
+    lines: list[str] = []
+    for raw_line in str(value or "").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        lowered = line.casefold()
+        if lowered.startswith("legacy engineer:"):
+            continue
+        if lowered.startswith("legacy quality score:"):
+            continue
+        lines.append(line)
+    return " ".join(lines).strip() or fallback
+
+
 def current_freelancer_portal_tasks(
     database: Session,
     *,
     freelancer_id: int,
     limit: int = 100,
 ) -> list[AssignedPortalTask]:
-    """Return active tasks assigned directly or through a mapped project member."""
+    """Return active tasks assigned directly or through a mapped member.
+
+    The query uses EXISTS instead of DISTINCT. This is stable on PostgreSQL
+    even when a repaired project task has multiple assignment rows.
+    """
     assignment_ids = resolved_assignment_ids(
         database,
         freelancer_id=freelancer_id,
     )
+    assignment_match = exists(
+        select(PortalTaskAssignment.id).where(
+            PortalTaskAssignment.task_id == PortalTask.id,
+            PortalTaskAssignment.freelancer_id.in_(tuple(assignment_ids)),
+        )
+    )
     statement = (
         select(PortalTask, PortalProject)
-        .join(
-            PortalTaskAssignment,
-            PortalTaskAssignment.task_id == PortalTask.id,
-        )
         .join(PortalProject, PortalProject.id == PortalTask.project_id)
         .where(
-            PortalTaskAssignment.freelancer_id.in_(assignment_ids),
+            assignment_match,
             PortalTask.status.notin_(CLOSED_TASK_STATUSES),
         )
-        .distinct()
         .order_by(
             PortalTask.due_date.is_(None),
             PortalTask.due_date,
             PortalTask.priority,
-            PortalProject.project_code,
+            PortalProject.name,
             PortalTask.id,
         )
         .limit(max(1, min(int(limit), 500)))
@@ -157,15 +194,124 @@ def current_freelancer_portal_tasks(
             id=task.id,
             project_code=project.project_code,
             project_name=project.name,
+            project_engineer=project.project_engineer,
             deadline=task.due_date,
             project_status=task.status,
             priority=task.priority,
             discipline=task.discipline or project.discipline,
             progress=max(0, min(100, int(task.progress or 0))),
-            task_description=task.description or task.title,
+            task_description=_clean_task_description(
+                task.description,
+                task.title,
+            ),
         )
         for task, project in database.execute(statement).all()
     ]
+
+
+def current_freelancer_portal_projects(
+    database: Session,
+    *,
+    freelancer_id: int,
+    limit: int = 100,
+) -> list[AssignedPortalProject]:
+    """Return assigned projects, including projects with no active task.
+
+    A project is visible when the HR profile is connected through either a
+    project-membership row or a task-assignment row. This makes the freelancer
+    Projects page resilient after the one-time member-directory repair.
+    """
+    assignment_ids = resolved_assignment_ids(
+        database,
+        freelancer_id=freelancer_id,
+    )
+    assignment_tuple = tuple(assignment_ids)
+    membership_match = exists(
+        select(PortalProjectMember.id).where(
+            PortalProjectMember.project_id == PortalProject.id,
+            PortalProjectMember.freelancer_id.in_(assignment_tuple),
+            PortalProjectMember.is_active.is_(True),
+        )
+    )
+    task_match = exists(
+        select(PortalTaskAssignment.id)
+        .join(PortalTask, PortalTask.id == PortalTaskAssignment.task_id)
+        .where(
+            PortalTask.project_id == PortalProject.id,
+            PortalTaskAssignment.freelancer_id.in_(assignment_tuple),
+        )
+    )
+    projects = list(
+        database.scalars(
+            select(PortalProject)
+            .where(or_(membership_match, task_match))
+            .order_by(
+                PortalProject.status,
+                PortalProject.deadline.is_(None),
+                PortalProject.deadline,
+                PortalProject.name,
+            )
+            .limit(max(1, min(int(limit), 500)))
+        ).all()
+    )
+    if not projects:
+        return []
+
+    project_ids = [project.id for project in projects]
+    active_tasks: dict[int, list[PortalTask]] = {project_id: [] for project_id in project_ids}
+    task_statement = (
+        select(PortalTask)
+        .where(
+            PortalTask.project_id.in_(project_ids),
+            PortalTask.status.notin_(CLOSED_TASK_STATUSES),
+            exists(
+                select(PortalTaskAssignment.id).where(
+                    PortalTaskAssignment.task_id == PortalTask.id,
+                    PortalTaskAssignment.freelancer_id.in_(assignment_tuple),
+                )
+            ),
+        )
+        .order_by(
+            PortalTask.due_date.is_(None),
+            PortalTask.due_date,
+            PortalTask.id,
+        )
+    )
+    for task in database.scalars(task_statement).all():
+        active_tasks.setdefault(task.project_id, []).append(task)
+
+    rows: list[AssignedPortalProject] = []
+    for project in projects:
+        project_tasks = active_tasks.get(project.id, [])
+        next_task = project_tasks[0] if project_tasks else None
+        rows.append(
+            AssignedPortalProject(
+                id=project.id,
+                project_name=project.name,
+                project_engineer=project.project_engineer,
+                deadline=(
+                    next_task.due_date
+                    if next_task is not None and next_task.due_date is not None
+                    else project.deadline
+                ),
+                status=project.status,
+                priority=(next_task.priority if next_task is not None else project.priority),
+                discipline=(
+                    next_task.discipline
+                    if next_task is not None and next_task.discipline
+                    else project.discipline
+                ),
+                progress=max(0, min(100, int(project.progress or 0))),
+                active_task_count=len(project_tasks),
+                next_task_id=(next_task.id if next_task is not None else None),
+                next_task_description=(
+                    _clean_task_description(next_task.description, next_task.title)
+                    if next_task is not None
+                    else "No active task is currently assigned for this project."
+                ),
+            )
+        )
+    return rows
 
 
 def portal_task_for_freelancer(
@@ -181,15 +327,16 @@ def portal_task_for_freelancer(
     )
     statement = (
         select(PortalTask, PortalProject)
-        .join(
-            PortalTaskAssignment,
-            PortalTaskAssignment.task_id == PortalTask.id,
-        )
         .join(PortalProject, PortalProject.id == PortalTask.project_id)
         .where(
             PortalTask.id == task_id,
-            PortalTaskAssignment.freelancer_id.in_(assignment_ids),
             PortalTask.status.notin_(CLOSED_TASK_STATUSES),
+            exists(
+                select(PortalTaskAssignment.id).where(
+                    PortalTaskAssignment.task_id == PortalTask.id,
+                    PortalTaskAssignment.freelancer_id.in_(tuple(assignment_ids)),
+                )
+            ),
         )
         .limit(1)
     )
@@ -201,12 +348,13 @@ def portal_task_for_freelancer(
         id=task.id,
         project_code=project.project_code,
         project_name=project.name,
+        project_engineer=project.project_engineer,
         deadline=task.due_date,
         project_status=task.status,
         priority=task.priority,
         discipline=task.discipline or project.discipline,
         progress=max(0, min(100, int(task.progress or 0))),
-        task_description=task.description or task.title,
+        task_description=_clean_task_description(task.description, task.title),
     )
 
 
@@ -555,7 +703,7 @@ def project_overview_rows(database: Session, *, limit: int = 100) -> list[dict[s
                 PortalProject.status,
                 PortalProject.deadline.is_(None),
                 PortalProject.deadline,
-                PortalProject.project_code,
+                PortalProject.name,
             )
             .limit(max(1, min(int(limit), 500)))
         ).all()
@@ -596,6 +744,7 @@ def project_overview_rows(database: Session, *, limit: int = 100) -> list[dict[s
             "id": project.id,
             "code": project.project_code,
             "name": project.name,
+            "project_engineer": project.project_engineer or "—",
             "status": project.status,
             "priority": project.priority,
             "progress": int(project.progress or 0),
@@ -615,7 +764,7 @@ def active_task_overview_rows(database: Session, *, limit: int = 200) -> list[di
         .order_by(
             PortalTask.due_date.is_(None),
             PortalTask.due_date,
-            PortalProject.project_code,
+            PortalProject.name,
             PortalTask.id,
         )
         .limit(max(1, min(int(limit), 500)))
@@ -681,6 +830,7 @@ def active_task_overview_rows(database: Session, *, limit: int = 200) -> list[di
             "id": task.id,
             "project_code": project.project_code,
             "project_name": project.name,
+            "project_engineer": project.project_engineer or "—",
             "title": task.title,
             "status": task.status,
             "priority": task.priority,

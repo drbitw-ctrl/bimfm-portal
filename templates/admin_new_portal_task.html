@@ -33,14 +33,13 @@
           <option value="0">{{ t('Create a new project') }}</option>
           {% for project in projects %}
           <option value="{{ project.id }}"
-                  data-code="{{ project.project_code }}"
                   data-name="{{ project.name }}"
+                  data-engineer="{{ project.project_engineer or '' }}"
                   data-discipline="{{ project.discipline or '' }}"
                   data-start="{{ project.start_date.isoformat() if project.start_date else '' }}"
                   data-deadline="{{ project.deadline.isoformat() if project.deadline else '' }}"
-                  data-supervisor="{{ project.supervisor_id or 0 }}"
                   {% if form_values.existing_project_id|int == project.id %}selected{% endif %}>
-            {{ project.project_code }} · {{ project.name }}
+            {{ project.name }}
           </option>
           {% endfor %}
         </select>
@@ -48,25 +47,15 @@
       </div>
 
       <div data-new-project-field>
-        <label for="project_code">{{ t('Project Code') }} <span class="required-mark">*</span></label>
-        <input id="project_code" name="project_code" maxlength="120" value="{{ form_values.project_code }}" placeholder="291 or Y27-STATION">
-      </div>
-
-      <div data-new-project-field>
         <label for="project_name">{{ t('Project Name') }} <span class="required-mark">*</span></label>
-        <input id="project_name" name="project_name" maxlength="300" value="{{ form_values.project_name }}" placeholder="{{ t('Enter the official project name') }}">
+        <input id="project_name" name="project_name" maxlength="300" value="{{ form_values.project_name }}" placeholder="{{ t('Example: 220.桃園長庚醫院') }}">
+        <small class="field-hint">{{ t('Project names are used throughout the portal. Internal database identifiers are never shown.') }}</small>
       </div>
 
       <div>
-        <label for="project_engineer_id">{{ t('Project Engineer / Supervisor') }}</label>
-        <select id="project_engineer_id" name="project_engineer_id">
-          <option value="0">{{ t('Not specified') }}</option>
-          {% for engineer in engineers %}
-          <option value="{{ engineer.id }}" {% if form_values.project_engineer_id|int == engineer.id %}selected{% endif %}>
-            {{ engineer.display_name }} · {{ engineer.username }}
-          </option>
-          {% endfor %}
-        </select>
+        <label for="project_engineer">{{ t('Project Engineer') }}</label>
+        <input id="project_engineer" name="project_engineer" maxlength="200" value="{{ form_values.project_engineer }}" placeholder="{{ t('Enter the project engineer name manually') }}">
+        <small class="field-hint">{{ t('Project engineers are external or operational contacts and are not portal supervisors.') }}</small>
       </div>
     </div>
   </section>
@@ -136,7 +125,7 @@
           <option value="0">{{ t('Unassigned') }}</option>
           {% for member in project_members %}
           <option value="{{ member.id }}" {% if form_values.project_member_id|int == member.id %}selected{% endif %}>
-            {{ member.member_name }}{% if member.member_code %} · {{ member.member_code }}{% endif %}{% if member.freelancer_id %} · {{ t('Mapped') }}{% else %} · {{ t('Unmapped') }}{% endif %}
+            {{ member.member_name }}
           </option>
           {% endfor %}
         </select>
@@ -177,9 +166,8 @@
 
   const projectSelect = form.querySelector('[data-project-selector]');
   const newProjectFields = Array.from(form.querySelectorAll('[data-new-project-field]'));
-  const projectCode = form.querySelector('#project_code');
   const projectName = form.querySelector('#project_name');
-  const engineer = form.querySelector('#project_engineer_id');
+  const engineer = form.querySelector('#project_engineer');
   const startDate = form.querySelector('#start_date');
   const deadline = form.querySelector('#deadline');
   const discipline = form.querySelector('[data-discipline-selector]');
@@ -197,18 +185,15 @@
     const option = selectedProject();
     const isNew = projectSelect.value === '0';
     newProjectFields.forEach((field) => field.classList.toggle('field-disabled', !isNew));
-    projectCode.readOnly = !isNew;
     projectName.readOnly = !isNew;
-    projectCode.required = isNew;
     projectName.required = isNew;
 
     if (!isNew) {
-      projectCode.value = option.dataset.code || '';
       projectName.value = option.dataset.name || '';
       if (option.dataset.discipline) discipline.value = option.dataset.discipline;
       if (!startDate.value && option.dataset.start) startDate.value = option.dataset.start;
       if (!deadline.value && option.dataset.deadline) deadline.value = option.dataset.deadline;
-      if (option.dataset.supervisor && option.dataset.supervisor !== '0') engineer.value = option.dataset.supervisor;
+      engineer.value = option.dataset.engineer || '';
     }
   }
 

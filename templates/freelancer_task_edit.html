@@ -4,8 +4,8 @@
 <div class="toolbar"><div><span class="eyebrow">DAILY TASK</span><h1>Edit Task</h1><p class="muted">{{ task.task_date }}</p></div><a class="button secondary" href="/tasks?month={{ task.task_date.strftime('%Y-%m') }}">{{ t('Back') }}</a></div>
 <section class="panel"><form method="post" class="form-grid">
 <input type="hidden" name="csrf" value="{{ csrf_token }}">
-<div><label>Project Code</label><input name="project_code" value="{{ task.project_code }}" required></div>
-<div><label>Project Name</label><input name="project_name" value="{{ task.project_name or '' }}"></div>
+<input type="hidden" name="project_code" value="{{ task.project_code }}">
+<div><label>Project Name</label><input name="project_name" value="{{ task.project_name or '' }}" required></div>
 <div><label>Discipline</label><input name="discipline" value="{{ task.discipline or '' }}"></div>
 <div><label>{{ t('Status') }}</label><select name="task_status"><option {% if task.task_status=='COMPLETED' %}selected{% endif %}>COMPLETED</option><option {% if task.task_status=='IN_PROGRESS' %}selected{% endif %}>IN_PROGRESS</option><option {% if task.task_status=='ON_HOLD' %}selected{% endif %}>ON_HOLD</option></select></div>
 <div><label>Completion Percentage</label><input type="number" name="completion_percentage" value="{{ task.completion_percentage }}" min="0" max="100" required></div>

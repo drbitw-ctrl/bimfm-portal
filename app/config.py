@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 APP_NAME = "BIMFM Portal"
-APP_VERSION = "2.3.5-release20.10-task-workspace"
+APP_VERSION = "2.3.6-release20.11-project-presentation"
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
@@ -35,7 +35,7 @@ ACCOUNT_LOCK_MINUTES = 15
 
 
 # Legacy synchronization settings are retained only so old deployments and
-# historical API clients fail gracefully. Release 20.10 reads live project data
+# historical API clients fail gracefully. Release 20.11 reads live project data
 # from PostgreSQL-native portal tables and does not require a sync agent.
 PROJECT_SYNC_TOKEN = os.getenv("BIMFM_PROJECT_SYNC_TOKEN", "").strip()
 PROJECT_SYNC_SOURCE_SYSTEM = os.getenv(
