@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }} · {{ app_name }}{% endblock %}
+{% block content %}
+<section class="hero-panel"><div><span class="eyebrow">BIMFM Portal v2</span><h1>{{ page_title }}</h1><p>{{ page_description }}</p></div><div class="hero-badge">PostgreSQL-ready</div></section>
+<div class="stats-grid">{% for card in cards %}<article class="stat-card"><span>{{ card.label }}</span><strong>{{ card.value }}</strong><small>{{ card.note }}</small></article>{% endfor %}</div>
+<section class="content-card"><div class="section-heading"><div><span class="eyebrow">Module status</span><h2>Unified portal foundation</h2></div></div><p>This module is connected to the BIMFM Portal v2 data model. Detailed workflows are being migrated from Task Manager Pro into the shared web application.</p>{% if rows %}<div class="table-wrap"><table><thead><tr>{% for heading in headings %}<th>{{ heading }}</th>{% endfor %}</tr></thead><tbody>{% for row in rows %}<tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div>{% endif %}</section>
+{% endblock %}

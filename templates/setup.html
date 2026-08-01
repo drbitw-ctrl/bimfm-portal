@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Initial Setup · {{ app_name }}{% endblock %}
+{% block content %}
+<section class="auth-card wide">
+    <span class="eyebrow">FIRST-TIME SETUP</span>
+    <h1>Create the Initial HR Administrator</h1>
+    <p class="muted">
+        This page is available only while no HR Administrator exists.
+        For security, submit this form from the server computer.
+    </p>
+
+    {% if local_only %}
+        <div class="flash error">
+            Initial setup is restricted to the server computer.
+        </div>
+    {% endif %}
+
+    <form method="post" action="/setup">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+
+        <label>{{ t('Username') }}</label>
+        <input name="username" autocomplete="username" required>
+
+        <label>Display Name</label>
+        <input name="display_name" required>
+
+        <label>{{ t('Password') }}</label>
+        <input type="password" name="password"
+               autocomplete="new-password" minlength="8" required>
+
+        <label>{{ t('Confirm Password') }}</label>
+        <input type="password" name="confirm_password"
+               autocomplete="new-password" minlength="8" required>
+
+        <button class="primary" type="submit"
+                {% if local_only %}disabled{% endif %}>
+            Create HR Administrator
+        </button>
+    </form>
+</section>
+{% endblock %}

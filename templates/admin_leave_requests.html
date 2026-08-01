@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Leave Review · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <div><span class="eyebrow">ADMIN REVIEW</span><h1>{{ t('Leave Requests') }}</h1></div>
+  <a class="button secondary" href="/admin">{{ t('Dashboard') }}</a>
+</div>
+<section class="panel">
+  <div class="notice">
+    <strong>Whole-day leave policy:</strong> every leave request and approval is exactly one complete workday.
+    Hourly leave is not supported. Compensatory leave also requires one complete 8-hour credit balance. Partial balances remain accumulated and cannot be deducted.
+  </div>
+  <form method="get" class="inline-filter">
+    <div><label>{{ t('Month') }}</label><input type="month" name="month" value="{{ selected_month }}"></div>
+    <div>
+      <label>{{ t('Status') }}</label>
+      <select name="status">
+        {% for s in ['PENDING','APPROVED','REJECTED','CANCELLED','ALL'] %}
+        <option {% if selected_status==s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-action"><button class="primary">Apply</button></div>
+  </form>
+</section>
+<section class="panel table-panel">
+  <table class="dense-table">
+    <thead><tr><th>{{ t('Date') }}</th><th>{{ t('Freelancer') }}</th><th>Type</th><th>Requested</th><th>Comp Balance</th><th>{{ t('Reason') }}</th><th>Decision</th></tr></thead>
+    <tbody>
+      {% for row in rows %}
+      {% set is_comp = row.leave_type == 'COMPENSATORY_LEAVE' %}
+      {% set has_full_day = balance_days.get(row.freelancer_id, 0) >= 1 %}
+      <tr>
+        <td>{{ row.leave_date }}</td>
+        <td>{{ freelancers[row.freelancer_id].freelancer_code }} · {{ freelancers[row.freelancer_id].full_name }}</td>
+        <td>{{ row.leave_type.replace('_',' ').title() }}</td>
+        <td>1 whole day</td>
+        <td>
+          {{ balance_days.get(row.freelancer_id, 0) }} whole 8-hour day(s)
+          <br><small>{{ balance_remainders.get(row.freelancer_id, 0) // 60 }}h {{ '%02d' % (balance_remainders.get(row.freelancer_id, 0) % 60) }}m accumulating</small>
+        </td>
+        <td>{{ row.reason }}</td>
+        <td>
+          {% if row.status=='PENDING' %}
+          <form method="post" action="/admin/leave-requests/{{ row.id }}/review">
+            <input type="hidden" name="csrf" value="{{ csrf_token }}">
+            <div class="muted">Approval amount: 1 whole day</div>
+            {% if is_comp and not has_full_day %}<div class="status-badge danger">Insufficient full-day credit</div>{% endif %}
+            <input name="reason" minlength="5" placeholder="Decision reason" required>
+            <div class="action-row">
+              <button class="small primary" name="decision" value="APPROVE" {% if is_comp and not has_full_day %}disabled title="At least one full-day credit is required"{% endif %}>{{ t('Approve') }}</button>
+              <button class="small secondary" name="decision" value="REJECT">{{ t('Reject') }}</button>
+            </div>
+          </form>
+          {% else %}
+            <strong>{{ row.status }}</strong><br>
+            1 whole day<br>
+            {{ row.review_reason or '' }}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if not rows %}<div class="empty-state"><p>No requests found.</p></div>{% endif %}
+</section>
+{% endblock %}

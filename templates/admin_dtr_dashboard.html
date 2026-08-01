@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Monthly DTR · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="toolbar">
+    <div>
+        <span class="eyebrow">DAILY TIME RECORD</span>
+        <h1>Monthly DTR Generation</h1>
+        <p class="muted">Generate one calendar-day DTR for each freelancer.</p>
+    </div>
+    <div class="action-row">
+        <a class="button primary" href="/admin/finance?month={{ selected_month }}">{{ t('Finance Center') }}</a>
+        <a class="button secondary" href="/admin/hr/calendar?month={{ selected_month }}">{{ t('HR Calendar') }}</a>
+        <a class="button secondary" href="/admin">{{ t('Dashboard') }}</a>
+    </div>
+</div>
+
+<section class="panel">
+    <form method="get" action="/admin/dtr" class="inline-filter">
+        <div><label>DTR Month</label><input type="month" name="month" value="{{ selected_month }}" required></div>
+        <div class="filter-action"><button class="primary" type="submit">Open Month</button></div>
+    </form>
+    <div class="lock-state {% if month_locked %}locked{% else %}open{% endif %}">
+        Attendance Month: <strong>{{ 'Locked' if month_locked else 'Open' }}</strong>
+    </div>
+</section>
+
+<section class="panel">
+    <span class="eyebrow">GENERATE OR REFRESH</span>
+    <h2>Build DTR Calendar Rows</h2>
+    <p class="muted">Draft DTRs may be regenerated. Finalized DTRs are protected and skipped.</p>
+    <form method="post" action="/admin/dtr/generate" class="form-grid">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <input type="hidden" name="month_key" value="{{ selected_month }}">
+        <div>
+            <label>{{ t('Freelancer') }}</label>
+            <select name="freelancer_id" required>
+                <option value="0">All Active Freelancers</option>
+                {% for freelancer in freelancers %}
+                <option value="{{ freelancer.id }}">{{ freelancer.freelancer_code }} · {{ freelancer.full_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label>Generation Reason</label>
+            <input name="reason" minlength="5" value="Generate monthly DTR" required>
+        </div>
+        <div class="full-width"><button class="primary" type="submit">Generate / Refresh DTR</button></div>
+    </form>
+</section>
+
+<section class="panel table-panel">
+    <h2>Generated DTRs · {{ selected_month }}</h2>
+    {% if rows %}
+    <table>
+        <thead><tr><th>{{ t('Freelancer') }}</th><th>{{ t('Status') }}</th><th>Present</th><th>Late</th><th>Absent</th><th>{{ t('Leave') }}</th><th>Incomplete</th><th>Rendered</th><th>Action</th></tr></thead>
+        <tbody>
+        {% for row in rows %}
+        <tr>
+            <td><strong>{{ row.freelancer_code }}</strong><small>{{ row.freelancer_name }}</small></td>
+            <td><span class="badge {% if row.status == 'FINALIZED' %}good{% elif row.status == 'REVIEWED' %}warning{% endif %}">{{ row.status_label }}</span></td>
+            <td>{{ row.present_days }}</td><td>{{ row.late_days }}</td><td>{{ row.absent_days }}</td><td>{{ row.leave_days }}</td>
+            <td>{{ row.incomplete_days }}</td><td>{{ row.rendered }}</td>
+            <td><a class="button small secondary" href="/admin/dtr/{{ row.id }}">Open</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}<div class="empty-state"><h2>No DTRs generated</h2><p>Use the form above to build the monthly calendar.</p></div>{% endif %}
+</section>
+
+{% if missing_freelancers %}
+<section class="panel coming-soon">
+    <h2>Not Generated Yet</h2>
+    <p>{% for freelancer in missing_freelancers %}<span class="badge">{{ freelancer.freelancer_code }} · {{ freelancer.full_name }}</span> {% endfor %}</p>
+</section>
+{% endif %}
+{% endblock %}

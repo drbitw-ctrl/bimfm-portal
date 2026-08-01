@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block title %}Daily Tasks · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="toolbar">
+    <div>
+        <span class="eyebrow">MONTHLY DAILY TASK INPUT</span>
+        <h1>Daily Tasks</h1>
+        <p class="muted">
+            {{ account.freelancer.full_name }} · {{ selected_month }} ·
+            Total {{ total_minutes // 60 }}h {{ '%02d' % (total_minutes % 60) }}m
+        </p>
+    </div>
+    <div class="action-row">
+        <a class="button secondary" href="/projects">{{ t('Assigned Projects') }}</a>
+        <a class="button secondary" href="/attendance">{{ t('Attendance') }}</a>
+    </div>
+</div>
+
+<section class="panel">
+    <form method="get" class="inline-filter">
+        <div>
+            <label>{{ t('Month') }}</label>
+            <input type="month" name="month" value="{{ selected_month }}">
+        </div>
+        <div class="filter-action">
+            <button class="primary">Open Month</button>
+        </div>
+    </form>
+    {% if month_locked %}
+    <div class="flash error">
+        This month is locked. Task changes are disabled.
+    </div>
+    {% endif %}
+</section>
+
+{% if selected_project_task %}
+<section class="panel linked-assignment-panel">
+    <span class="eyebrow">SELECTED ASSIGNMENT</span>
+    <h2>{{ selected_project_task.project_code }}</h2>
+    <p>{{ selected_project_task.task_description or 'No assignment description provided.' }}</p>
+    <div class="assignment-meta compact">
+        <div>
+            <span>Discipline</span>
+            <strong>{{ selected_project_task.discipline or '—' }}</strong>
+        </div>
+        <div>
+            <span>Deadline</span>
+            <strong>
+                {{ selected_project_task.deadline.isoformat()
+                   if selected_project_task.deadline else 'No deadline' }}
+            </strong>
+        </div>
+        <div>
+            <span>{{ t('Status') }}</span>
+            <strong>{{ selected_project_task.project_status or '—' }}</strong>
+        </div>
+        <div>
+            <span>Progress</span>
+            <strong>{{ selected_project_task.progress }}%</strong>
+        </div>
+    </div>
+    <p class="muted small-note">
+        The daily report will retain a reference to this synchronized
+        assignment. Previously submitted reports will not change when the
+        project assignment is updated later.
+    </p>
+</section>
+{% endif %}
+
+<section class="panel">
+    <h2>Add Daily Task</h2>
+    <form method="post" action="/tasks/new" class="form-grid">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <input type="hidden" name="synced_project_task_id"
+               value="{{ selected_project_task.id if selected_project_task else 0 }}">
+
+        <div>
+            <label>{{ t('Date') }}</label>
+            <input type="date" name="task_date" required
+                   {% if month_locked %}disabled{% endif %}>
+        </div>
+
+        <div>
+            <label>Project Code</label>
+            <input name="project_code"
+                   value="{{ selected_project_task.project_code if selected_project_task else '' }}"
+                   placeholder="Project 291" required
+                   {% if month_locked %}disabled{% endif %}>
+        </div>
+
+        <div>
+            <label>Project Name</label>
+            <input name="project_name"
+                   value="{{ selected_project_task.project_name if selected_project_task and selected_project_task.project_name else '' }}"
+                   {% if month_locked %}disabled{% endif %}>
+        </div>
+
+        <div>
+            <label>Discipline</label>
+            <input name="discipline"
+                   value="{{ selected_project_task.discipline if selected_project_task and selected_project_task.discipline else '' }}"
+                   placeholder="AR / ST / MEP / GE"
+                   {% if month_locked %}disabled{% endif %}>
+        </div>
+
+        <div class="full-width">
+            <label>Task Description</label>
+            <textarea name="task_description" rows="3" required
+                      {% if month_locked %}disabled{% endif %}>{{ selected_project_task.task_description if selected_project_task and selected_project_task.task_description else '' }}</textarea>
+        </div>
+
+        <div class="full-width">
+            <label>Accomplishment / Output</label>
+            <textarea name="accomplishment" rows="3"
+                      placeholder="Describe what you completed today."
+                      {% if month_locked %}disabled{% endif %}></textarea>
+        </div>
+
+        <div>
+            <label>{{ t('Status') }}</label>
+            <select name="task_status" {% if month_locked %}disabled{% endif %}>
+                <option>COMPLETED</option>
+                <option>IN_PROGRESS</option>
+                <option>ON_HOLD</option>
+            </select>
+        </div>
+
+        <div>
+            <label>Time Spent</label>
+            <input type="number" name="hours_spent"
+                   min="0.25" max="24" step="0.25" placeholder="e.g. 4.5 hours" required
+                   {% if month_locked %}disabled{% endif %}>
+        </div>
+
+        <div>
+            <label>Completion Percentage</label>
+            <input type="number" name="completion_percentage" min="0" max="100" step="1"
+                   value="{{ selected_project_task.progress if selected_project_task else 0 }}" required
+                   {% if month_locked %}disabled{% endif %}>
+        </div>
+
+        <div class="full-width">
+            <label>{{ t('Notes') }}</label>
+            <textarea name="notes" rows="2"
+                      {% if month_locked %}disabled{% endif %}></textarea>
+        </div>
+
+        <div class="full-width">
+            <button class="primary"
+                    {% if month_locked %}disabled{% endif %}>
+                Add Task
+            </button>
+        </div>
+    </form>
+</section>
+
+<section class="panel table-panel">
+    <h2>Monthly Entries</h2>
+    {% if rows %}
+    <table class="dense-table">
+        <thead>
+            <tr>
+                <th>{{ t('Date') }}</th>
+                <th>Project</th>
+                <th>Source</th>
+                <th>Discipline</th>
+                <th>Task</th>
+                <th>Output</th>
+                <th>{{ t('Status') }}</th>
+                <th>Completion</th>
+                <th>{{ t('Hours') }}</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in rows %}
+            <tr>
+                <td>{{ row.task_date }}</td>
+                <td>
+                    <strong>{{ row.project_code }}</strong>
+                    <small>{{ row.project_name or '' }}</small>
+                </td>
+                <td>
+                    {% if row.synced_project_task_id %}
+                    <span class="badge good">Assigned Task</span>
+                    {% else %}
+                    <span class="badge">Manual</span>
+                    {% endif %}
+                </td>
+                <td>{{ row.discipline or '—' }}</td>
+                <td>{{ row.task_description }}</td>
+                <td>{{ row.accomplishment or '—' }}</td>
+                <td>{{ row.task_status.replace('_',' ').title() }}</td>
+                <td>{{ row.completion_percentage }}%</td>
+                <td>{{ duration_label(row.minutes_spent) }}</td>
+                <td>
+                    <div class="action-row">
+                        <a class="button small secondary"
+                           href="/tasks/{{ row.id }}/edit">{{ t('Edit') }}</a>
+                        <form method="post"
+                              action="/tasks/{{ row.id }}/delete">
+                            <input type="hidden" name="csrf"
+                                   value="{{ csrf_token }}">
+                            <button class="small secondary"
+                                    {% if month_locked %}disabled{% endif %}>
+                                Delete
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <p>No tasks entered for this month.</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

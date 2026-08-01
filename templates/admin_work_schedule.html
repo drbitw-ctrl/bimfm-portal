@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Work Schedule · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="toolbar">
+    <div>
+        <span class="eyebrow">ATTENDANCE RULES</span>
+        <h1>Work Schedule Settings</h1>
+        <p class="muted">
+            These settings control lateness, undertime, break, rendered-time,
+            and potential-overtime calculations.
+        </p>
+    </div>
+    <a class="button secondary" href="/admin">{{ t('Dashboard') }}</a>
+</div>
+
+<section class="panel rules-notice">
+    <h2>Current calculation rules</h2>
+    <ul class="compact-list">
+        <li>Arrival within the grace period has zero late minutes.</li>
+        <li>After the grace period, late minutes count from scheduled start.</li>
+        <li>Undertime is the difference between Time Out and scheduled end.</li>
+        <li>Time after scheduled end is potential overtime, not yet approved.</li>
+        <li>Break is deducted only after the configured elapsed-time trigger.</li>
+        <li>All rendered time on a rest day is treated as potential rest-day work.</li>
+    </ul>
+</section>
+
+<section class="panel">
+<form method="post" action="/admin/settings/work-schedule" class="form-grid">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+
+    <div class="full-width">
+        <label>Schedule Name</label>
+        <input name="name" value="{{ schedule.name }}" required>
+    </div>
+
+    <div>
+        <label>Work Start</label>
+        <input type="time" name="start_time" value="{{ schedule.start_time_text }}" required>
+    </div>
+    <div>
+        <label>Work End</label>
+        <input type="time" name="end_time" value="{{ schedule.end_time_text }}" required>
+    </div>
+    <div>
+        <label>Grace Period (minutes)</label>
+        <input type="number" name="grace_minutes" min="0" max="240"
+               value="{{ schedule.grace_minutes }}" required>
+    </div>
+    <div>
+        <label>Break Duration (minutes)</label>
+        <input type="number" name="break_minutes" min="0" max="240"
+               value="{{ schedule.break_minutes }}" required>
+    </div>
+    <div>
+        <label>Apply Break After Elapsed Minutes</label>
+        <input type="number" name="break_trigger_minutes" min="0" max="1440"
+               value="{{ schedule.break_trigger_minutes }}" required>
+        <small>Default 300 means a 60-minute break applies after 5 hours.</small>
+    </div>
+
+    <fieldset class="full-width weekday-fieldset">
+        <legend>Scheduled Workdays</legend>
+        {% for key, label, checked in [
+            ('monday', 'Monday', schedule.monday),
+            ('tuesday', 'Tuesday', schedule.tuesday),
+            ('wednesday', 'Wednesday', schedule.wednesday),
+            ('thursday', 'Thursday', schedule.thursday),
+            ('friday', 'Friday', schedule.friday),
+            ('saturday', 'Saturday', schedule.saturday),
+            ('sunday', 'Sunday', schedule.sunday)
+        ] %}
+        <label class="checkbox-label">
+            <input type="checkbox" name="{{ key }}" value="1" {% if checked %}checked{% endif %}>
+            {{ label }}
+        </label>
+        {% endfor %}
+    </fieldset>
+
+    <div class="full-width note-box">
+        Saving does not silently rewrite historical records. Use the monthly
+        Recalculate button after reviewing the schedule change.
+    </div>
+    <div class="full-width">
+        <button class="primary" type="submit">Save Work Schedule</button>
+    </div>
+</form>
+</section>
+{% endblock %}

@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Attendance · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="member-page-heading">
+  <div>
+    <span class="eyebrow">MY ATTENDANCE</span>
+    <h1>Good day, {{ account.freelancer.full_name }}</h1>
+    <p class="muted">Record today’s attendance and review your current assignments.</p>
+  </div>
+  <div class="member-identity-card"><span>{{ t('Account') }}</span><strong>Freelancer Portal</strong><small>{{ account.freelancer.timezone_name }}</small></div>
+</div>
+<section class="attendance-card">
+    <span class="eyebrow">OFFICIAL SERVER ATTENDANCE</span>
+    <h2>{{ attendance.status_label }}</h2>
+
+    <div class="official-time">
+        <div>
+            <span>Attendance Date</span>
+            <strong>{{ attendance_date }}</strong>
+        </div>
+        <div>
+            <span>Server Time at Page Load</span>
+            <strong>{{ server_time }}</strong>
+        </div>
+    </div>
+
+    <p class="muted">
+        The HR server generates the official timestamp when a button
+        is pressed. The freelancer's computer clock is not used.
+    </p>
+
+    <div class="today-record">
+        <div>
+            <span>Time In</span>
+            <strong>{{ attendance.time_in }}</strong>
+        </div>
+        <div>
+            <span>Time Out</span>
+            <strong>{{ attendance.time_out }}</strong>
+        </div>
+    </div>
+
+    {% if attendance.state == "COMPLETE" %}
+    <div class="calculation-grid">
+        <div><span>Gross Elapsed</span><strong>{{ calculation.gross }}</strong></div>
+        <div><span>Break Applied</span><strong>{{ calculation.break }}</strong></div>
+        <div><span>Net Rendered</span><strong>{{ calculation.rendered }}</strong></div>
+        <div><span>Late</span><strong>{{ calculation.late }}</strong></div>
+        <div><span>Undertime</span><strong>{{ calculation.undertime }}</strong></div>
+        <div><span>Potential Overtime</span><strong>{{ calculation.overtime }}</strong></div>
+    </div>
+    <p class="muted small-note">
+        Potential overtime is for HR review and is not automatically approved
+        or credited as compensatory leave.
+    </p>
+    {% endif %}
+
+    <div class="punch-grid">
+        <form method="post" action="/attendance/time-in">
+            <input type="hidden" name="csrf" value="{{ csrf_token }}">
+            <button class="punch" type="submit"
+                    {% if not attendance.can_time_in %}disabled{% endif %}>
+                TIME IN
+            </button>
+        </form>
+
+        <form method="post" action="/attendance/time-out">
+            <input type="hidden" name="csrf" value="{{ csrf_token }}">
+            <button class="punch outline" type="submit"
+                    {% if not attendance.can_time_out %}disabled{% endif %}>
+                TIME OUT
+            </button>
+        </form>
+    </div>
+
+    {% if attendance.state == "COMPLETE" %}
+    <div class="completion-note">
+        Today's attendance is complete. Additional punches are blocked
+        automatically.
+    </div>
+    {% endif %}
+</section>
+
+<section class="panel member-monthly-summary">
+    <div class="section-heading">
+        <div>
+            <span class="eyebrow">MONTHLY ATTENDANCE AND LEAVE SUMMARY</span>
+            <h2>{{ monthly_summary_month }}</h2>
+            <p class="muted">Read-only whole-day summary. Physical workdays and compensatory leave are shown as separate categories.</p>
+        </div>
+        {% if monthly_dtr_status %}<span class="badge {{ 'good' if monthly_dtr_status in ['REVIEWED','FINALIZED'] else 'warning' }}">{{ monthly_dtr_status.replace('_',' ').title() }}</span>{% endif %}
+    </div>
+
+    {% if monthly_summary %}
+    <div class="member-monthly-grid">
+        <article class="member-summary-card worked"><span>DAYS PHYSICALLY WORKED</span><strong>{{ monthly_summary.worked_days|int }}</strong><small>Days physically rendered</small></article>
+        <article class="member-summary-card leave"><span>APPROVED LEAVE TAKEN</span><strong>{{ monthly_summary.regular_leave_taken_days|int }}</strong><small>Approved whole-day leave</small></article>
+        <article class="member-summary-card comp"><span>COMPENSATORY LEAVE APPLIED</span><strong>{{ monthly_summary.comp_leave_days|int }}</strong><small>Covered by earned credits</small></article>
+        <article class="member-summary-card payable"><span>PAYABLE WORKDAY EQUIVALENTS</span><strong>{{ monthly_summary.payable_workday_equivalents|int }}</strong><small>Worked days + covered leave</small></article>
+    </div>
+    <div class="member-credit-strip">
+        <div><span>Comp Credits Earned from Approved OT</span><strong>{{ monthly_summary.earned_comp_label }}</strong></div>
+        <div><span>Comp Credits Used</span><strong>{{ monthly_summary.used_comp_label }}</strong></div>
+        <div><span>Remaining Comp Credits</span><strong>{{ monthly_summary.closing_comp_label }}</strong></div>
+    </div>
+    <p class="muted small-note">Approved overtime is credited directly to compensatory leave after final approval. Compensatory leave does not increase days physically worked.</p>
+    {% else %}
+    <div class="empty-state compact-empty">
+        <h3>No monthly DTR summary is available yet.</h3>
+        <p>Management generates this read-only summary during DTR review.</p>
+    </div>
+    {% endif %}
+</section>
+
+<section class="panel">
+    <div class="section-heading assignment-section-heading">
+        <div>
+            <span class="eyebrow">CURRENT PROJECT ASSIGNMENTS</span>
+            <h2>My Assigned Tasks</h2>
+            <p class="muted">
+                Read-only snapshot · Last synchronized {{ project_sync_time }}
+            </p>
+        </div>
+        <a class="button secondary" href="/projects">View All Assignments</a>
+    </div>
+
+    {% if assigned_tasks %}
+    <div class="compact-assignment-list">
+        {% for task in assigned_tasks %}
+        <article class="compact-assignment">
+            <div>
+                <strong>{{ task.project_code }}</strong>
+                <p>{{ task.task_description }}</p>
+                <small>
+                    {{ task.status }} · {{ task.progress }}% ·
+                    Deadline {{ task.deadline }}
+                </small>
+            </div>
+            <a class="button small primary"
+               href="/tasks?project_task_id={{ task.id }}">
+                Daily Report
+            </a>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state compact-empty">
+        <p>
+            No active synchronized assignments are currently linked to your
+            HR account.
+        </p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}HR Overview · {{ app_name }}{% endblock %}
+{% block content %}
+<section class="dashboard-hero">
+  <div>
+    <span class="eyebrow hero-eyebrow">{{ 'FINANCE WORKSPACE' if current_staff_role == 'FINANCE' else 'PEOPLE OPERATIONS' }}</span>
+    <h1>Good day, {{ admin.display_name }}</h1>
+    <p>{{ 'Review attendance, approved requests, DTRs, and finance-ready summaries.' if current_staff_role == 'FINANCE' else 'A clear view of attendance, approvals, assignments, and workforce activity.' }}</p>
+    <div class="hero-actions">
+      <a class="button light-button" href="/admin/attendance/today">Open attendance</a>
+      <a class="button glass-button" href="/admin/finance">Finance center</a>
+    </div>
+  </div>
+  <div class="hero-status-card">
+    <span>Today’s operating status</span>
+    <strong>{{ today_working + today_complete }} / {{ active_freelancer_count }}</strong>
+    <small>active freelancers have an attendance record</small>
+    <div class="hero-progress"><i style="width: {{ (((today_working + today_complete) / active_freelancer_count * 100) if active_freelancer_count else 0)|round(0) }}%"></i></div>
+  </div>
+</section>
+
+<section class="dashboard-kpi-grid">
+  <a class="kpi-card tone-blue" href="/admin/attendance/today"><span class="kpi-icon">✓</span><div><small>Present / Complete</small><strong>{{ today_complete }}</strong><p>Completed time in and out</p></div></a>
+  <a class="kpi-card tone-green" href="/admin/attendance/today"><span class="kpi-icon">◷</span><div><small>Working Now</small><strong>{{ today_working }}</strong><p>Currently timed in</p></div></a>
+  <a class="kpi-card tone-red" href="/admin/attendance/today"><span class="kpi-icon">!</span><div><small>No Record</small><strong>{{ today_no_record }}</strong><p>Requires attendance follow-up</p></div></a>
+  <a class="kpi-card tone-amber" href="/admin/leave-requests"><span class="kpi-icon">↗</span><div><small>Pending Leave</small><strong>{{ pending_leave_count }}</strong><p>Awaiting review</p></div></a>
+  <a class="kpi-card tone-purple" href="/admin/overtime"><span class="kpi-icon">＋</span><div><small>Pending Overtime</small><strong>{{ pending_overtime_count }}</strong><p>Awaiting review</p></div></a>
+  <a class="kpi-card tone-slate" href="/admin/integration/projects"><span class="kpi-icon">▦</span><div><small>Active Assignments</small><strong>{{ active_task_count }}</strong><p>{{ overdue_task_count }} overdue task{{ '' if overdue_task_count == 1 else 's' }}</p></div></a>
+</section>
+
+<div class="dashboard-main-grid">
+  <section class="dashboard-panel workforce-panel">
+    <div class="panel-heading-modern">
+      <div><span class="eyebrow">LIVE WORKFORCE</span><h2>Today’s team status</h2><p>Attendance and current Task Manager workload in one view.</p></div>
+      <a class="text-link" href="/admin/attendance/today">View all →</a>
+    </div>
+    {% if workforce_rows %}
+    <div class="modern-table-wrap">
+      <table class="modern-table">
+        <thead><tr><th>{{ t('Freelancer') }}</th><th>{{ t('Status') }}</th><th>Time in</th><th>Active tasks</th><th></th></tr></thead>
+        <tbody>
+        {% for row in workforce_rows %}
+          <tr>
+            <td><div class="person-cell"><span class="person-avatar">{{ row.name[:1]|upper }}</span><div><strong>{{ row.name }}</strong><small>{{ row.code }}</small></div></div></td>
+            <td><span class="status-chip status-{{ row.status|lower|replace(' ', '-') }}">{{ row.status }}</span></td>
+            <td><strong class="table-value">{{ row.time_in }}</strong></td>
+            <td><span class="task-count">{{ row.active_tasks }}</span></td>
+            <td><a class="row-arrow" href="/admin/attendance/{{ row.freelancer_id }}/{{ row.date }}">→</a></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<div class="dashboard-empty">No workforce records are available yet.</div>{% endif %}
+  </section>
+
+  <aside class="dashboard-side-stack">
+    <section class="dashboard-panel approval-panel">
+      <div class="panel-heading-modern compact"><div><span class="eyebrow">ACTION CENTER</span><h2>Pending approvals</h2></div><span class="count-bubble">{{ pending_action_count }}</span></div>
+      <a class="approval-row" href="/admin/leave-requests"><span class="approval-icon leave">L</span><div><strong>Leave requests</strong><small>Supervisor decision required</small></div><b>{{ pending_leave_count }}</b></a>
+      <a class="approval-row" href="/admin/overtime"><span class="approval-icon overtime">OT</span><div><strong>Overtime claims</strong><small>Review hours and credits</small></div><b>{{ pending_overtime_count }}</b></a>
+      {% if pending_action_count == 0 %}<div class="all-clear"><span>✓</span><div><strong>All caught up</strong><small>No requests are waiting for review.</small></div></div>{% endif %}
+    </section>
+
+    <section class="dashboard-panel sync-card">
+      <div class="panel-heading-modern compact"><div><span class="eyebrow">TASK MANAGER</span><h2>Integration health</h2></div><span class="live-dot"></span></div>
+      <div class="sync-metric"><span>Last successful sync</span><strong>{{ last_project_sync }}</strong></div>
+      <div class="sync-metric"><span>Unmapped team members</span><strong>{{ unmapped_project_members }}</strong></div>
+      <a class="button secondary full-button" href="/admin/integration/projects">Manage integration</a>
+    </section>
+  </aside>
+</div>
+
+<div class="dashboard-bottom-grid">
+  <section class="dashboard-panel">
+    <div class="panel-heading-modern"><div><span class="eyebrow">RECENT ACTIVITY</span><h2>HR activity stream</h2><p>Latest administrative and workflow events.</p></div></div>
+    {% if recent_activity %}<div class="activity-list">{% for item in recent_activity %}<div class="activity-item"><span class="activity-dot"></span><div><strong>{{ item.action }}</strong><p>{{ item.details }}</p><small>{{ item.actor }} · {{ item.time }}</small></div></div>{% endfor %}</div>{% else %}<div class="dashboard-empty">Activity will appear here as your team uses the portal.</div>{% endif %}
+  </section>
+  <section class="dashboard-panel quick-launch-panel">
+    <div class="panel-heading-modern"><div><span class="eyebrow">QUICK LAUNCH</span><h2>Common workflows</h2><p>Jump directly to daily operational tools.</p></div></div>
+    <div class="quick-launch-grid">
+      <a href="/admin/attendance/monthly"><span>01</span><strong>Monthly attendance</strong><small>Review attendance trends</small></a>
+      <a href="/admin/dtr"><span>02</span><strong>{{ t('Monthly DTR') }}</strong><small>Generate and review records</small></a>
+      <a href="/admin/finance"><span>03</span><strong>Finance center</strong><small>Whole-day payroll review</small></a>
+      <a href="/admin/hr/calendar"><span>04</span><strong>HR calendar</strong><small>Leave and holidays</small></a>
+      {% if current_staff_role == 'ADMIN' %}<a href="/admin/freelancers"><span>05</span><strong>Freelancers</strong><small>Accounts and profiles</small></a><a href="/admin/staff-accounts"><span>06</span><strong>Staff access</strong><small>Roles and permissions</small></a>{% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

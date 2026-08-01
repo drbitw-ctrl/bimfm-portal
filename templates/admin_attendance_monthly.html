@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}Monthly Attendance · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="toolbar">
+    <div>
+        <span class="eyebrow">MONTHLY ATTENDANCE REVIEW</span>
+        <h1>Attendance Records</h1>
+        <p class="muted">
+            Review attendance facts and calculated time before DTR generation.
+        </p>
+    </div>
+    <div class="action-row">
+        <a class="button secondary" href="/admin/attendance/today">
+            Today's Attendance
+        </a>
+        <a class="button secondary" href="/admin">{{ t('Dashboard') }}</a>
+    </div>
+</div>
+
+<section class="panel filter-panel">
+    <form method="get" action="/admin/attendance/monthly" class="filter-grid">
+        <div>
+            <label>{{ t('Month') }}</label>
+            <input type="month" name="month" value="{{ selected_month }}" required>
+        </div>
+        <div>
+            <label>{{ t('Freelancer') }}</label>
+            <select name="freelancer_id">
+                <option value="">All Freelancers</option>
+                {% for freelancer in freelancers %}
+                <option value="{{ freelancer.id }}"
+                    {% if selected_freelancer_id == freelancer.id %}selected{% endif %}>
+                    {{ freelancer.freelancer_code }} · {{ freelancer.full_name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-action">
+            <button class="primary" type="submit">{{ t('Search') }}</button>
+        </div>
+    </form>
+</section>
+
+<section class="stats-grid four-cards">
+    <article class="stat-card"><span>Records</span><strong>{{ summary.total }}</strong></article>
+    <article class="stat-card"><span>Rendered</span><strong class="metric-text">{{ rendered_total }}</strong></article>
+    <article class="stat-card"><span>Total Late</span><strong class="metric-text">{{ late_total }}</strong></article>
+    <article class="stat-card"><span>Total Undertime</span><strong class="metric-text">{{ undertime_total }}</strong></article>
+</section>
+<section class="stats-grid four-cards">
+    <article class="stat-card"><span>Potential OT</span><strong class="metric-text">{{ overtime_total }}</strong></article>
+    <article class="stat-card"><span>Complete</span><strong>{{ summary.complete }}</strong></article>
+    <article class="stat-card"><span>Needs Review</span><strong>{{ summary.missing }}</strong></article>
+    <article class="stat-card"><span>Corrected</span><strong>{{ summary.corrected }}</strong></article>
+</section>
+
+<section class="panel month-lock-panel">
+    <div>
+        <span class="eyebrow">MONTH CONTROL</span>
+        <h2>{{ selected_month }}</h2>
+        {% if month_lock and month_lock.is_locked %}
+            <p><span class="badge danger">Locked</span></p>
+            <p class="muted">{{ month_lock.lock_reason }}</p>
+        {% else %}
+            <p><span class="badge good">Open for Review</span></p>
+        {% endif %}
+    </div>
+
+    {% if month_lock and month_lock.is_locked %}
+    <form method="post" action="/admin/attendance/month/{{ selected_month }}/unlock"
+          class="inline-reason-form">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <input name="reason" minlength="5"
+               placeholder="Reason for unlocking" required>
+        <button class="secondary" type="submit">Unlock Month</button>
+    </form>
+    {% elif selected_month < current_month %}
+    <form method="post" action="/admin/attendance/month/{{ selected_month }}/lock"
+          class="inline-reason-form">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <input name="reason" minlength="5"
+               placeholder="Reason for locking, e.g. Reviewed for DTR" required>
+        <button class="primary" type="submit">Lock Month</button>
+    </form>
+    {% else %}
+        <p class="muted">The current or a future month cannot be locked.</p>
+    {% endif %}
+
+
+{% if not (month_lock and month_lock.is_locked) %}
+<form method="post" action="/admin/attendance/month/{{ selected_month }}/recalculate"
+      class="inline-reason-form calculation-form">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <input name="reason" minlength="5"
+           placeholder="Reason, e.g. Apply updated schedule" required>
+    <button class="secondary" type="submit">Recalculate Month</button>
+</form>
+{% endif %}
+
+</section>
+
+<section class="panel table-panel">
+    {% if rows %}
+    <table>
+        <thead>
+            <tr>
+                <th>{{ t('Date') }}</th>
+                <th>{{ t('Freelancer') }}</th>
+                <th>Time In</th>
+                <th>Time Out</th>
+                <th>Gross</th>
+                <th>Break</th>
+                <th>Rendered</th>
+                <th>Late</th>
+                <th>Undertime</th>
+                <th>Potential OT</th>
+                <th>{{ t('Status') }}</th>
+                <th>{{ t('Review') }}</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in rows %}
+            <tr>
+                <td>{{ row.date_display }}</td>
+                <td>
+                    <strong>{{ row.name }}</strong>
+                    <small>{{ row.code }}</small>
+                </td>
+                <td>{{ row.time_in }}</td>
+                <td>{{ row.time_out }}</td>
+                <td>{{ row.calculation.gross }}</td>
+                <td>{{ row.calculation.break }}</td>
+                <td>{{ row.calculation.rendered }}</td>
+                <td>{{ row.calculation.late }}</td>
+                <td>{{ row.calculation.undertime }}</td>
+                <td>{{ row.calculation.overtime }}</td>
+                <td>
+                    <span class="badge status-{{ row.status|lower|replace(' ', '-') }}">
+                        {{ row.status }}
+                    </span>
+                </td>
+                <td>
+                    {{ row.review_status|replace('_', ' ')|title }}
+                    {% if row.correction_count %}
+                        <small>{{ row.correction_count }} correction(s)</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <a class="button small secondary"
+                       href="/admin/attendance/{{ row.freelancer_id }}/{{ row.date }}/correct">
+                        Review / Correct
+                    </a>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <div class="empty-state">
+            <h2>No attendance records found</h2>
+            <p>Adjust the month or freelancer filter.</p>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

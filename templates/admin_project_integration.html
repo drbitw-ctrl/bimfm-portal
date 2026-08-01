@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block title %}Project Integration · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="toolbar">
+    <div>
+        <span class="eyebrow">PROJECT ASSIGNMENT SYNCHRONIZATION</span>
+        <h1>projects.db Integration</h1>
+        <p class="muted">
+            The company-side Sync Agent reads projects.db in read-only mode.
+            The HR portal stores only a synchronized task snapshot.
+        </p>
+    </div>
+    <a class="button secondary" href="/admin">{{ t('Dashboard') }}</a>
+</div>
+
+<section class="stats-grid">
+    <article class="stat-card">
+        <span>Active Synced Tasks</span>
+        <strong>{{ active_task_count }}</strong>
+    </article>
+    <article class="stat-card">
+        <span>Mapped Tasks</span>
+        <strong>{{ mapped_task_count }}</strong>
+    </article>
+    <article class="stat-card">
+        <span>Unmapped Tasks</span>
+        <strong>{{ unmapped_task_count }}</strong>
+    </article>
+</section>
+
+<section class="panel integration-status">
+    <div class="integration-status-grid">
+        <div>
+            <span class="eyebrow">LAST SUCCESSFUL SYNCHRONIZATION</span>
+            <h2>{{ last_sync }}</h2>
+            <p class="muted">
+                Run the company-side agent again after changing a mapping,
+                assigning a new task, or completing/reassigning a project.
+            </p>
+        </div>
+        <div class="sync-security-box">
+            <strong>Connection security</strong>
+            {% if using_default_token %}
+                <span class="badge warning">Development token active</span>
+                <p>
+                    Suitable only for local testing. Configure
+                    BIMFM_PROJECT_SYNC_TOKEN before internet deployment.
+                </p>
+            {% else %}
+                <span class="badge good">Custom token configured</span>
+                <p>The HR server is using a custom synchronization token.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="panel">
+    <span class="eyebrow">NO PROJECT DATABASE CHANGES</span>
+    <h2>How the connection works</h2>
+    <div class="integration-flow">
+        <div>projects.db<br><small>{{ t('Read only') }}</small></div>
+        <span>→</span>
+        <div>Project Sync Agent<br><small>Company network</small></div>
+        <span>→</span>
+        <div>Secure HR API<br><small>Limited snapshot</small></div>
+        <span>→</span>
+        <div>Freelancer Portal<br><small>Own tasks only</small></div>
+    </div>
+    <p class="muted">
+        The sync agent does not add columns, update rows, or otherwise modify
+        projects.db. Member names are connected to HR accounts through the
+        mapping table below.
+    </p>
+</section>
+
+<section class="panel table-panel">
+    <div class="section-heading">
+        <div>
+            <span class="eyebrow">MEMBER MAPPING</span>
+            <h2>Connect Project Member Names to HR Freelancers</h2>
+        </div>
+    </div>
+
+    {% if member_rows %}
+    <table>
+        <thead>
+            <tr>
+                <th>projects.db Member</th>
+                <th>{{ t('Active Tasks') }}</th>
+                <th>HR Freelancer Mapping</th>
+                <th>Last Seen</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in member_rows %}
+            <tr>
+                <td><strong>{{ row.source_member_name }}</strong></td>
+                <td>{{ row.active_task_count }}</td>
+                <td>
+                    <div class="mapping-actions">
+                        <form method="post"
+                              action="/admin/integration/projects/source-members/{{ row.id }}/map"
+                              class="mapping-form-inline">
+                            <input type="hidden" name="csrf" value="{{ csrf_token }}">
+                            <select name="freelancer_id">
+                                <option value="0">Not mapped</option>
+                                {% for freelancer in freelancers %}
+                                <option value="{{ freelancer.id }}"
+                                    {% if row.freelancer_id == freelancer.id %}selected{% endif %}>
+                                    {{ freelancer.freelancer_code }} — {{ freelancer.full_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <button class="small primary" type="submit">
+                                Save Mapping
+                            </button>
+                        </form>
+                        {% if row.freelancer_id == 0 %}
+                        <a class="button small secondary"
+                           href="/admin/freelancers/new?source_member_id={{ row.id }}">
+                            Create HR Account
+                        </a>
+                        {% endif %}
+                    </div>
+                </td>
+                <td>{{ row.last_seen }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <h2>No project members discovered yet</h2>
+        <p>
+            Run project_sync_agent once. Discovered member names will appear
+            here even before they are mapped.
+        </p>
+    </div>
+    {% endif %}
+</section>
+
+<section class="panel table-panel">
+    <span class="eyebrow">SYNCHRONIZED SNAPSHOT</span>
+    <h2>Current Project Tasks</h2>
+    {% if task_rows %}
+    <table class="dense-table">
+        <thead>
+            <tr>
+                <th>Source ID</th>
+                <th>Project</th>
+                <th>Source Member</th>
+                <th>Mapped Freelancer</th>
+                <th>Discipline</th>
+                <th>Deadline</th>
+                <th>{{ t('Status') }}</th>
+                <th>Progress</th>
+                <th>Snapshot</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in task_rows %}
+            <tr class="{% if not row.is_active %}muted-row{% endif %}">
+                <td>{{ row.source_project_id }}</td>
+                <td>
+                    <strong>{{ row.project_code }}</strong>
+                    {% if row.project_name and row.project_name != row.project_code %}
+                    <small>{{ row.project_name }}</small>
+                    {% endif %}
+                </td>
+                <td>{{ row.source_member_name }}</td>
+                <td>
+                    {% if row.mapped_name == "Not mapped" %}
+                    <span class="badge warning">Not mapped</span>
+                    {% else %}
+                    {{ row.mapped_name }}
+                    {% endif %}
+                </td>
+                <td>{{ row.discipline }}</td>
+                <td>{{ row.deadline }}</td>
+                <td>
+                    {% if row.is_active %}
+                    <span class="badge good">{{ row.status }}</span>
+                    {% else %}
+                    <span class="badge">{{ row.status }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ row.progress }}%</td>
+                <td>{{ row.synced_at }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><p>No synchronized project tasks yet.</p></div>
+    {% endif %}
+</section>
+
+<section class="panel table-panel">
+    <span class="eyebrow">INTEGRATION AUDIT</span>
+    <h2>Recent Synchronization Runs</h2>
+    {% if sync_rows %}
+    <table>
+        <thead>
+            <tr>
+                <th>Run</th>
+                <th>Completed</th>
+                <th>{{ t('Status') }}</th>
+                <th>Received</th>
+                <th>Mapped</th>
+                <th>Unmapped</th>
+                <th>Message</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in sync_rows %}
+            <tr>
+                <td>#{{ row.id }}</td>
+                <td>{{ row.completed_at }}</td>
+                <td>
+                    <span class="badge {% if row.status == 'SUCCESS' %}good{% else %}danger{% endif %}">
+                        {{ row.status }}
+                    </span>
+                </td>
+                <td>{{ row.received_count }}</td>
+                <td>{{ row.mapped_count }}</td>
+                <td>{{ row.unmapped_count }}</td>
+                <td>{{ row.message }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><p>No synchronization runs recorded.</p></div>
+    {% endif %}
+</section>
+{% endblock %}

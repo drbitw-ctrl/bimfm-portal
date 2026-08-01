@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Attendance History · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="toolbar">
+    <div>
+        <span class="eyebrow">PERSONAL ATTENDANCE</span>
+        <h1>{{ t('Attendance History') }}</h1>
+        <p class="muted">
+            {{ account.freelancer.full_name }} ·
+            Last 31 attendance records
+        </p>
+    </div>
+    <a class="button secondary" href="/attendance">
+        Back to Attendance
+    </a>
+</div>
+
+<section class="panel table-panel">
+    {% if history_rows %}
+    <table>
+        <thead>
+            <tr>
+                <th>{{ t('Date') }}</th>
+                <th>Time In</th>
+                <th>Time Out</th>
+                <th>Gross</th>
+                <th>Rendered</th>
+                <th>Late</th>
+                <th>Undertime</th>
+                <th>Potential OT</th>
+                <th>{{ t('Status') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in history_rows %}
+            <tr>
+                <td><strong>{{ row.date }}</strong></td>
+                <td>{{ row.time_in }}</td>
+                <td>{{ row.time_out }}</td>
+                <td>{{ row.calculation.gross }}</td>
+                <td>{{ row.calculation.rendered }}</td>
+                <td>{{ row.calculation.late }}</td>
+                <td>{{ row.calculation.undertime }}</td>
+                <td>{{ row.calculation.overtime }}</td>
+                <td>
+                    {% if row.status == "Complete" %}
+                        <span class="badge good">{{ row.status }}</span>
+                    {% elif row.status == "Missing Time Out" %}
+                        <span class="badge warning">{{ row.status }}</span>
+                    {% else %}
+                        <span class="badge">{{ row.status }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <div class="empty-state">
+            <h2>No attendance records yet</h2>
+            <p>Your Time In and Time Out history will appear here.</p>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

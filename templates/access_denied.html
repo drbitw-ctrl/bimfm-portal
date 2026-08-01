@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Access denied') }} · {{ app_name }}{% endblock %}
+{% block content %}
+<section class="panel" style="max-width:720px;margin:40px auto;text-align:center;padding:48px 32px;">
+  <div style="font-size:3rem" aria-hidden="true">🔒</div>
+  <h1>{{ t('Access denied') }}</h1>
+  <p class="muted">{{ t('You do not have permission to access this page.') }}</p>
+  <p><a class="button primary" href="/dashboard">{{ t('Return to dashboard') }}</a></p>
+</section>
+{% endblock %}

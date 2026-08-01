@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Attendance Correction · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="toolbar">
+    <div>
+        <span class="eyebrow">ATTENDANCE REVIEW</span>
+        <h1>{{ freelancer.full_name }}</h1>
+        <p class="muted">
+            {{ freelancer.freelancer_code }} ·
+            {{ attendance_date.strftime('%A, %B %d, %Y') }} ·
+            {{ freelancer.timezone_name }}
+        </p>
+    </div>
+    <div class="action-row">
+        <a class="button secondary"
+           href="/admin/attendance/monthly?month={{ attendance_date.strftime('%Y-%m') }}&freelancer_id={{ freelancer.id }}">
+            Monthly Records
+        </a>
+        <a class="button secondary" href="/admin/attendance/today">{{ t('Today') }}</a>
+    </div>
+</div>
+
+<section class="panel correction-panel">
+    <div class="record-status-line">
+        <span>Current Status</span>
+        <strong>{{ current_status }}</strong>
+        {% if locked %}
+            <span class="badge danger">Month Locked</span>
+        {% endif %}
+    </div>
+
+    <form method="post"
+          action="/admin/attendance/{{ freelancer.id }}/{{ attendance_date.isoformat() }}/correct"
+          class="form-grid">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+
+        <div>
+            <label>Corrected Time In</label>
+            <input type="time" name="time_in" value="{{ time_in_value }}"
+                   {% if locked %}disabled{% endif %}>
+        </div>
+
+        <div>
+            <label>Corrected Time Out</label>
+            <input type="time" name="time_out" value="{{ time_out_value }}"
+                   {% if locked %}disabled{% endif %}>
+        </div>
+
+        <div class="full-width">
+            <label>Correction Reason</label>
+            <textarea name="reason" rows="4" minlength="5"
+                      placeholder="Explain the missed punch, internet issue, or approved manual attendance."
+                      {% if locked %}disabled{% endif %} required></textarea>
+        </div>
+
+        <div class="full-width note-box">
+            Original Time In and Time Out events are not edited or deleted.
+            This form updates the reviewed daily result and creates a permanent
+            correction history entry.
+        </div>
+
+        <div class="full-width">
+            <button class="primary" type="submit"
+                    {% if locked %}disabled{% endif %}>
+                Save Attendance Correction
+            </button>
+        </div>
+    </form>
+</section>
+
+<section class="panel table-panel">
+    <h2>Correction History</h2>
+    {% if correction_history %}
+    <table>
+        <thead>
+            <tr>
+                <th>Recorded</th>
+                <th>{{ t('Administrator') }}</th>
+                <th>Original</th>
+                <th>Corrected</th>
+                <th>{{ t('Reason') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for item in correction_history %}
+            <tr>
+                <td>{{ item.created_at }}</td>
+                <td>{{ item.admin }}</td>
+                <td>
+                    In: {{ item.original_time_in }}<br>
+                    Out: {{ item.original_time_out }}
+                </td>
+                <td>
+                    In: {{ item.corrected_time_in }}<br>
+                    Out: {{ item.corrected_time_out }}
+                </td>
+                <td>{{ item.reason }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <div class="empty-state">
+            <p>No corrections have been recorded for this date.</p>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

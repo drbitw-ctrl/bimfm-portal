@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}HR Calendar · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="toolbar">
+    <div>
+        <span class="eyebrow">HOLIDAYS AND LEAVE</span>
+        <h1>{{ t('HR Calendar') }}</h1>
+        <p class="muted">Maintain calendar classifications used by DTR generation.</p>
+    </div>
+    <a class="button secondary" href="/admin">{{ t('Dashboard') }}</a>
+</div>
+
+<section class="panel">
+    <form method="get" action="/admin/hr/calendar" class="inline-filter">
+        <div>
+            <label>{{ t('Month') }}</label>
+            <input type="month" name="month" value="{{ selected_month }}" required>
+        </div>
+        <div>
+            <label>Freelancer Leave Filter</label>
+            <select name="freelancer_id">
+                <option value="0">All Freelancers</option>
+                {% for freelancer in freelancers %}
+                <option value="{{ freelancer.id }}" {% if selected_freelancer_id == freelancer.id %}selected{% endif %}>
+                    {{ freelancer.freelancer_code }} · {{ freelancer.full_name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-action"><button class="primary" type="submit">Apply</button></div>
+    </form>
+    {% if month_locked %}
+    <div class="flash error">This attendance month is locked. Holiday and leave changes are disabled until it is unlocked.</div>
+    {% endif %}
+</section>
+
+<div class="two-column-grid">
+<section class="panel">
+    <span class="eyebrow">COMPANY CALENDAR</span>
+    <h2>Add Holiday</h2>
+    <form method="post" action="/admin/hr/holidays/new">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <label>{{ t('Date') }}</label>
+        <input type="date" name="holiday_date" required {% if month_locked %}disabled{% endif %}>
+        <label>Holiday Name</label>
+        <input name="name" maxlength="200" required {% if month_locked %}disabled{% endif %}>
+        <label>Holiday Type</label>
+        <select name="holiday_type" {% if month_locked %}disabled{% endif %}>
+            <option value="REGULAR">Regular Holiday</option>
+            <option value="SPECIAL_NON_WORKING">Special Non-Working</option>
+            <option value="COMPANY">Company Holiday</option>
+        </select>
+        <label class="checkbox-label"><input type="checkbox" name="is_paid" value="1" {% if month_locked %}disabled{% endif %}> Paid classification</label>
+        <button class="primary" type="submit" {% if month_locked %}disabled{% endif %}>Add Holiday</button>
+    </form>
+</section>
+
+<section class="panel">
+    <span class="eyebrow">APPROVED LEAVE</span>
+    <h2>Add Leave Day</h2>
+    <form method="post" action="/admin/hr/leaves/new">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <label>{{ t('Freelancer') }}</label>
+        <select name="freelancer_id" required {% if month_locked %}disabled{% endif %}>
+            {% for freelancer in freelancers %}
+            <option value="{{ freelancer.id }}">{{ freelancer.freelancer_code }} · {{ freelancer.full_name }}</option>
+            {% endfor %}
+        </select>
+        <label>Leave Date</label>
+        <input type="date" name="leave_date" required {% if month_locked %}disabled{% endif %}>
+        <label>Leave Type</label>
+        <select name="leave_type" {% if month_locked %}disabled{% endif %}>
+            <option value="VACATION_LEAVE">Vacation Leave</option>
+            <option value="SICK_LEAVE">Sick Leave</option>
+            <option value="EMERGENCY_LEAVE">Emergency Leave</option>
+            <option value="APPROVED_LEAVE">Other Approved Leave</option>
+        </select>
+        <label class="checkbox-label"><input type="checkbox" name="is_paid" value="1" {% if month_locked %}disabled{% endif %}> Paid classification</label>
+        <label>{{ t('Notes') }}</label>
+        <textarea name="notes" rows="3" {% if month_locked %}disabled{% endif %}></textarea>
+        <button class="primary" type="submit" {% if month_locked %}disabled{% endif %}>Add Leave</button>
+    </form>
+</section>
+</div>
+
+<section class="panel table-panel">
+    <h2>Holidays · {{ selected_month }}</h2>
+    {% if holidays %}
+    <table>
+        <thead><tr><th>{{ t('Date') }}</th><th>{{ t('Name') }}</th><th>Type</th><th>Paid</th><th>Action</th></tr></thead>
+        <tbody>
+        {% for holiday in holidays %}
+        <tr>
+            <td>{{ holiday.holiday_date }}</td>
+            <td><strong>{{ holiday.name }}</strong></td>
+            <td>{{ holiday.holiday_type.replace('_', ' ').title() }}</td>
+            <td>{{ 'Yes' if holiday.is_paid else 'No' }}</td>
+            <td>
+                <form method="post" action="/admin/hr/holidays/{{ holiday.id }}/delete">
+                    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+                    <button class="small secondary" type="submit" {% if month_locked %}disabled{% endif %}>Remove</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}<div class="empty-state"><p>No holidays recorded for this month.</p></div>{% endif %}
+</section>
+
+<section class="panel table-panel">
+    <h2>Approved Leave · {{ selected_month }}</h2>
+    {% if leave_rows %}
+    <table>
+        <thead><tr><th>{{ t('Date') }}</th><th>{{ t('Freelancer') }}</th><th>Leave Type</th><th>Paid</th><th>{{ t('Notes') }}</th><th>Action</th></tr></thead>
+        <tbody>
+        {% for row in leave_rows %}
+        <tr>
+            <td>{{ row.date }}</td>
+            <td>{% if row.freelancer %}{{ row.freelancer.freelancer_code }} · {{ row.freelancer.full_name }}{% endif %}</td>
+            <td>{{ row.leave_type }}</td><td>{{ row.paid }}</td><td>{{ row.notes }}</td>
+            <td>
+                <form method="post" action="/admin/hr/leaves/{{ row.id }}/delete">
+                    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+                    <button class="small secondary" type="submit" {% if month_locked %}disabled{% endif %}>Remove</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}<div class="empty-state"><p>No approved leave records found.</p></div>{% endif %}
+</section>
+{% endblock %}

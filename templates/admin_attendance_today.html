@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Today's Attendance · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="toolbar">
+    <div>
+        <span class="eyebrow">LIVE ATTENDANCE MONITOR</span>
+        <h1>Today's Attendance</h1>
+        <p class="muted">
+            Management reference: {{ management_date }} · {{ management_time }}
+        </p>
+    </div>
+    <div class="action-row">
+        <a class="button secondary" href="/admin/attendance/monthly">
+            Monthly Records
+        </a>
+        <a class="button secondary" href="/admin">{{ t('Dashboard') }}</a>
+    </div>
+</div>
+
+<section class="stats-grid four-cards">
+    <article class="stat-card">
+        <span>Complete</span>
+        <strong>{{ summary.complete }}</strong>
+    </article>
+    <article class="stat-card">
+        <span>Currently Working</span>
+        <strong>{{ summary.working }}</strong>
+    </article>
+    <article class="stat-card">
+        <span>No Record</span>
+        <strong>{{ summary.no_record }}</strong>
+    </article>
+    <article class="stat-card">
+        <span>Disabled</span>
+        <strong>{{ summary.disabled }}</strong>
+    </article>
+</section>
+
+<section class="panel table-panel">
+    <table>
+        <thead>
+            <tr>
+                <th>{{ t('Freelancer') }}</th>
+                <th>Local Date</th>
+                <th>Time In</th>
+                <th>Time Out</th>
+                <th>Rendered</th>
+                <th>Late</th>
+                <th>Undertime</th>
+                <th>Potential OT</th>
+                <th>{{ t('Status') }}</th>
+                <th>{{ t('Review') }}</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in rows %}
+            <tr>
+                <td>
+                    <strong>{{ row.name }}</strong>
+                    <small>{{ row.code }} · {{ row.timezone }}</small>
+                </td>
+                <td>{{ row.date_display }}</td>
+                <td>{{ row.time_in }}</td>
+                <td>{{ row.time_out }}</td>
+                <td>{{ row.calculation.rendered }}</td>
+                <td>{{ row.calculation.late }}</td>
+                <td>{{ row.calculation.undertime }}</td>
+                <td>{{ row.calculation.overtime }}</td>
+                <td>
+                    <span class="badge status-{{ row.status|lower|replace(' ', '-') }}">
+                        {{ row.status }}
+                    </span>
+                </td>
+                <td>
+                    {{ row.review_status|replace('_', ' ')|title }}
+                    {% if row.correction_count %}
+                        <small>{{ row.correction_count }} correction(s)</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <a class="button small secondary"
+                       href="/admin/attendance/{{ row.freelancer_id }}/{{ row.date }}/correct">
+                        Review / Correct
+                    </a>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

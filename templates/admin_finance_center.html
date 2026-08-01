@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Finance Center · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="toolbar finance-page-header">
+  <div>
+    <span class="eyebrow">WHOLE-DAY PAYROLL REVIEW</span>
+    <h1>{{ t('Finance Center') }}</h1>
+    {% if current_staff_role == 'FINANCE' %}<span class="role-pill finance">{{ t('Finance Head · Read only') }}</span>{% endif %}
+    <p class="muted">A salary-free monthly overview that separates physical attendance, leave utilization, and payroll treatment. No decimal day or multiplier values are shown.</p>
+  </div>
+  <div class="action-row">
+    <a class="button secondary" href="/admin/dtr?month={{ selected_month }}">{{ t('Monthly DTR') }}</a>
+    <a class="button secondary" href="/admin">{{ t('Dashboard') }}</a>
+  </div>
+</div>
+
+<section class="panel finance-filter-panel">
+  <form method="get" action="/admin/finance" class="inline-filter">
+    <div>
+      <label>Payroll Month</label>
+      <input type="month" name="month" value="{{ selected_month }}" required>
+    </div>
+    <div class="filter-action"><button class="primary">View Month</button></div>
+  </form>
+</section>
+
+<section class="stats-grid finance-overview-cards payroll-factor-overview">
+  <article class="stat-card calendar-card"><span>Calendar Days</span><strong>{{ totals.month_calendar_days }}</strong><small>Monthly calendar basis</small></article>
+  <article class="stat-card"><span>Freelancers</span><strong>{{ totals.employees }}</strong><small>Included in this review</small></article>
+  <article class="stat-card good-card"><span>Full-rate Members</span><strong>{{ totals.full_month_count }}</strong><small>No effective payroll deduction</small></article>
+  <article class="stat-card"><span>Days Physically Worked</span><strong>{{ totals.worked_days }}</strong><small>Actual attendance days</small></article>
+  <article class="stat-card credit-card"><span>Comp Leave Applied</span><strong>{{ totals.comp_credit_days_applied }}</strong><small>Approved whole-day credits used</small></article>
+  <article class="stat-card warning-card"><span>Effective Payroll Deduction</span><strong>{{ totals.effective_unpaid_leave_days }}</strong><small>Leave not covered by credits</small></article>
+</section>
+
+<section class="payroll-formula-banner whole-day-rule" aria-label="Whole-day payroll rule">
+  <div class="formula-copy">
+    <span class="eyebrow">PAYROLL RULE</span>
+    <h2>Separate attendance from payroll treatment</h2>
+    <p>Approved overtime is credited directly to compensatory leave after final approval. Compensatory leave may cover approved leave, but it never increases the number of days physically worked.</p>
+  </div>
+  <div class="formula-visual whole-day-formula">
+    <div><span>Approved Leave</span><strong>− Comp Leave Applied</strong></div>
+    <span class="formula-equals">=</span>
+    <div><span>Effective Payroll Deduction</span><strong>Whole days only</strong></div>
+    <span class="formula-equals">→</span>
+    <div class="formula-result"><span>Salary Coverage</span><strong>Calendar Days − Deduction</strong></div>
+  </div>
+</section>
+
+<section class="panel table-panel finance-summary-panel">
+  <div class="section-heading">
+    <div>
+      <span class="eyebrow">FINANCE OVERVIEW</span>
+      <h2>{{ selected_month }}</h2>
+      <p class="muted">“Days Physically Worked” and “Payable Workday Equivalents” are separate from monthly salary calendar coverage.</p>
+    </div>
+  </div>
+
+  {% if rows %}
+  <div class="responsive-table finance-factor-table-wrap">
+    <table class="finance-factor-table finance-whole-day-table">
+      <thead>
+        <tr>
+          <th>{{ t('Freelancer') }}</th>
+          <th class="number-cell">Days Physically Worked</th>
+          <th class="number-cell">Approved Leave Taken</th>
+          <th class="number-cell">Compensatory Leave Applied</th>
+          <th class="number-cell">Payable Workday Equivalents</th>
+          <th class="number-cell calendar-column">Salary-Covered Calendar Days</th>
+          <th class="number-cell">Effective Payroll Deduction</th>
+          <th>Payroll Treatment</th>
+          <th>{{ t('Status') }}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr class="{{ 'needs-review-row' if row.status != 'READY' else '' }}">
+          <td class="member-cell"><strong>{{ row.name }}</strong><small>{{ row.code }}</small></td>
+          <td class="number-cell worked-value"><strong>{{ row.worked_days }}</strong></td>
+          <td class="number-cell">{{ row.regular_leave_taken_days }}</td>
+          <td class="number-cell credit-value">{{ row.comp_credit_days_applied }}</td>
+          <td class="number-cell payable-equivalent"><strong>{{ row.payable_workday_equivalents }}</strong></td>
+          <td class="number-cell calendar-column"><strong>{{ row.salary_covered_days }} of {{ row.calendar_days }}</strong></td>
+          <td class="number-cell deduction-value">{{ row.effective_unpaid_leave_days }}</td>
+          <td class="treatment-cell">
+            <strong>{{ row.payroll_treatment_display }}</strong>
+            <small>{{ row.salary_coverage_display }}</small>
+          </td>
+          <td><span class="badge {{ 'good' if row.status == 'READY' else 'warning' }}">{{ 'READY' if row.status == 'READY' else 'REVIEW' }}</span></td>
+          <td class="actions-cell">
+            <a class="button small primary" href="/admin/dtr/{{ row.dtr_id }}">Summary</a>
+            <a class="button small secondary" href="/admin/dtr/{{ row.dtr_id }}/details">{{ t('Details') }}</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><h2>No Finance summaries</h2><p>Generate the monthly DTRs first.</p></div>
+  {% endif %}
+</section>
+{% endblock %}

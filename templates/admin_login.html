@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Staff Login · {{ app_name }}{% endblock %}
+{% block content %}
+<section class="auth-card modern-auth">
+  <div class="auth-icon">B</div><span class="eyebrow">SECURE STAFF ACCESS</span>
+  <h1>Welcome back</h1><p class="muted">Administrators and the Finance Head use the same secure sign-in.</p>
+  <form method="post" action="/admin/login"><input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <label>{{ t('Username') }}</label><input name="username" autocomplete="username" required autofocus>
+    <label>{{ t('Password') }}</label><input type="password" name="password" autocomplete="current-password" required>
+    <button class="primary full-width" type="submit">Sign in to staff workspace</button>
+  </form><p class="link-row"><a href="/login">Go to Freelancer Login</a></p>
+</section>
+{% endblock %}

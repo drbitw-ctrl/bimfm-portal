@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Leave Requests · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <div>
+    <span class="eyebrow">LEAVE REQUESTS</span>
+    <h1>Leave and Compensatory Leave</h1>
+    <p class="muted">
+      Available compensatory credit:
+      {{ comp_days }} whole day(s) available · {{ comp_remainder // 60 }}h {{ '%02d' % (comp_remainder % 60) }}m accumulating
+    </p>
+  </div>
+  <a class="button secondary" href="/attendance">{{ t('Attendance') }}</a>
+</div>
+
+<section class="panel">
+  <form method="get" class="inline-filter">
+    <div>
+      <label>{{ t('Month') }}</label>
+      <input type="month" name="month" value="{{ selected_month }}">
+    </div>
+    <div class="filter-action"><button class="primary">Open Month</button></div>
+  </form>
+</section>
+
+<section class="panel">
+  <h2>New Leave Request</h2>
+  <div class="notice">
+    <strong>Whole-day leave rule:</strong> all leave requests are for exactly one complete workday.
+    Hourly and partial-day leave requests are not allowed. Compensatory credits may be applied only
+    when at least one complete 8-hour (480-minute) credit is available.
+  </div>
+  <form method="post" action="/leave/request" class="form-grid" id="leave-request-form">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <div>
+      <label>{{ t('Date') }}</label>
+      <input type="date" name="leave_date" required {% if month_locked %}disabled{% endif %}>
+    </div>
+    <div>
+      <label>Leave Type</label>
+      <select name="leave_type" id="leave-type" {% if month_locked %}disabled{% endif %}>
+        <option value="COMPENSATORY_LEAVE">Compensatory Leave — Full Day Only</option>
+        <option value="UNPAID_LEAVE">Unpaid Leave</option>
+        <option value="OTHER_APPROVED_LEAVE">Other Approved Leave</option>
+      </select>
+    </div>
+    <div>
+      <label>Leave Duration</label>
+      <div class="readonly-field"><strong>1 whole day</strong><br><small class="muted">Hourly leave is not available.</small></div>
+    </div>
+    <div class="full-width">
+      <label>{{ t('Reason') }}</label>
+      <textarea name="reason" rows="3" required {% if month_locked %}disabled{% endif %}></textarea>
+    </div>
+    <div class="full-width">
+      <button class="primary" {% if month_locked %}disabled{% endif %}>Submit Request</button>
+    </div>
+  </form>
+</section>
+
+<section class="panel table-panel">
+  <h2>{{ t('Requests') }}</h2>
+  <table>
+    <thead>
+      <tr><th>{{ t('Date') }}</th><th>Type</th><th>Requested</th><th>{{ t('Status') }}</th><th>Decision</th><th>Action</th></tr>
+    </thead>
+    <tbody>
+      {% for row in requests %}
+      <tr>
+        <td>{{ row.leave_date }}</td>
+        <td>{{ row.leave_type.replace('_',' ').title() }}</td>
+        <td>
+          1 whole day
+        </td>
+        <td>{{ row.status }}</td>
+        <td>
+          {% if row.status!='PENDING' %}
+            1 whole day
+            · {{ row.review_reason or '' }}
+          {% endif %}
+        </td>
+        <td>
+          {% if row.status=='PENDING' %}
+          <form method="post" action="/leave/{{ row.id }}/cancel">
+            <input type="hidden" name="csrf" value="{{ csrf_token }}">
+            <button class="small secondary">{{ t('Cancel') }}</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+
+{% endblock %}
