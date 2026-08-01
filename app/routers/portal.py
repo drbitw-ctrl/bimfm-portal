@@ -24,6 +24,7 @@ from app.models import (
     ProjectMember,
 )
 from app.performance_reporting import build_performance_dashboard, build_project_reports
+from app.task_time_reporting import build_task_time_utilization
 from app.portal_project_service import (
     active_task_overview_rows,
     project_data_health,
@@ -150,6 +151,10 @@ def create_portal_router(
         "reports": (
             "Project Reports",
             "Project progress and delivery status from portal-native records.",
+        ),
+        "time-utilization": (
+            "Task Time Utilization",
+            "Compare scheduled target hours with freelancer time logged against each project task.",
         ),
         "calendar": (
             "Calendar",
@@ -1015,6 +1020,28 @@ def create_portal_router(
                 ),
             )
 
+        if module_name == "time-utilization":
+            selected_project_id = 0
+            try:
+                selected_project_id = max(0, int(request.query_params.get("project", "0") or 0))
+            except (TypeError, ValueError):
+                selected_project_id = 0
+            report = build_task_time_utilization(
+                database,
+                project_id=selected_project_id,
+            )
+            return templates.TemplateResponse(
+                request=request,
+                name="task_time_utilization.html",
+                context=template_context(
+                    request,
+                    account=account,
+                    page_title=page_title,
+                    page_description=description,
+                    report=report,
+                ),
+            )
+
         health = project_data_health(database)
         completed_task_count = int(
             database.scalar(
@@ -1106,9 +1133,26 @@ def create_portal_router(
                 columns.append({"key": "action", "label": "Action", "type": "action", "sort": "none"})
             rows = []
             for row in source_rows:
+                status_value = str(row["status"]).upper()
+                due_date_value = "" if row["due_date"] == "—" else str(row["due_date"])
+                is_delayed = False
+                if status_value not in {"COMPLETED", "CANCELLED"} and due_date_value:
+                    try:
+                        is_delayed = date.fromisoformat(due_date_value) < date.today()
+                    except ValueError:
+                        is_delayed = False
+                row_highlight = (
+                    "task-row-delayed"
+                    if is_delayed
+                    else "task-row-attention"
+                    if status_value in {"IN_PROGRESS", "FOR_REVIEW"}
+                    else ""
+                )
                 item: dict[str, Any] = {
                     "_task_id": int(row["id"]),
-                    "_task_state": "closed" if str(row["status"]).upper() in {"COMPLETED", "CANCELLED"} else "ongoing",
+                    "_task_state": "closed" if status_value in {"COMPLETED", "CANCELLED"} else "ongoing",
+                    "_row_highlight": row_highlight,
+                    "_due_date_value": due_date_value,
                     "_completion_date_value": "" if row["completion_date"] == "—" else str(row["completion_date"]),
                     "_filters": {
                         "project": str(row["project_id"]),

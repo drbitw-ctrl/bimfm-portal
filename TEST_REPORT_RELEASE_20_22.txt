@@ -1,0 +1,50 @@
+BIMFM Portal Release 20.22 Validation Report
+=============================================
+
+Application version
+-------------------
+2.3.17-release20.22-task-time-utilization
+
+Static validation
+-----------------
+PASS  62 Python source files compiled
+PASS  Application imported with an isolated SQLite database
+PASS  40 Jinja templates parsed
+PASS  English locale JSON parsed
+PASS  Traditional Chinese locale JSON parsed
+PASS  3 JavaScript files passed Node syntax validation
+
+Task-row highlighting
+---------------------
+PASS  In Progress maps to pale-yellow row cue
+PASS  Completed — For Review maps to pale-yellow row cue
+PASS  Open task past deadline maps to pale-red row cue
+PASS  Delayed warning takes priority over yellow cue
+PASS  Completed and Cancelled tasks receive no highlight
+PASS  Inline Status updates recalculate the row cue in the browser
+
+Time-utilization service
+------------------------
+PASS  Five scheduled weekdays produce a 2,400-minute / 40-hour target
+PASS  Target uses a fixed 480 minutes per scheduled workday
+PASS  Linked Daily Task entries aggregate by portal task
+PASS  Actual time is attributed to the freelancer who logged it
+PASS  Unlinked Daily Task work is retained at project level
+PASS  Project actual total includes linked and project-matched unlinked work
+PASS  Missing Start or Deadline produces no target estimate
+PASS  Open tasks remain before closed rows
+PASS  Project filter limits the report without altering data
+PASS  Unmatched work remains visible and is not guessed into a project
+
+Database safety
+---------------
+PASS  No new model table or business column
+PASS  No Alembic migration added
+PASS  No data backfill
+PASS  Reporting page is read-only
+
+Result
+------
+All validation checks passed.
+0 failures
+0 errors

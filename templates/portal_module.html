@@ -101,7 +101,7 @@
       </thead>
       <tbody>
       {% for row in rows %}
-        <tr{% if row.get('_task_state') %} data-task-state="{{ row['_task_state'] }}"{% endif %}{% if row.get('_filters') %}{% for key, value in row['_filters'].items() %} data-filter-{{ key }}="{{ value }}"{% endfor %}{% endif %}>
+        <tr{% if row.get('_row_highlight') %} class="{{ row['_row_highlight'] }}"{% endif %}{% if row.get('_task_state') %} data-task-state="{{ row['_task_state'] }}"{% endif %}{% if row.get('_due_date_value') is defined %} data-task-due-date="{{ row['_due_date_value'] }}"{% endif %}{% if row.get('_filters') %}{% for key, value in row['_filters'].items() %} data-filter-{{ key }}="{{ value }}"{% endfor %}{% endif %}>
         {% for column in columns %}
           {% set value = row[column.key] %}
           <td data-label="{{ column.label }}" data-column-key="{{ column.key }}">
@@ -235,6 +235,24 @@
     if (bar) bar.style.width = `${numberValue}%`;
   }
 
+  function applyRowHighlight(row) {
+    if (!row) return;
+    row.classList.remove('task-row-attention', 'task-row-delayed');
+    const status = String(row.querySelector('[data-task-quick-field="status"]')?.value || '').toUpperCase();
+    if (['COMPLETED', 'CANCELLED'].includes(status)) return;
+    const dueText = String(row.dataset.taskDueDate || '');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = /^\d{4}-\d{2}-\d{2}$/.test(dueText) ? new Date(`${dueText}T00:00:00`) : null;
+    if (due && due < today) {
+      row.classList.add('task-row-delayed');
+      return;
+    }
+    if (['IN_PROGRESS', 'FOR_REVIEW'].includes(status)) {
+      row.classList.add('task-row-attention');
+    }
+  }
+
   function applyUpdates(row, updates) {
     if (updates.status !== undefined) {
       const status = row.querySelector('[data-task-quick-field="status"]');
@@ -268,6 +286,7 @@
     const statusValue = row.querySelector('[data-task-quick-field="status"]')?.value;
     const completedControl = row.querySelector('[data-task-quick-field="completion_date"]');
     if (completedControl) completedControl.disabled = statusValue !== 'COMPLETED';
+    applyRowHighlight(row);
     table.dispatchEvent(new CustomEvent('bimfm:row-updated'));
   }
 

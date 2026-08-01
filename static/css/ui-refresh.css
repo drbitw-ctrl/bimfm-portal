@@ -3540,3 +3540,129 @@ html[data-theme="dark"] .report-method-note strong { color: #d5e8f6; }
     width: 100%;
   }
 }
+
+
+/* Release 20.22: task-state row cues and target-versus-actual time reporting. */
+.task-register-table tbody tr.task-row-attention > td {
+  background: color-mix(in srgb, #f8cf58 18%, var(--ui-surface));
+}
+.task-register-table tbody tr.task-row-delayed > td,
+.time-utilization-table tbody tr.task-row-delayed > td {
+  background: color-mix(in srgb, #e85c63 14%, var(--ui-surface));
+}
+.task-register-table tbody tr.task-row-attention:hover > td {
+  background: color-mix(in srgb, #f8cf58 25%, var(--ui-surface));
+}
+.task-register-table tbody tr.task-row-delayed:hover > td,
+.time-utilization-table tbody tr.task-row-delayed:hover > td {
+  background: color-mix(in srgb, #e85c63 20%, var(--ui-surface));
+}
+.task-register-table tbody tr.task-row-attention td:first-child,
+.task-register-table tbody tr.task-row-attention td:last-child {
+  background: color-mix(in srgb, #f8cf58 18%, var(--ui-surface));
+}
+.task-register-table tbody tr.task-row-delayed td:first-child,
+.task-register-table tbody tr.task-row-delayed td:last-child {
+  background: color-mix(in srgb, #e85c63 14%, var(--ui-surface));
+}
+html[data-theme="dark"] .task-register-table tbody tr.task-row-attention > td {
+  background: color-mix(in srgb, #f8cf58 12%, var(--ui-surface));
+}
+html[data-theme="dark"] .task-register-table tbody tr.task-row-delayed > td,
+html[data-theme="dark"] .time-utilization-table tbody tr.task-row-delayed > td {
+  background: color-mix(in srgb, #e85c63 13%, var(--ui-surface));
+}
+
+.time-utilization-hero {
+  background:
+    radial-gradient(circle at 92% 18%, rgba(255,255,255,.17), transparent 19rem),
+    linear-gradient(125deg, #123a61 0%, #17638b 58%, #2185aa 100%);
+}
+.time-utilization-summary {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.time-method-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 340px);
+  gap: 28px;
+  align-items: end;
+}
+.time-method-card h2 { margin: 5px 0 8px; }
+.time-method-card p { margin: 5px 0; color: var(--ui-muted); line-height: 1.6; }
+.time-project-filter {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+}
+.time-project-filter label { flex: 1; }
+.time-project-filter label span {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--ui-muted);
+  font-size: .7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.time-project-filter select { width: 100%; min-height: 43px; }
+.time-project-card { padding: 0; overflow: hidden; }
+.time-project-heading {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(510px, 1.25fr);
+  gap: 24px;
+  align-items: center;
+  padding: 24px 26px 18px;
+}
+.time-project-heading h2 { margin: 4px 0 6px; }
+.time-project-heading p { margin: 0; color: var(--ui-muted); }
+.time-project-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.time-project-metrics > div {
+  padding: 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 13px;
+  background: var(--ui-surface-soft);
+}
+.time-project-metrics span,
+.time-project-metrics strong { display: block; }
+.time-project-metrics span { color: var(--ui-muted); font-size: .65rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+.time-project-metrics strong { margin-top: 4px; font-size: .9rem; }
+.time-utilization-track {
+  height: 7px;
+  margin: 0 26px 18px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-border);
+}
+.time-utilization-track i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--ui-brand-600), #57b8dd); }
+.time-utilization-track i.over-target { background: linear-gradient(90deg, #d89a23, #d9535b); }
+.time-project-card .table-toolbar { margin: 0 26px 12px; }
+.time-project-card .modern-table-wrap { border-top: 1px solid var(--ui-border); }
+.time-utilization-table { min-width: 1120px; }
+.time-utilization-table td > strong,
+.time-utilization-table td > small { display: block; }
+.time-utilization-table td > small,
+.time-contributors { margin-top: 4px; color: var(--ui-muted); font-size: .67rem; line-height: 1.35; }
+.time-over { color: #b63b43; font-weight: 800; }
+.time-under { color: #1f7b55; font-weight: 800; }
+html[data-theme="dark"] .time-over { color: #ff9ca2; }
+html[data-theme="dark"] .time-under { color: #7fd7ad; }
+
+@media (max-width: 1180px) {
+  .time-utilization-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .time-project-heading { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .time-utilization-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .time-method-card { grid-template-columns: 1fr; }
+  .time-project-filter { align-items: stretch; flex-direction: column; }
+  .time-project-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .time-project-heading { padding: 20px; }
+  .time-project-card .table-toolbar { margin-inline: 20px; }
+}
+@media (max-width: 520px) {
+  .time-utilization-summary { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Task Time Utilization') }} · {{ app_name }}{% endblock %}
+{% block content %}
+{% macro variance_text(value, absolute, direction) -%}
+  {%- if value is none -%}—
+  {%- elif direction == 'target' -%}{{ t('On target') }}
+  {%- elif direction == 'over' -%}{{ duration_label(absolute) }} {{ t('over target') }}
+  {%- else -%}{{ duration_label(absolute) }} {{ t('under target') }}
+  {%- endif -%}
+{%- endmacro %}
+<section class="hero-panel time-utilization-hero">
+  <div>
+    <span class="eyebrow">{{ t('PROJECT TIME CONTROL') }}</span>
+    <h1>{{ t('Task Time Utilization') }}</h1>
+    <p>{{ t('Compare planned working hours with the actual time freelancers recorded for every project and task.') }}</p>
+  </div>
+  <div class="hero-actions"><div class="hero-badge">{{ t('Updated') }} {{ report.updated_at }}</div></div>
+</section>
+
+<div class="stats-grid time-utilization-summary">
+  <article class="stat-card"><span>{{ t('Projects tracked') }}</span><strong>{{ report.summary.project_count }}</strong><small>{{ report.summary.task_count }} {{ t('portal tasks') }}</small></article>
+  <article class="stat-card"><span>{{ t('Target time') }}</span><strong>{{ duration_label(report.summary.target_minutes) if report.summary.target_minutes is not none else '—' }}</strong><small>{{ t('Scheduled workdays × 8 hours') }}</small></article>
+  <article class="stat-card"><span>{{ t('Actual project time') }}</span><strong>{{ duration_label(report.summary.actual_project_minutes) }}</strong><small>{{ t('Daily Task time matched to portal projects') }}</small></article>
+  <article class="stat-card"><span>{{ t('Time utilization') }}</span><strong>{{ '%.1f%%'|format(report.summary.utilization) if report.summary.utilization is not none else '—' }}</strong><small>{{ variance_text(report.summary.variance_minutes, report.summary.variance_absolute_minutes, report.summary.variance_direction) }}</small></article>
+  <article class="stat-card"><span>{{ t('Unmatched time') }}</span><strong>{{ duration_label(report.summary.unmatched_minutes) }}</strong><small>{{ report.summary.unmatched_entries }} {{ t('Daily Task entries need project matching') }}</small></article>
+</div>
+
+<section class="content-card time-method-card">
+  <div>
+    <span class="eyebrow">{{ t('CALCULATION METHOD') }}</span>
+    <h2>{{ t('How target and actual time are calculated') }}</h2>
+    <p>{{ t('Target time counts each scheduled workday from Start through Deadline, inclusive, at 8 hours per day. Weekends or rest days follow the active Work Schedule, and active company holidays are excluded.') }}</p>
+    <p>{{ t('Actual time is the total minutes entered in Daily Task Reports and linked to the portal task. Daily work that names a project but is not linked to a task is shown as Unlinked / General Project Work.') }}</p>
+  </div>
+  <form method="get" action="/portal/time-utilization" class="time-project-filter">
+    <label><span>{{ t('Project') }}</span><select name="project">
+      <option value="0">{{ t('All Projects') }}</option>
+      {% for option in report.project_options %}<option value="{{ option.id }}" {% if report.selected_project_id == option.id %}selected{% endif %}>{{ option.name }}</option>{% endfor %}
+    </select></label>
+    <button class="button secondary" type="submit">{{ t('Apply') }}</button>
+  </form>
+</section>
+
+{% for project in report.projects %}
+<section class="content-card time-project-card">
+  <div class="time-project-heading">
+    <div>
+      <span class="eyebrow">{{ discipline_label(project.discipline) }} · {{ project.code }}</span>
+      <h2>{{ project.name }}</h2>
+      <p>{{ project.active_task_count }} {{ t('active tasks') }} · {{ project.task_count }} {{ t('total tasks') }}{% if project.missing_target_count %} · {{ project.missing_target_count }} {{ t('without complete schedule dates') }}{% endif %}</p>
+    </div>
+    <div class="time-project-metrics">
+      <div><span>{{ t('Target') }}</span><strong>{{ duration_label(project.target_minutes) if project.target_minutes is not none else '—' }}</strong></div>
+      <div><span>{{ t('Actual') }}</span><strong>{{ duration_label(project.actual_minutes) }}</strong></div>
+      <div><span>{{ t('Variance') }}</span><strong class="{{ 'time-over' if project.variance_direction == 'over' else ('time-under' if project.variance_direction == 'under' else '') }}">{{ variance_text(project.variance_minutes, project.variance_absolute_minutes, project.variance_direction) }}</strong></div>
+      <div><span>{{ t('Utilization') }}</span><strong>{{ '%.1f%%'|format(project.utilization) if project.utilization is not none else '—' }}</strong></div>
+    </div>
+  </div>
+  {% if project.utilization is not none %}<div class="time-utilization-track" aria-label="{{ t('Project time utilization') }} {{ '%.1f%%'|format(project.utilization) }}"><i class="{{ 'over-target' if project.utilization > 100 else '' }}" style="width: {{ [project.utilization, 100]|min }}%"></i></div>{% endif %}
+
+  <div class="table-toolbar" data-table-toolbar data-table-target="#timeProjectTable{{ project.id }}" data-record-singular="task" data-record-plural="tasks">
+    <label class="table-search"><span class="sr-only">{{ t('Search tasks') }}</span><input type="search" data-table-search placeholder="{{ t('Search task or member') }}"></label>
+    <span class="table-result-count" data-result-count></span>
+  </div>
+  <div class="modern-table-wrap">
+    <table class="modern-table smart-table time-utilization-table" id="timeProjectTable{{ project.id }}" data-sortable-task-table data-card-table>
+      <thead><tr>
+        <th data-sort-type="text">{{ t('Task') }}</th>
+        <th data-sort-type="text">{{ t('Assigned Member') }}</th>
+        <th data-sort-type="status">{{ t('Status') }}</th>
+        <th data-sort-type="date">{{ t('Start') }}</th>
+        <th data-sort-type="date">{{ t('Deadline') }}</th>
+        <th data-sort-type="number">{{ t('Target Time') }}</th>
+        <th data-sort-type="number">{{ t('Actual Time') }}</th>
+        <th data-sort-type="number">{{ t('Variance') }}</th>
+        <th data-sort-type="number">{{ t('Utilization') }}</th>
+      </tr></thead>
+      <tbody>{% for row in project.rows %}
+        <tr data-task-state="{{ 'closed' if row.is_closed else 'ongoing' }}" class="{% if row.is_delayed %}task-row-delayed{% endif %}">
+          <td data-sort-value="{{ row.title }}"><strong>{{ t(row.title) if row.is_unlinked else row.title }}</strong><small class="time-contributors">{{ row.contributors }}</small></td>
+          <td data-sort-value="{{ row.assignees }}">{{ row.assignees }}</td>
+          <td data-sort-value="{{ row.status }}"><span class="status-chip status-{{ row.status|lower|replace('_','-') }}">{{ t(row.status|replace('_',' ')|title) }}</span></td>
+          <td data-sort-value="{{ row.start_date }}">{{ row.start_date }}</td>
+          <td data-sort-value="{{ row.deadline }}">{{ row.deadline }}</td>
+          <td data-sort-value="{{ row.target_minutes if row.target_minutes is not none else -1 }}"><strong>{{ duration_label(row.target_minutes) if row.target_minutes is not none else '—' }}</strong>{% if row.scheduled_workdays is not none %}<small>{{ row.scheduled_workdays }} {{ t('workdays') }}</small>{% endif %}</td>
+          <td data-sort-value="{{ row.actual_minutes }}"><strong>{{ duration_label(row.actual_minutes) }}</strong><small>{{ row.linked_entries }} {{ t('Daily Task entries') }}</small></td>
+          <td data-sort-value="{{ row.variance_minutes if row.variance_minutes is not none else 999999999 }}"><span class="{{ 'time-over' if row.variance_direction == 'over' else ('time-under' if row.variance_direction == 'under' else '') }}">{% if row.is_unlinked %}{{ t('No task target') }}{% else %}{{ variance_text(row.variance_minutes, row.variance_absolute_minutes, row.variance_direction) }}{% endif %}</span></td>
+          <td data-sort-value="{{ row.utilization if row.utilization is not none else -1 }}">{% if row.utilization is not none %}<span class="metric-pill {{ 'metric-warning' if row.utilization > 100 else 'metric-good' }}">{{ '%.1f%%'|format(row.utilization) }}</span>{% else %}—{% endif %}</td>
+        </tr>
+      {% endfor %}</tbody>
+    </table>
+  </div>
+</section>
+{% else %}
+<section class="content-card"><div class="empty-state"><h3>{{ t('No task time records are available.') }}</h3><p>{{ t('Create portal tasks with Start and Deadline dates, then link freelancer Daily Task entries to those tasks.') }}</p></div></section>
+{% endfor %}
+
+{% if report.summary.unmatched_minutes > 0 %}
+<div class="report-method-note"><strong>{{ t('Unmatched Daily Task time') }}:</strong> {{ duration_label(report.summary.unmatched_minutes) }}. {{ t('These entries do not match a portal task or project. Correct the project selection in the freelancer Daily Task record to include them in project totals.') }}</div>
+{% endif %}
+{% endblock %}
