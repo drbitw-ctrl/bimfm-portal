@@ -1,0 +1,47 @@
+BIMFM Portal Release 20.21 Validation Report
+Date: 2026-08-02
+Version: 2.3.16-release20.21-localization-project-privacy
+
+RESULT
+------
+95 checks passed
+0 failures
+0 errors
+
+VALIDATION COVERAGE
+-------------------
+Python application and migration compilation: Passed
+JavaScript syntax checks: Passed
+English and Traditional Chinese JSON parsing: Passed
+39 Jinja templates parsed: Passed
+Literal t() key coverage: Passed
+Visible hard-coded UI localization coverage: Passed
+Route flash-message localization coverage: Passed
+English-to-Chinese catalog completeness: Passed
+
+DATABASE
+--------
+Fresh Alembic upgrade to head: Passed
+Release 20.20 revision 20260801_0006 to Release 20.21 revision 20260802_0007: Passed
+New policy column present: Passed
+Default Project Engineer visibility false: Passed
+No task, project, assignment, attendance, DTR, leave, overtime, finance, or Quality Score rewrite: Confirmed by migration inspection
+
+INTEGRATED WORKFLOW
+-------------------
+Freelancer login: Passed
+Assigned Projects route: Passed
+Current-assignment-first ordering for deadline, project, priority, progress, status, and unknown fallback sorting: Passed
+Ascending and descending sorting: Passed
+Project Engineer hidden by default: Passed
+Current Assignment badge: Passed
+Recently Completed sidebar route: Passed
+Own completed task visible: Passed
+Other freelancer completed task excluded: Passed
+Traditional Chinese project page: Passed
+Member name preserved in Chinese UI: Passed
+Project Engineer visible after policy enable: Passed
+Administrator login: Passed
+HR Policy page toggle rendering: Passed
+HR Policy toggle persistence: Passed
+

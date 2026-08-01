@@ -57,6 +57,19 @@ class AssignedPortalProject:
 
 
 @dataclass(frozen=True)
+class CompletedPortalTask:
+    id: int
+    project_name: str
+    title: str
+    discipline: Optional[str]
+    priority: str
+    quality_score: Optional[int]
+    deadline: Optional[date]
+    completed_date: Optional[date]
+    progress: int
+
+
+@dataclass(frozen=True)
 class ProjectDataHealth:
     active_freelancers: int
     project_count: int
@@ -442,6 +455,92 @@ def current_freelancer_portal_projects(
                     if next_task is not None
                     else "No active task is currently assigned for this project."
                 ),
+            )
+        )
+    return rows
+
+
+def sort_assigned_portal_projects(
+    rows: list[AssignedPortalProject],
+    *,
+    sort_by: str = "deadline",
+    direction: str = "asc",
+) -> list[AssignedPortalProject]:
+    """Sort assigned projects while always keeping current work first."""
+    normalized_sort = str(sort_by or "deadline").strip().lower()
+    normalized_direction = str(direction or "asc").strip().lower()
+    reverse = normalized_direction == "desc"
+    priority_rank = {
+        "URGENT": 4,
+        "CRITICAL": 4,
+        "HIGH": 3,
+        "NORMAL": 2,
+        "MEDIUM": 2,
+        "LOW": 1,
+    }
+
+    def secondary(row: AssignedPortalProject):
+        if normalized_sort == "project":
+            return row.project_name.casefold()
+        if normalized_sort == "priority":
+            return priority_rank.get(str(row.priority or "").upper(), 0)
+        if normalized_sort == "progress":
+            return int(row.progress or 0)
+        if normalized_sort == "status":
+            return str(row.status or "").casefold()
+        return (row.deadline is None, row.deadline or date.max, row.project_name.casefold())
+
+    active_rows = [row for row in rows if row.active_task_count > 0]
+    other_rows = [row for row in rows if row.active_task_count <= 0]
+    active_rows.sort(key=secondary, reverse=reverse)
+    other_rows.sort(key=secondary, reverse=reverse)
+    return active_rows + other_rows
+
+
+def completed_freelancer_portal_tasks(
+    database: Session,
+    *,
+    freelancer_id: int,
+    limit: int = 200,
+) -> list[CompletedPortalTask]:
+    """Return only completed portal tasks assigned to the signed-in freelancer."""
+    assignment_ids = resolved_assignment_ids(
+        database,
+        freelancer_id=freelancer_id,
+    )
+    assignment_match = exists(
+        select(PortalTaskAssignment.id).where(
+            PortalTaskAssignment.task_id == PortalTask.id,
+            PortalTaskAssignment.freelancer_id.in_(tuple(assignment_ids)),
+        )
+    )
+    statement = (
+        select(PortalTask, PortalProject)
+        .join(PortalProject, PortalProject.id == PortalTask.project_id)
+        .where(
+            assignment_match,
+            PortalTask.status == "COMPLETED",
+        )
+        .order_by(
+            PortalTask.completed_at.is_(None),
+            PortalTask.completed_at.desc(),
+            PortalTask.id.desc(),
+        )
+        .limit(max(1, min(int(limit), 500)))
+    )
+    rows: list[CompletedPortalTask] = []
+    for task, project in database.execute(statement).all():
+        rows.append(
+            CompletedPortalTask(
+                id=task.id,
+                project_name=project.name,
+                title=_clean_task_description(task.description, task.title),
+                discipline=task.discipline or project.discipline,
+                priority=task.priority,
+                quality_score=task.quality_score,
+                deadline=task.due_date,
+                completed_date=(task.completed_at.date() if task.completed_at else None),
+                progress=max(0, min(100, int(task.progress or 0))),
             )
         )
     return rows

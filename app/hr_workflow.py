@@ -63,6 +63,7 @@ def ensure_default_policy(database: Session) -> HRPolicy:
         require_daily_task_for_dtr=True,
         task_variance_warning_minutes=60,
         allow_negative_comp_balance=False,
+        show_project_engineer_to_freelancers=False,
         is_active=True,
     )
     database.add(policy)

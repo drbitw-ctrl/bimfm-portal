@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 APP_NAME = "BIMFM Portal"
-APP_VERSION = "2.3.15-release20.20-performance-reporting"
+APP_VERSION = "2.3.16-release20.21-localization-project-privacy"
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"

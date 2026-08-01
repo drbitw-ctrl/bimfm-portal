@@ -20,6 +20,7 @@ from app.models import (
     Freelancer,
     FreelancerAccount,
     HRAdminAccount,
+    HRPolicy,
 )
 
 def utc_now() -> datetime:
@@ -119,21 +120,35 @@ def template_context(
                         }
 
     locale = locale_for_request(request)
+    translate = translator(locale)
+    flash = pop_flash(request)
+    if flash and flash.get("message"):
+        flash["message"] = translate(str(flash["message"]))
+
+    freelancer_can_view_project_engineer = False
+    if current_freelancer:
+        with SessionLocal() as database:
+            policy = database.scalar(select(HRPolicy).order_by(HRPolicy.id))
+            freelancer_can_view_project_engineer = bool(
+                policy and policy.show_project_engineer_to_freelancers
+            )
+
     context = {
         "request": request,
         "locale": locale,
-        "t": translator(locale),
+        "t": translate,
         "client_catalog": load_catalog(locale),
         "app_name": APP_NAME,
         "app_version": APP_VERSION,
         "csrf_token": csrf_token(request),
-        "flash": pop_flash(request),
+        "flash": flash,
         "duration_label": duration_label,
         "hours_input": decimal_hours_input,
         "discipline_label": discipline_label,
         "current_staff": current_staff,
         "current_staff_role": (str(getattr(current_staff, "role", "ADMIN") or "ADMIN").upper() if current_staff else None),
         "current_freelancer": current_freelancer,
+        "freelancer_can_view_project_engineer": freelancer_can_view_project_engineer,
         "Permission": Permission,
         "can": (
             (lambda permission: has_permission(normalize_role(current_staff.role), permission))

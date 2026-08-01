@@ -45,6 +45,9 @@ class HRPolicy(Base):
     allow_negative_comp_balance: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )
+    show_project_engineer_to_freelancers: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     updated_by_admin_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("hr_admin_accounts.id", ondelete="RESTRICT"), nullable=True

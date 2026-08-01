@@ -123,6 +123,8 @@ from app.portal_project_service import (
     active_task_overview_rows,
     current_freelancer_portal_projects,
     current_freelancer_portal_tasks,
+    sort_assigned_portal_projects,
+    completed_freelancer_portal_tasks,
     portal_task_for_freelancer,
     project_data_health,
     project_overview_rows,

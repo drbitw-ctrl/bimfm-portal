@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Recently Completed Tasks') }} · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <div>
+    <span class="eyebrow">{{ t('PERSONAL TASK HISTORY') }}</span>
+    <h1>{{ t('Recently Completed Tasks') }}</h1>
+    <p class="muted">{{ account.freelancer.full_name }} · {{ t('Only tasks assigned to your account are shown.') }}</p>
+  </div>
+  <div class="action-row">
+    <a class="button secondary" href="/projects">{{ t('Assigned Projects') }}</a>
+    <a class="button secondary" href="/tasks">{{ t('Daily Task Reports') }}</a>
+  </div>
+</div>
+
+<section class="panel table-panel">
+  {% if rows %}
+  <div class="modern-table-wrap">
+    <table class="modern-table smart-table" data-card-table data-sortable-table>
+      <thead>
+        <tr>
+          <th data-sort-type="text">{{ t('Project') }}</th>
+          <th data-sort-type="text">{{ t('Task') }}</th>
+          <th data-sort-type="text">{{ t('Discipline') }}</th>
+          <th data-sort-type="priority">{{ t('Priority') }}</th>
+          <th data-sort-type="number">{{ t('Quality') }}</th>
+          <th data-sort-type="date">{{ t('Deadline') }}</th>
+          <th data-sort-type="date">{{ t('Completed') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for row in rows %}
+        <tr>
+          <td><strong>{{ row.project_name }}</strong></td>
+          <td>{{ row.title }}</td>
+          <td>{{ discipline_label(row.discipline) }}</td>
+          <td>{{ t(row.priority) }}</td>
+          <td data-sort-value="{{ row.quality_score if row.quality_score is not none else -1 }}">{{ (row.quality_score|string ~ '%') if row.quality_score is not none else t('Not Rated') }}</td>
+          <td data-sort-value="{{ row.deadline.isoformat() if row.deadline else '' }}">{{ row.deadline.isoformat() if row.deadline else '—' }}</td>
+          <td data-sort-value="{{ row.completed_date.isoformat() if row.completed_date else '' }}">{{ row.completed_date.isoformat() if row.completed_date else '—' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h2>{{ t('No completed tasks yet.') }}</h2>
+    <p>{{ t('Tasks completed under your assigned member profile will appear here.') }}</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

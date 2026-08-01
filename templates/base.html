@@ -97,6 +97,7 @@
       <span class="nav-label">{{ t('Daily Work') }}</span>
       {{ nav_link('/tasks', t('Daily Task Reports'), '✓') }}
       {{ nav_link('/projects', t('Assigned Projects'), '▦') }}
+      {{ nav_link('/projects/completed', t('Recently Completed Tasks'), '✓') }}
 
       <span class="nav-label">{{ t('Requests') }}</span>
       {{ nav_link('/overtime', t('Overtime & Credits'), '＋') }}
@@ -138,7 +139,7 @@
 
     <main class="page-shell">
       {% if current_staff_role == 'SUPERVISOR' %}
-      <div class="readonly-role-banner" role="status"><span>◉</span><div><strong>Read-only Supervisor</strong><small>You can view attendance, projects, requests, DTR, and Finance records. Editing and approvals are disabled.</small></div></div>
+      <div class="readonly-role-banner" role="status"><span>◉</span><div><strong>{{ t('Read-only Supervisor') }}</strong><small>{{ t('You can view attendance, projects, requests, DTR, and Finance records. Editing and approvals are disabled.') }}</small></div></div>
       {% endif %}
 {% else %}
 <div class="public-background" aria-hidden="true"><span></span><span></span><span></span></div>

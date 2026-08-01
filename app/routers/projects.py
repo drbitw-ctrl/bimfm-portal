@@ -18,7 +18,11 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
     globals()["router"] = router
 
     @router.get("/projects", response_class=HTMLResponse)
-    def freelancer_project_assignments(request: Request):
+    def freelancer_project_assignments(
+        request: Request,
+        sort: str = "deadline",
+        direction: str = "asc",
+    ):
         with SessionLocal() as database:
             account = get_current_freelancer_account(request, database)
             if account is None:
@@ -30,11 +34,24 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
                 database,
                 freelancer_id=account.freelancer_id,
             )
+            projects = sort_assigned_portal_projects(
+                projects,
+                sort_by=sort,
+                direction=direction,
+            )
+            policy = get_policy(database)
+            show_project_engineer = bool(
+                policy.show_project_engineer_to_freelancers
+            )
             rows = [
                 {
                     "id": row.id,
                     "project_name": row.project_name,
-                    "project_engineer": row.project_engineer or "Not specified",
+                    "project_engineer": (
+                        row.project_engineer or "Not specified"
+                        if show_project_engineer
+                        else ""
+                    ),
                     "deadline": row.deadline.isoformat() if row.deadline else "No deadline",
                     "status": row.status or "—",
                     "priority": row.priority or "—",
@@ -49,6 +66,31 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
             return templates.TemplateResponse(
                 request=request,
                 name="freelancer_projects.html",
+                context=template_context(
+                    request,
+                    account=account,
+                    rows=rows,
+                    selected_sort=sort,
+                    selected_direction=direction,
+                    show_project_engineer=show_project_engineer,
+                ),
+            )
+
+    @router.get("/projects/completed", response_class=HTMLResponse)
+    def freelancer_recently_completed_tasks(request: Request):
+        with SessionLocal() as database:
+            account = get_current_freelancer_account(request, database)
+            if account is None:
+                return RedirectResponse("/login", status_code=303)
+            if account.must_change_password:
+                return RedirectResponse("/change-password", status_code=303)
+            rows = completed_freelancer_portal_tasks(
+                database,
+                freelancer_id=account.freelancer_id,
+            )
+            return templates.TemplateResponse(
+                request=request,
+                name="freelancer_completed_tasks.html",
                 context=template_context(
                     request,
                     account=account,

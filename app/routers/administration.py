@@ -1386,6 +1386,7 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
         require_task_for_overtime: Optional[str] = Form(None),
         require_daily_task_for_dtr: Optional[str] = Form(None),
         allow_negative_comp_balance: Optional[str] = Form(None),
+        show_project_engineer_to_freelancers: Optional[str] = Form(None),
     ):
         if not validate_csrf(request, csrf):
             set_flash(request, "Invalid form token.", "error")
@@ -1411,12 +1412,18 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
             policy.require_task_for_overtime = bool(require_task_for_overtime)
             policy.require_daily_task_for_dtr = bool(require_daily_task_for_dtr)
             policy.allow_negative_comp_balance = bool(allow_negative_comp_balance)
+            policy.show_project_engineer_to_freelancers = bool(
+                show_project_engineer_to_freelancers
+            )
             policy.updated_by_admin_id = admin.id
             database.execute(delete(MonthlyDTR).where(MonthlyDTR.status != "FINALIZED"))
             write_audit(database, actor_type="HR_ADMIN", actor_id=admin.id,
                         action="UPDATE_HR_POLICY", request=request,
                         target_type="HR_POLICY", target_id=policy.id,
-                        details="Updated daily-task, overtime, and compensatory-leave rules.")
+                        details=(
+                            "Updated daily-task, overtime, compensatory-leave, "
+                            "and freelancer project-engineer visibility rules."
+                        ))
             database.commit()
         set_flash(request, "HR policy updated. Regenerate affected draft DTRs.", "success")
         return RedirectResponse("/admin/settings/hr-policy", status_code=303)

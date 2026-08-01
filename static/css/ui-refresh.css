@@ -3484,3 +3484,59 @@ html[data-theme="dark"] .report-method-note strong { color: #d5e8f6; }
   .report-bar-row { grid-template-columns: 28px minmax(0, 1fr) 34px; }
   .report-bar-track { grid-column: 2 / 4; }
 }
+
+/* Release 20.21: freelancer project ordering and policy visibility controls */
+.assignment-sort-panel {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.assignment-sort-form {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.assignment-sort-form > div {
+  min-width: 150px;
+}
+.assignment-sort-form label {
+  display: block;
+  margin-bottom: 5px;
+}
+.assignment-sort-form select {
+  min-width: 150px;
+}
+.current-assignment-card {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.assignment-kicker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.policy-section-heading {
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+  margin-top: 4px;
+}
+.policy-section-heading h2 {
+  margin: 4px 0 5px;
+}
+.policy-visibility-toggle {
+  flex-basis: 100%;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+}
+@media (max-width: 760px) {
+  .assignment-sort-form,
+  .assignment-sort-form > div,
+  .assignment-sort-form select,
+  .assignment-sort-form button {
+    width: 100%;
+  }
+}

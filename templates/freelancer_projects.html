@@ -1,51 +1,82 @@
 {% extends "base.html" %}
-{% block title %}My Assigned Projects · {{ app_name }}{% endblock %}
+{% block title %}{{ t('My Assigned Projects') }} · {{ app_name }}{% endblock %}
 {% block content %}
 <div class="toolbar">
-    <div>
-        <span class="eyebrow">MY PROJECT ASSIGNMENTS</span>
-        <h1>My Assigned Projects</h1>
-        <p class="muted">{{ account.freelancer.full_name }} · Current project records</p>
-    </div>
-    <div class="action-row">
-        <a class="button secondary" href="/attendance">{{ t('Attendance') }}</a>
-        <a class="button secondary" href="/tasks">Daily Task Report</a>
-    </div>
+  <div>
+    <span class="eyebrow">{{ t('MY PROJECT ASSIGNMENTS') }}</span>
+    <h1>{{ t('My Assigned Projects') }}</h1>
+    <p class="muted">{{ account.freelancer.full_name }} · {{ t('Current project records') }}</p>
+  </div>
+  <div class="action-row">
+    <a class="button secondary" href="/attendance">{{ t('Attendance') }}</a>
+    <a class="button secondary" href="/tasks">{{ t('Daily Task Report') }}</a>
+  </div>
 </div>
 
-<section class="panel assignment-info">
-    <strong>Current project assignments</strong>
-    <p class="muted">Projects connected to your member profile appear here automatically.</p>
+<section class="panel assignment-info assignment-sort-panel">
+  <div>
+    <strong>{{ t('Current project assignments') }}</strong>
+    <p class="muted">{{ t('Projects with active tasks are always displayed first. Sort the remaining projects using the controls.') }}</p>
+  </div>
+  <form method="get" class="assignment-sort-form">
+    <div>
+      <label for="project-sort">{{ t('Sort projects by') }}</label>
+      <select id="project-sort" name="sort">
+        <option value="deadline" {% if selected_sort == 'deadline' %}selected{% endif %}>{{ t('Deadline') }}</option>
+        <option value="project" {% if selected_sort == 'project' %}selected{% endif %}>{{ t('Project Name') }}</option>
+        <option value="priority" {% if selected_sort == 'priority' %}selected{% endif %}>{{ t('Priority') }}</option>
+        <option value="progress" {% if selected_sort == 'progress' %}selected{% endif %}>{{ t('Progress') }}</option>
+        <option value="status" {% if selected_sort == 'status' %}selected{% endif %}>{{ t('Status') }}</option>
+      </select>
+    </div>
+    <div>
+      <label for="project-direction">{{ t('Direction') }}</label>
+      <select id="project-direction" name="direction">
+        <option value="asc" {% if selected_direction != 'desc' %}selected{% endif %}>{{ t('Ascending') }}</option>
+        <option value="desc" {% if selected_direction == 'desc' %}selected{% endif %}>{{ t('Descending') }}</option>
+      </select>
+    </div>
+    <button class="primary" type="submit">{{ t('Apply') }}</button>
+  </form>
 </section>
 
 {% if rows %}
 <section class="assignment-grid">
 {% for row in rows %}
-    <article class="panel assignment-card">
-        <div class="assignment-card-header">
-            <div>
-                <span class="eyebrow">{{ discipline_label(row.discipline) }}</span>
-                <h2>{{ row.project_name }}</h2>
-            </div>
-            <span class="badge {% if row.status|lower in ['completed','closed'] %}good{% endif %}">{{ row.status }}</span>
+  <article class="panel assignment-card {% if row.active_task_count > 0 %}current-assignment-card{% endif %}">
+    <div class="assignment-card-header">
+      <div>
+        <div class="assignment-kicker-row">
+          <span class="eyebrow">{{ discipline_label(row.discipline) }}</span>
+          {% if row.active_task_count > 0 %}<span class="badge good">{{ t('Currently Assigned') }}</span>{% endif %}
         </div>
-        <p class="assignment-description">{{ row.task_description }}</p>
-        <p class="muted"><strong>Project Engineer:</strong> {{ row.project_engineer }}</p>
-        <div class="assignment-meta">
-            <div><span>Deadline</span><strong>{{ row.deadline }}</strong></div>
-            <div><span>Priority</span><strong>{{ row.priority }}</strong></div>
-            <div><span>Progress</span><strong>{{ row.progress }}%</strong></div>
-            <div><span>Active Tasks</span><strong>{{ row.active_task_count }}</strong></div>
-        </div>
-        <div class="progress-track"><div class="progress-fill" style="width: {{ row.progress }}%"></div></div>
-        {% if row.next_task_id %}<a class="button primary" href="/tasks?project_task_id={{ row.next_task_id }}">Add to Daily Task Report</a>{% else %}<span class="status-chip status-not-started">No active task</span>{% endif %}
-    </article>
+        <h2>{{ row.project_name }}</h2>
+      </div>
+      <span class="badge {% if row.status|lower in ['completed','closed'] %}good{% endif %}">{{ t(row.status) }}</span>
+    </div>
+    <p class="assignment-description">{{ row.task_description }}</p>
+    {% if show_project_engineer and row.project_engineer %}
+    <p class="muted"><strong>{{ t('Project Engineer') }}:</strong> {{ row.project_engineer }}</p>
+    {% endif %}
+    <div class="assignment-meta">
+      <div><span>{{ t('Deadline') }}</span><strong>{{ t(row.deadline) }}</strong></div>
+      <div><span>{{ t('Priority') }}</span><strong>{{ t(row.priority) }}</strong></div>
+      <div><span>{{ t('Progress') }}</span><strong>{{ row.progress }}%</strong></div>
+      <div><span>{{ t('Active Tasks') }}</span><strong>{{ row.active_task_count }}</strong></div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" style="width: {{ row.progress }}%"></div></div>
+    {% if row.next_task_id %}
+      <a class="button primary" href="/tasks?project_task_id={{ row.next_task_id }}">{{ t('Add to Daily Task Report') }}</a>
+    {% else %}
+      <span class="status-chip status-not-started">{{ t('No active task') }}</span>
+    {% endif %}
+  </article>
 {% endfor %}
 </section>
 {% else %}
 <section class="panel empty-state">
-    <h2>No projects are assigned to your account.</h2>
-    <p>Management can review the member mapping and project assignments on the Project Team page.</p>
+  <h2>{{ t('No projects are assigned to your account.') }}</h2>
+  <p>{{ t('Management can review the member mapping and project assignments on the Project Team page.') }}</p>
 </section>
 {% endif %}
 {% endblock %}
