@@ -1,0 +1,58 @@
+BIMFM PORTAL RELEASE 20.13
+HISTORICAL QUALITY SCORE RECOVERY
+VALIDATION REPORT
+
+Application version:
+  2.3.8-release20.13-quality-score-recovery
+
+Date:
+  2026-08-01
+
+AUTOMATED REGRESSION SUITE
+--------------------------
+Command:
+  python -m unittest discover -s tests -v
+
+Result:
+  100 tests run
+  100 tests passed
+  0 failures
+  0 errors
+
+RELEASE 20.13 COVERAGE
+----------------------
+  - Alembic chain 20260801_0005 -> 20260801_0006
+  - Historical score extraction from preserved task descriptions
+  - Case-insensitive marker recognition
+  - Integer-equivalent values such as 92.0%
+  - Rejection of decimal, zero, and greater-than-100 values
+  - Existing manually entered scores are preserved
+  - Backfill is idempotent
+  - Task Register continues to display the dedicated score field
+  - Future SQLite migration writes quality_score directly
+
+ALEMBIC UPGRADE SIMULATION
+--------------------------
+A temporary SQLite database was upgraded to revision 20260801_0005.
+
+A task was inserted with:
+  quality_score = NULL
+  description containing "Legacy quality score: 93"
+
+The database was then upgraded to head.
+
+Result:
+  quality_score = 93
+  alembic_version = 20260801_0006
+
+DATABASE SAFETY
+---------------
+The release does not delete records and does not add, drop, or rename any table
+or column. It updates only null portal_tasks.quality_score values that have a
+valid preserved historical marker.
+
+LIMITATION
+----------
+The package was validated against isolated databases, not the user's live
+Render PostgreSQL database. Confirm a current backup and verify the Task
+Register after deployment.
