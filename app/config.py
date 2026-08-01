@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 APP_NAME = "BIMFM Portal"
-APP_VERSION = "2.3.9-release20.14-supervisor-dashboard-member-tools"
+APP_VERSION = "2.3.10-release20.15-inline-task-editing"
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"

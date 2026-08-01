@@ -99,13 +99,25 @@
     const reset = toolbar.querySelector('[data-table-filter-reset]');
     const resultCount = toolbar.querySelector('[data-result-count]');
 
+    function searchableRowText(row) {
+      return Array.from(row.querySelectorAll('td')).map((cell) => {
+        const control = cell.querySelector('input, select, textarea');
+        if (!control) return cell.textContent;
+        if (control.tagName === 'SELECT') {
+          const option = control.options[control.selectedIndex];
+          return option ? option.textContent : '';
+        }
+        return control.value || '';
+      }).join(' ').toLocaleLowerCase();
+    }
+
     function applyFilter() {
       const query = (search && search.value || '').trim().toLocaleLowerCase();
       const onlyUnmapped = Boolean(unmappedOnly && unmappedOnly.checked);
       let visible = 0;
 
       rows.forEach((row) => {
-        const text = row.textContent.toLocaleLowerCase();
+        const text = searchableRowText(row);
         const matchesQuery = !query || text.includes(query);
         const matchesMapping = !onlyUnmapped || row.dataset.mappingStatus === 'unmapped';
         const matchesFilters = filters.every((control) => {

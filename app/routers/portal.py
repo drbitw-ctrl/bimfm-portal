@@ -7,7 +7,7 @@ from datetime import date, datetime, time as clock_time, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
@@ -457,6 +457,40 @@ def create_portal_router(
         )
         return member.member_name
 
+    def ensure_task_project_memberships(
+        database: Session,
+        *,
+        task: PortalTask,
+        project: PortalProject,
+    ) -> None:
+        """Keep existing task assignees active in a newly selected project."""
+        assignment_ids = {
+            int(value)
+            for value in database.scalars(
+                select(PortalTaskAssignment.freelancer_id).where(
+                    PortalTaskAssignment.task_id == task.id
+                )
+            ).all()
+        }
+        for assignment_id in assignment_ids:
+            membership = database.scalar(
+                select(PortalProjectMember).where(
+                    PortalProjectMember.project_id == project.id,
+                    PortalProjectMember.freelancer_id == assignment_id,
+                )
+            )
+            if membership is None:
+                database.add(
+                    PortalProjectMember(
+                        project_id=project.id,
+                        freelancer_id=assignment_id,
+                        member_role="MEMBER",
+                        is_active=True,
+                    )
+                )
+            elif not membership.is_active:
+                membership.is_active = True
+
     @router.get("/portal/tasks/new", response_class=HTMLResponse)
     def new_portal_task_page(
         request: Request,
@@ -796,6 +830,299 @@ def create_portal_router(
         set_flash(request, f"Task “{task.title}” was updated successfully.", "success")
         return RedirectResponse("/portal/tasks", status_code=303)
 
+    @router.post("/portal/tasks/{task_id}/inline-edit", response_class=JSONResponse)
+    def inline_edit_portal_task(
+        task_id: int,
+        request: Request,
+        csrf: str = Form(...),
+        field: str = Form(...),
+        value: str = Form(""),
+        database: Session = Depends(get_db),
+    ):
+        """Update one task-register field and return its canonical saved value."""
+        if not validate_csrf(request, csrf):
+            return JSONResponse(
+                {"ok": False, "message": "Invalid form token. Refresh the page and try again."},
+                status_code=400,
+            )
+
+        account = require_project_editor(request, database)
+        if account is None:
+            return JSONResponse(
+                {"ok": False, "message": "Your session has expired. Please sign in again."},
+                status_code=401,
+            )
+        if account is False:
+            return JSONResponse(
+                {"ok": False, "message": "You do not have permission to edit project tasks."},
+                status_code=403,
+            )
+
+        task = database.get(PortalTask, task_id)
+        if task is None:
+            return JSONResponse(
+                {"ok": False, "message": "Task not found."},
+                status_code=404,
+            )
+
+        editable_fields = {
+            "project_id",
+            "title",
+            "project_member_id",
+            "status",
+            "priority",
+            "discipline",
+            "progress",
+            "quality_score",
+            "start_date",
+            "due_date",
+            "completion_date",
+        }
+        normalized_field = str(field or "").strip()
+        if normalized_field not in editable_fields:
+            return JSONResponse(
+                {"ok": False, "message": "That task field cannot be edited from the task list."},
+                status_code=400,
+            )
+
+        old_display = ""
+        updates: dict[str, Any] = {}
+        try:
+            if normalized_field == "project_id":
+                try:
+                    project_id = int(str(value or "0").strip())
+                except ValueError as exc:
+                    raise ValueError("Select a valid project.") from exc
+                project = database.get(PortalProject, project_id)
+                if project is None:
+                    raise ValueError("The selected project was not found.")
+                old_project = database.get(PortalProject, task.project_id)
+                old_display = old_project.name if old_project else str(task.project_id)
+                task.project_id = project.id
+                ensure_task_project_memberships(database, task=task, project=project)
+                updates.update(
+                    {
+                        "project_id": str(project.id),
+                        "project_name": project.name,
+                        "project_engineer": project.project_engineer or "",
+                        "filter_project": str(project.id),
+                    }
+                )
+
+            elif normalized_field == "title":
+                title = " ".join(str(value or "").strip().split())
+                if not title:
+                    raise ValueError("Task title is required.")
+                if len(title) > 300:
+                    raise ValueError("Task title must contain 300 characters or fewer.")
+                old_title = task.title
+                old_display = old_title
+                task.title = title
+                if not task.description or task.description.strip() == old_title.strip():
+                    task.description = title
+                updates["title"] = title
+
+            elif normalized_field == "project_member_id":
+                try:
+                    member_id = int(str(value or "0").strip())
+                except ValueError as exc:
+                    raise ValueError("Select a valid assigned member.") from exc
+                project = database.get(PortalProject, task.project_id)
+                if project is None:
+                    raise ValueError("The task project was not found.")
+                old_assignment_ids = [
+                    int(item)
+                    for item in database.scalars(
+                        select(PortalTaskAssignment.freelancer_id).where(
+                            PortalTaskAssignment.task_id == task.id
+                        )
+                    ).all()
+                ]
+                old_names: list[str] = []
+                for assignment_id in old_assignment_ids:
+                    member = database.scalar(
+                        select(ProjectMember)
+                        .where(ProjectMember.source_freelancer_id == assignment_id)
+                        .limit(1)
+                    )
+                    if member is None:
+                        member = database.scalar(
+                            select(ProjectMember)
+                            .where(ProjectMember.freelancer_id == assignment_id)
+                            .limit(1)
+                        )
+                    old_names.append(member.member_name if member else str(assignment_id))
+                old_display = ", ".join(old_names) or "Unassigned"
+                if member_id and task.status == "UNASSIGNED":
+                    task.status = "NOT_STARTED"
+                    updates.update(
+                        {
+                            "status": task.status,
+                            "filter_status": task.status,
+                        }
+                    )
+                assigned_name = replace_task_assignment(
+                    database,
+                    task=task,
+                    project=project,
+                    project_member_id=member_id,
+                    status=task.status,
+                )
+                updates.update(
+                    {
+                        "project_member_id": str(member_id if assigned_name != "Unassigned" else 0),
+                        "assignee_name": assigned_name,
+                        "filter_member": (
+                            f"|{assigned_name.casefold()}|" if assigned_name != "Unassigned" else "||"
+                        ),
+                    }
+                )
+
+            elif normalized_field == "status":
+                status = str(value or "").strip().upper()
+                if status not in {item[0] for item in TASK_STATUSES}:
+                    raise ValueError("Select a valid task status.")
+                old_display = task.status
+                task.status = status
+                if status in {"FOR_REVIEW", "COMPLETED"}:
+                    task.progress = 100
+                elif status == "UNASSIGNED":
+                    task.progress = 0
+                    database.execute(
+                        delete(PortalTaskAssignment).where(
+                            PortalTaskAssignment.task_id == task.id
+                        )
+                    )
+                    updates.update(
+                        {
+                            "project_member_id": "0",
+                            "assignee_name": "Unassigned",
+                            "filter_member": "||",
+                        }
+                    )
+                if status == "COMPLETED":
+                    if task.completed_at is None:
+                        task.completed_at = datetime.combine(
+                            date.today(), clock_time(hour=12), tzinfo=timezone.utc
+                        )
+                else:
+                    task.completed_at = None
+                updates.update(
+                    {
+                        "status": status,
+                        "filter_status": status,
+                        "progress": str(int(task.progress or 0)),
+                        "completion_date": _task_completion_date(task),
+                    }
+                )
+
+            elif normalized_field == "priority":
+                priority = str(value or "").strip().upper()
+                if priority not in {item[0] for item in TASK_PRIORITIES}:
+                    raise ValueError("Select a valid task priority.")
+                old_display = task.priority
+                task.priority = priority
+                updates.update({"priority": priority, "filter_priority": priority})
+
+            elif normalized_field == "discipline":
+                discipline = str(value or "").strip()
+                if discipline not in TASK_DISCIPLINES:
+                    raise ValueError("Select a valid discipline.")
+                old_display = task.discipline or ""
+                task.discipline = discipline
+                updates.update(
+                    {"discipline": discipline, "filter_discipline": discipline}
+                )
+
+            elif normalized_field == "progress":
+                old_display = str(int(task.progress or 0))
+                task.progress = _normalized_progress(value, status=task.status)
+                updates["progress"] = str(task.progress)
+
+            elif normalized_field == "quality_score":
+                old_display = str(task.quality_score or "")
+                task.quality_score = _parse_quality_score(value)
+                updates["quality_score"] = str(task.quality_score or "")
+
+            elif normalized_field == "start_date":
+                old_display = task.start_date.isoformat() if task.start_date else ""
+                parsed = _parse_optional_date(value, label="Start date")
+                if parsed and task.due_date and parsed > task.due_date:
+                    raise ValueError("Start date cannot be later than the deadline.")
+                if parsed and task.completed_at and parsed > task.completed_at.date():
+                    raise ValueError("Start date cannot be later than the completion date.")
+                task.start_date = parsed
+                updates["start_date"] = parsed.isoformat() if parsed else ""
+
+            elif normalized_field == "due_date":
+                old_display = task.due_date.isoformat() if task.due_date else ""
+                parsed = _parse_optional_date(value, label="Deadline")
+                if parsed and task.start_date and parsed < task.start_date:
+                    raise ValueError("Deadline cannot be earlier than the start date.")
+                task.due_date = parsed
+                updates["due_date"] = parsed.isoformat() if parsed else ""
+
+            elif normalized_field == "completion_date":
+                old_display = _task_completion_date(task)
+                if task.status != "COMPLETED":
+                    raise ValueError("Set the task status to Completed before entering a completion date.")
+                parsed = _parse_optional_date(value, label="Completion date") or date.today()
+                if task.start_date and parsed < task.start_date:
+                    raise ValueError("Completion date cannot be earlier than the start date.")
+                task.completed_at = datetime.combine(
+                    parsed, clock_time(hour=12), tzinfo=timezone.utc
+                )
+                updates["completion_date"] = parsed.isoformat()
+
+            new_display = next(
+                (
+                    str(updates[key])
+                    for key in (
+                        normalized_field,
+                        "assignee_name",
+                        "project_name",
+                    )
+                    if key in updates
+                ),
+                str(value or ""),
+            )
+            write_audit(
+                database,
+                actor_type="HR_ADMIN",
+                actor_id=account.id,
+                action="INLINE_UPDATE_PORTAL_TASK",
+                request=request,
+                target_type="PORTAL_TASK",
+                target_id=task.id,
+                details=f"field={normalized_field}; from={old_display}; to={new_display}",
+            )
+            database.commit()
+        except ValueError as exc:
+            database.rollback()
+            return JSONResponse(
+                {"ok": False, "message": str(exc)},
+                status_code=400,
+            )
+        except IntegrityError:
+            database.rollback()
+            return JSONResponse(
+                {
+                    "ok": False,
+                    "message": "The task could not be updated because the selected value conflicts with an existing assignment.",
+                },
+                status_code=409,
+            )
+
+        return JSONResponse(
+            {
+                "ok": True,
+                "message": "Saved",
+                "task_id": task.id,
+                "field": normalized_field,
+                "updates": updates,
+            }
+        )
+
     @router.post("/portal/tasks/{task_id}/delete")
     def delete_portal_task(
         task_id: int,
@@ -916,25 +1243,40 @@ def create_portal_router(
                 page_title = "Tasks"
                 description = "All project tasks, including active, review, completed, on-hold, and unassigned records."
                 section_title = "Complete Task Register"
-            section_note = "Search and filter the complete PostgreSQL task register. Authorized staff can open any row for full editing."
+            section_note = (
+                "Search and filter the complete PostgreSQL task register. Use the inline controls for quick updates, or open Details for the full task description and advanced editing."
+                if can_edit_tasks
+                else "Search and filter the complete PostgreSQL task register."
+            )
             columns = [
-                {"key": "project", "label": "Project", "type": "project"},
-                {"key": "title", "label": "Task", "type": "text"},
-                {"key": "assignees", "label": "Assigned Member", "type": "text"},
-                {"key": "status", "label": "Status", "type": "status"},
-                {"key": "priority", "label": "Priority", "type": "priority"},
-                {"key": "discipline", "label": "Discipline", "type": "text"},
-                {"key": "progress", "label": "Progress", "type": "progress"},
-                {"key": "quality", "label": "Quality", "type": "quality"},
-                {"key": "start_date", "label": "Start", "type": "date"},
-                {"key": "due_date", "label": "Deadline", "type": "date"},
-                {"key": "completion_date", "label": "Completed", "type": "date"},
+                {"key": "project", "label": "Project", "type": "edit_project" if can_edit_tasks else "project"},
+                {"key": "title", "label": "Task", "type": "edit_text" if can_edit_tasks else "text"},
+                {"key": "assignees", "label": "Assigned Member", "type": "edit_member" if can_edit_tasks else "text"},
+                {"key": "status", "label": "Status", "type": "edit_status" if can_edit_tasks else "status"},
+                {"key": "priority", "label": "Priority", "type": "edit_priority" if can_edit_tasks else "priority"},
+                {"key": "discipline", "label": "Discipline", "type": "edit_discipline" if can_edit_tasks else "text"},
+                {"key": "progress", "label": "Progress", "type": "edit_progress" if can_edit_tasks else "progress"},
+                {"key": "quality", "label": "Quality", "type": "edit_quality" if can_edit_tasks else "quality"},
+                {"key": "start_date", "label": "Start", "type": "edit_date" if can_edit_tasks else "date", "field": "start_date"},
+                {"key": "due_date", "label": "Deadline", "type": "edit_date" if can_edit_tasks else "date", "field": "due_date"},
+                {"key": "completion_date", "label": "Completed", "type": "edit_date" if can_edit_tasks else "date", "field": "completion_date"},
             ]
             if can_edit_tasks:
-                columns.append({"key": "action", "label": "Action", "type": "action"})
+                columns.append({"key": "action", "label": "Save Status", "type": "edit_action"})
             rows = []
             for row in source_rows:
                 item: dict[str, Any] = {
+                    "_task_id": int(row["id"]),
+                    "_project_id": int(row["project_id"]),
+                    "_project_member_id": (
+                        int(row["assignee_member_ids"][0])
+                        if len(row["assignee_member_ids"]) == 1
+                        else (-1 if len(row["assignee_member_ids"]) > 1 else 0)
+                    ),
+                    "_multiple_assignees": len(row["assignee_member_ids"]) > 1,
+                    "_start_date_value": "" if row["start_date"] == "—" else str(row["start_date"]),
+                    "_due_date_value": "" if row["due_date"] == "—" else str(row["due_date"]),
+                    "_completion_date_value": "" if row["completion_date"] == "—" else str(row["completion_date"]),
                     "_filters": {
                         "project": str(row["project_id"]),
                         "member": "|" + "|".join(str(value).casefold() for value in str(row["assignees"]).split(", ")) + "|",
@@ -960,7 +1302,7 @@ def create_portal_router(
                 if can_edit_tasks:
                     item["action"] = {
                         "href": f"/portal/tasks/{row['id']}/edit",
-                        "label": "Edit",
+                        "label": "Details",
                     }
                 rows.append(item)
 
@@ -1089,6 +1431,26 @@ def create_portal_router(
                 task_view=view if view in {"active", "completed"} else "all",
                 task_filters=task_filters,
                 can_create_task=can_edit_tasks,
+                can_edit_tasks=can_edit_tasks,
+                task_editor_options=(
+                    {
+                        "projects": [
+                            {"id": project.id, "name": project.name}
+                            for project in available_projects(database)
+                        ],
+                        "members": [
+                            {"id": member.id, "name": member.member_name}
+                            for member in available_project_members(database)
+                        ],
+                        "statuses": TASK_STATUSES,
+                        "priorities": TASK_PRIORITIES,
+                        "disciplines": TASK_DISCIPLINES,
+                        "progress_values": tuple(range(0, 101, 5)),
+                        "quality_values": tuple(range(1, 101)),
+                    }
+                    if module_name == "tasks" and can_edit_tasks
+                    else None
+                ),
             ),
         )
 

@@ -1,0 +1,22 @@
+BIMFM Portal Release 20.15 Test Report
+======================================
+Application version: 2.3.10-release20.15-inline-task-editing
+Date: 2026-08-01
+
+PASS - Python application compile check
+PASS - All Jinja templates parse successfully
+PASS - Rendered inline-editor JavaScript syntax check
+PASS - Task register renders inline controls for Administrator
+PASS - Task register remains read-only for Supervisor
+PASS - Inline status update persists
+PASS - Inline progress update persists
+PASS - Inline project update persists
+PASS - Inline task-title update persists
+PASS - Completed status enforces 100% progress and completion date
+PASS - Invalid start/deadline relationship is rejected
+PASS - Invalid CSRF token is rejected
+PASS - Non-assignment edits preserve multiple task assignees
+PASS - Existing full Details edit page remains available
+
+Database schema changes: None
+Alembic migration required: No
