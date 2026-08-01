@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 APP_NAME = "BIMFM Portal"
-APP_VERSION = "2.3.1-release20.6-finance-clarity"
+APP_VERSION = "2.3.2-release20.7-postgresql-native-projects"
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
@@ -34,19 +34,15 @@ MAX_FAILED_LOGIN_ATTEMPTS = 5
 ACCOUNT_LOCK_MINUTES = 15
 
 
-# Project synchronization is performed by a separate company-side agent that
-# opens projects.db in read-only mode and sends a limited task snapshot.
-PROJECT_SYNC_TOKEN = os.getenv(
-    "BIMFM_PROJECT_SYNC_TOKEN",
-    "LOCAL-DEVELOPMENT-SYNC-TOKEN-CHANGE-ME",
-)
+# Legacy synchronization settings are retained only so old deployments and
+# historical API clients fail gracefully. Release 20.7 reads live project data
+# from PostgreSQL-native portal tables and does not require a sync agent.
+PROJECT_SYNC_TOKEN = os.getenv("BIMFM_PROJECT_SYNC_TOKEN", "").strip()
 PROJECT_SYNC_SOURCE_SYSTEM = os.getenv(
     "BIMFM_PROJECT_SYNC_SOURCE_SYSTEM",
     "BIMFM_TASK_MANAGER",
 ).strip().upper()
-PROJECT_SYNC_USING_DEFAULT_TOKEN = (
-    PROJECT_SYNC_TOKEN == "LOCAL-DEVELOPMENT-SYNC-TOKEN-CHANGE-ME"
-)
+PROJECT_SYNC_USING_DEFAULT_TOKEN = not bool(PROJECT_SYNC_TOKEN)
 
 # Optional one-time administrator bootstrap for cloud deployment.
 # Set these in Render Environment. The account is created only when no

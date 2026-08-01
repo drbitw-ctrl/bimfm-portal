@@ -1,3 +1,4 @@
+from contextlib import closing
 import sqlite3
 
 from fastapi import APIRouter, Form, Request
@@ -13,6 +14,7 @@ from app.models import (
     Freelancer, FreelancerAccount, HRAdminAccount, HRPolicy, Holiday,
     LeaveRecord, LeaveRequest, MonthlyDTR, OvertimeClaim, ProjectSourceMember,
     ProjectSyncRun, SyncedProjectTask, TaskMonthReview, WorkSchedule,
+    PortalProject, PortalProjectMember, PortalTask, PortalTaskAssignment,
 )
 from app.web_helpers import admin_count, validate_csrf
 from app.i18n import SUPPORTED_LOCALES
@@ -100,9 +102,13 @@ def setup_status() -> dict[str, object]:
         "dtr_task_lines": select(func.count(DTRTaskLine.id)),
         "dtr_comp_lines": select(func.count(DTRCompLine.id)),
         "dtr_leave_lines": select(func.count(DTRLeaveLine.id)),
-        "project_source_members": select(func.count(ProjectSourceMember.id)),
-        "synced_project_tasks": select(func.count(SyncedProjectTask.id)),
-        "project_sync_runs": select(func.count(ProjectSyncRun.id)),
+        "portal_projects": select(func.count(PortalProject.id)),
+        "portal_project_members": select(func.count(PortalProjectMember.id)),
+        "portal_tasks": select(func.count(PortalTask.id)),
+        "portal_task_assignments": select(func.count(PortalTaskAssignment.id)),
+        "legacy_project_source_members": select(func.count(ProjectSourceMember.id)),
+        "legacy_synced_project_tasks": select(func.count(SyncedProjectTask.id)),
+        "legacy_project_sync_runs": select(func.count(ProjectSyncRun.id)),
         "audit_log": select(func.count(AuditLog.id)),
         }
 
@@ -111,19 +117,23 @@ def setup_status() -> dict[str, object]:
                 database.scalar(query) or 0
             )
 
-    with closing(sqlite3.connect(DATABASE_PATH)) as connection:
-        connection.execute("PRAGMA foreign_keys = ON")
-        journal_mode = connection.execute(
-            "PRAGMA journal_mode"
-        ).fetchone()[0]
-        foreign_keys = connection.execute(
-            "PRAGMA foreign_keys"
-        ).fetchone()[0]
+    journal_mode = None
+    foreign_keys_enabled = None
+    if DATABASE_DIALECT == "sqlite":
+        with closing(sqlite3.connect(DATABASE_PATH)) as connection:
+            connection.execute("PRAGMA foreign_keys = ON")
+            journal_mode = connection.execute("PRAGMA journal_mode").fetchone()[0]
+            foreign_keys_enabled = bool(
+                connection.execute("PRAGMA foreign_keys").fetchone()[0]
+            )
 
     return {
         "database_ready": database_is_available(),
+        "database_dialect": DATABASE_DIALECT,
+        "project_mode": "postgresql_native",
+        "synchronization_required": False,
         "journal_mode": journal_mode,
-        "foreign_keys_enabled": bool(foreign_keys),
+        "foreign_keys_enabled": foreign_keys_enabled,
         "table_counts": table_counts,
     }
 

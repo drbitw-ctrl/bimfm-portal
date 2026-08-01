@@ -1228,7 +1228,7 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
             local_now = official_utc.astimezone(
                 freelancer_zone(timezone_name)
             )
-            assigned_tasks = current_freelancer_project_tasks(
+            assigned_tasks = current_freelancer_portal_tasks(
                 database,
                 freelancer_id=account.freelancer_id,
                 limit=3,
@@ -1251,10 +1251,6 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                 }
                 for row in assigned_tasks
             ]
-            project_sync = last_successful_sync(
-                database,
-                PROJECT_SYNC_SOURCE_SYSTEM,
-            )
             summary_month = attendance_date.strftime("%Y-%m")
             monthly_dtr = get_monthly_dtr(
                 database,
@@ -1284,11 +1280,6 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                         get_calculation(database, record.id) if record else None
                     ),
                     assigned_tasks=assigned_task_rows,
-                    project_sync_time=format_sync_timestamp(
-                        project_sync.completed_at_utc
-                        if project_sync
-                        else None
-                    ),
                     monthly_summary=monthly_summary,
                     monthly_summary_month=summary_month,
                     monthly_dtr_status=(monthly_dtr.status if monthly_dtr else None),

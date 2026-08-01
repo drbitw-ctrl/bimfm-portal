@@ -91,42 +91,21 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                 )
                 or 0
             )
-            active_task_count = int(
-                database.scalar(
-                    select(func.count(SyncedProjectTask.id)).where(
-                        SyncedProjectTask.is_active.is_(True)
-                    )
-                )
-                or 0
-            )
+            project_health = project_data_health(database)
+            active_task_count = project_health.active_task_count
             today = date.today()
             overdue_task_count = int(
                 database.scalar(
-                    select(func.count(SyncedProjectTask.id)).where(
-                        SyncedProjectTask.is_active.is_(True),
-                        SyncedProjectTask.deadline.is_not(None),
-                        SyncedProjectTask.deadline < today,
-                        SyncedProjectTask.progress < 100,
+                    select(func.count(PortalTask.id)).where(
+                        PortalTask.status.notin_(("COMPLETED", "CANCELLED")),
+                        PortalTask.due_date.is_not(None),
+                        PortalTask.due_date < today,
                     )
                 )
                 or 0
             )
 
-            task_counts = {
-                int(freelancer_id): int(count)
-                for freelancer_id, count in database.execute(
-                    select(
-                        SyncedProjectTask.freelancer_id,
-                        func.count(SyncedProjectTask.id),
-                    )
-                    .where(
-                        SyncedProjectTask.is_active.is_(True),
-                        SyncedProjectTask.freelancer_id.is_not(None),
-                    )
-                    .group_by(SyncedProjectTask.freelancer_id)
-                ).all()
-                if freelancer_id is not None
-            }
+            task_counts = active_task_counts_by_freelancer(database)
             workforce_rows = []
             for row in today_rows:
                 freelancer_id = int(row["freelancer_id"])
@@ -164,20 +143,10 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                     }
                 )
 
-            last_project_sync = last_successful_sync(
-                database,
-                PROJECT_SYNC_SOURCE_SYSTEM,
-            )
-            unmapped_project_members = int(
-                database.scalar(
-                    select(func.count(ProjectSourceMember.id)).where(
-                        ProjectSourceMember.source_system
-                        == PROJECT_SYNC_SOURCE_SYSTEM,
-                        ProjectSourceMember.freelancer_id.is_(None),
-                        ProjectSourceMember.active_task_count > 0,
-                    )
-                )
-                or 0
+            project_team_rows = team_assignment_rows(database)
+            unassigned_project_members = sum(
+                row["assignment_status"] == "No project assignment"
+                for row in project_team_rows
             )
 
             return templates.TemplateResponse(
@@ -200,12 +169,11 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                     workforce_rows=workforce_rows[:8],
                     recent_activity=recent_activity,
                     schedule=get_active_schedule(database),
-                    last_project_sync=format_sync_timestamp(
-                        last_project_sync.completed_at_utc
-                        if last_project_sync
-                        else None
-                    ),
-                    unmapped_project_members=unmapped_project_members,
+                    project_count=project_health.project_count,
+                    assigned_project_members=project_health.assigned_member_count,
+                    unassigned_project_members=unassigned_project_members,
+                    projects_without_members=project_health.projects_without_members,
+                    active_tasks_without_assignees=project_health.active_tasks_without_assignees,
                 ),
             )
 
@@ -313,46 +281,11 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
         "/admin/freelancers/new",
         response_class=HTMLResponse,
     )
-    def new_freelancer_page(
-        request: Request,
-        source_member_id: int = 0,
-    ):
+    def new_freelancer_page(request: Request):
         with SessionLocal() as database:
             admin = get_current_admin(request, database)
             if admin is None:
-                return RedirectResponse(
-                    "/admin/login",
-                    status_code=303,
-                )
-
-            source_member = None
-            if source_member_id > 0:
-                candidate = database.get(ProjectSourceMember, source_member_id)
-                if (
-                    candidate is None
-                    or candidate.source_system != PROJECT_SYNC_SOURCE_SYSTEM
-                ):
-                    set_flash(
-                        request,
-                        "Project source member was not found.",
-                        "error",
-                    )
-                    return RedirectResponse(
-                        "/admin/integration/projects",
-                        status_code=303,
-                    )
-                if candidate.freelancer_id is not None:
-                    set_flash(
-                        request,
-                        "This project member is already mapped to an HR freelancer.",
-                        "error",
-                    )
-                    return RedirectResponse(
-                        "/admin/integration/projects",
-                        status_code=303,
-                    )
-                source_member = candidate
-
+                return RedirectResponse("/admin/login", status_code=303)
             return templates.TemplateResponse(
                 request=request,
                 name="admin_new_freelancer.html",
@@ -360,7 +293,6 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                     request,
                     admin=admin,
                     default_timezone=DEFAULT_TIMEZONE,
-                    source_member=source_member,
                 ),
             )
 
@@ -375,13 +307,8 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
         username: str = Form(...),
         temporary_password: str = Form(...),
         confirm_password: str = Form(...),
-        source_member_id: int = Form(0),
     ):
-        form_redirect = (
-            f"/admin/freelancers/new?source_member_id={source_member_id}"
-            if source_member_id > 0
-            else "/admin/freelancers/new"
-        )
+        form_redirect = "/admin/freelancers/new"
 
         if not validate_csrf(request, csrf):
             set_flash(request, "Invalid form token.", "error")
@@ -403,34 +330,6 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                     "/admin/login",
                     status_code=303,
                 )
-
-            source_member = None
-            if source_member_id > 0:
-                candidate = database.get(ProjectSourceMember, source_member_id)
-                if (
-                    candidate is None
-                    or candidate.source_system != PROJECT_SYNC_SOURCE_SYSTEM
-                ):
-                    set_flash(
-                        request,
-                        "Project source member was not found.",
-                        "error",
-                    )
-                    return RedirectResponse(
-                        "/admin/integration/projects",
-                        status_code=303,
-                    )
-                if candidate.freelancer_id is not None:
-                    set_flash(
-                        request,
-                        "This project member is already mapped to an HR freelancer.",
-                        "error",
-                    )
-                    return RedirectResponse(
-                        "/admin/integration/projects",
-                        status_code=303,
-                    )
-                source_member = candidate
 
             if not freelancer_code or len(freelancer_code) > 30:
                 set_flash(
@@ -509,14 +408,6 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
             database.add(account)
             database.flush()
 
-            mapped_task_count = 0
-            if source_member is not None:
-                mapped_task_count = map_source_member(
-                    database,
-                    source_member=source_member,
-                    freelancer_id=freelancer.id,
-                )
-
             write_audit(
                 database,
                 actor_type="HR_ADMIN",
@@ -526,15 +417,7 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                 target_type="FREELANCER",
                 target_id=freelancer.id,
                 details=(
-                    f"Created freelancer {freelancer_code} "
-                    f"with username {username}."
-                    + (
-                        f" Created from projects.db member "
-                        f"'{source_member.source_member_name}' and mapped "
-                        f"{mapped_task_count} synchronized task(s)."
-                        if source_member is not None
-                        else ""
-                    )
+                    f"Created freelancer {freelancer_code} with username {username}."
                 ),
             )
 
@@ -551,17 +434,6 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                     "/admin/freelancers/new",
                     status_code=303,
                 )
-
-        if source_member_id > 0:
-            set_flash(
-                request,
-                "HR freelancer account created and project member mapped successfully.",
-                "success",
-            )
-            return RedirectResponse(
-                "/admin/integration/projects",
-                status_code=303,
-            )
 
         set_flash(
             request,

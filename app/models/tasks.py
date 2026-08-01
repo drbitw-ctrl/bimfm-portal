@@ -20,6 +20,11 @@ class DailyTask(Base):
     freelancer_id: Mapped[int] = mapped_column(
         ForeignKey("freelancers.id", ondelete="RESTRICT"), nullable=False
     )
+    # Release 20.7: PostgreSQL-native assignment link. The legacy synchronized
+    # task reference remains nullable so older DTR entries continue to render.
+    portal_task_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("portal_tasks.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     synced_project_task_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("synced_project_tasks.id", ondelete="SET NULL"), nullable=True
     )

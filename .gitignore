@@ -7,7 +7,3 @@ data/*.db-wal
 backups/*
 !backups/.gitkeep
 .env
-project_sync_agent/config.json
-project_sync_agent/last_sync_result.json
-project_sync_agent/dry_run_payload.json
-project_sync_agent/logs/*.log

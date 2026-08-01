@@ -1,9 +1,3 @@
-databases:
-  - name: bimfm-portal-db
-    plan: basic-256mb
-    databaseName: bimfm_portal
-    user: bimfm_portal
-
 services:
   - type: web
     name: bimfm-portal
@@ -17,9 +11,7 @@ services:
       - key: PYTHON_VERSION
         value: 3.12.8
       - key: DATABASE_URL
-        fromDatabase:
-          name: bimfm-portal-db
-          property: connectionString
+        sync: false
       - key: BIMFM_ENV
         value: "production"
       - key: BIMFM_LOG_LEVEL
@@ -27,12 +19,4 @@ services:
       - key: BIMFM_COOKIE_HTTPS_ONLY
         value: "true"
       - key: BIMFM_SESSION_SECRET
-        generateValue: true
-      - key: BIMFM_PROJECT_SYNC_TOKEN
-        generateValue: true
-      - key: BIMFM_BOOTSTRAP_ADMIN_USERNAME
-        sync: false
-      - key: BIMFM_BOOTSTRAP_ADMIN_DISPLAY_NAME
-        sync: false
-      - key: BIMFM_BOOTSTRAP_ADMIN_PASSWORD
         sync: false

@@ -55,10 +55,13 @@ def configure_structured_logging(level: str = "INFO") -> None:
     root.setLevel(numeric_level)
 
 
-def validate_environment(*, production: bool, session_secret: str, sync_token: str, cookie_https_only: bool, database_url: str) -> list[EnvironmentCheck]:
+def validate_environment(*, production: bool, session_secret: str, sync_token: str = "", cookie_https_only: bool, database_url: str) -> list[EnvironmentCheck]:
+    # ``sync_token`` is accepted for backward-compatible callers, but Release
+    # 20.7 no longer requires project synchronization in production.
+    del sync_token
     checks = [
         EnvironmentCheck("session_secret", len(session_secret) >= 32 and "CHANGE-THIS" not in session_secret, "BIMFM_SESSION_SECRET must be a non-default value of at least 32 characters."),
-        EnvironmentCheck("project_sync_token", len(sync_token) >= 24 and "CHANGE-ME" not in sync_token, "BIMFM_PROJECT_SYNC_TOKEN must be a non-default value of at least 24 characters."),
+        EnvironmentCheck("postgresql_native_projects", True, "Project data is read directly from PostgreSQL-native portal tables."),
         EnvironmentCheck("secure_cookie", cookie_https_only or not production, "BIMFM_COOKIE_HTTPS_ONLY must be true in production."),
         EnvironmentCheck("production_database", not production or not database_url.startswith("sqlite"), "Use PostgreSQL instead of SQLite in production."),
     ]

@@ -118,7 +118,7 @@
             <span class="eyebrow">CURRENT PROJECT ASSIGNMENTS</span>
             <h2>My Assigned Tasks</h2>
             <p class="muted">
-                Read-only snapshot · Last synchronized {{ project_sync_time }}
+                Live PostgreSQL assignments · No synchronization required
             </p>
         </div>
         <a class="button secondary" href="/projects">View All Assignments</a>
@@ -146,8 +146,7 @@
     {% else %}
     <div class="empty-state compact-empty">
         <p>
-            No active synchronized assignments are currently linked to your
-            HR account.
+            No active PostgreSQL project tasks are currently assigned to your account.
         </p>
     </div>
     {% endif %}

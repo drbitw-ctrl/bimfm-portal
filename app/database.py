@@ -58,7 +58,7 @@ def _run_sqlite_schema_migrations() -> None:
             "leave_records": {"duration_minutes": "INTEGER NOT NULL DEFAULT 480", "comp_leave_minutes_used": "INTEGER NOT NULL DEFAULT 0", "source_request_id": "INTEGER"},
             "monthly_dtr": {"approved_overtime_minutes": "INTEGER NOT NULL DEFAULT 0", "comp_leave_earned_minutes": "INTEGER NOT NULL DEFAULT 0", "comp_leave_used_minutes": "INTEGER NOT NULL DEFAULT 0", "comp_leave_opening_balance_minutes": "INTEGER NOT NULL DEFAULT 0", "comp_leave_closing_balance_minutes": "INTEGER NOT NULL DEFAULT 0", "daily_task_entries": "INTEGER NOT NULL DEFAULT 0", "daily_task_minutes": "INTEGER NOT NULL DEFAULT 0", "task_missing_days": "INTEGER NOT NULL DEFAULT 0", "task_variance_days": "INTEGER NOT NULL DEFAULT 0", "task_review_status": "TEXT NOT NULL DEFAULT 'UNREVIEWED'", "pending_overtime_claims": "INTEGER NOT NULL DEFAULT 0", "pending_leave_requests": "INTEGER NOT NULL DEFAULT 0"},
             "dtr_daily_lines": {"approved_overtime_minutes": "INTEGER NOT NULL DEFAULT 0", "comp_leave_earned_minutes": "INTEGER NOT NULL DEFAULT 0", "comp_leave_used_minutes": "INTEGER NOT NULL DEFAULT 0", "task_minutes": "INTEGER NOT NULL DEFAULT 0", "task_entry_count": "INTEGER NOT NULL DEFAULT 0", "task_summary": "TEXT", "task_variance_minutes": "INTEGER NOT NULL DEFAULT 0"},
-            "daily_tasks": {"synced_project_task_id": "INTEGER", "completion_percentage": "INTEGER NOT NULL DEFAULT 0"},
+            "daily_tasks": {"portal_task_id": "INTEGER", "synced_project_task_id": "INTEGER", "completion_percentage": "INTEGER NOT NULL DEFAULT 0"},
             "overtime_claims": {"planned_start_utc": "DATETIME", "planned_end_utc": "DATETIME", "actual_time_out_utc": "DATETIME", "claimed_time_out_utc": "DATETIME", "approved_time_out_utc": "DATETIME", "missing_time_out_reason": "TEXT", "final_submitted_at": "DATETIME"},
             "dtr_task_lines": {"completion_percentage": "INTEGER NOT NULL DEFAULT 0"},
         }
@@ -67,6 +67,7 @@ def _run_sqlite_schema_migrations() -> None:
                 _ensure_column(connection, table_name, column_name, definition)
         connection.execute("UPDATE hr_admin_accounts SET role = 'ADMIN' WHERE role IS NULL OR TRIM(role) = ''")
         connection.execute("CREATE INDEX IF NOT EXISTS ix_daily_tasks_synced_project_task ON daily_tasks (synced_project_task_id)")
+        connection.execute("CREATE INDEX IF NOT EXISTS ix_daily_tasks_portal_task_id ON daily_tasks (portal_task_id)")
         connection.commit()
 
 

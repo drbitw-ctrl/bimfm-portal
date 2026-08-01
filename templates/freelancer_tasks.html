@@ -60,9 +60,9 @@
         </div>
     </div>
     <p class="muted small-note">
-        The daily report will retain a reference to this synchronized
-        assignment. Previously submitted reports will not change when the
-        project assignment is updated later.
+        The daily report will retain a reference to this PostgreSQL portal task.
+        Previously submitted reports remain unchanged when the project task is
+        updated later.
     </p>
 </section>
 {% endif %}
@@ -71,7 +71,7 @@
     <h2>Add Daily Task</h2>
     <form method="post" action="/tasks/new" class="form-grid">
         <input type="hidden" name="csrf" value="{{ csrf_token }}">
-        <input type="hidden" name="synced_project_task_id"
+        <input type="hidden" name="portal_task_id"
                value="{{ selected_project_task.id if selected_project_task else 0 }}">
 
         <div>
@@ -181,8 +181,10 @@
                     <small>{{ row.project_name or '' }}</small>
                 </td>
                 <td>
-                    {% if row.synced_project_task_id %}
-                    <span class="badge good">Assigned Task</span>
+                    {% if row.portal_task_id %}
+                    <span class="badge good">Portal Task</span>
+                    {% elif row.synced_project_task_id %}
+                    <span class="badge">Legacy Link</span>
                     {% else %}
                     <span class="badge">Manual</span>
                     {% endif %}

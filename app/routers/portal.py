@@ -1,11 +1,8 @@
-"""Project-management foundation routes for BIMFM Portal v2.
-
-This module is intentionally isolated from ``app.main``.  The router factory
-accepts the existing authentication and template helpers so the legacy HR
-routes can remain operational while the application is refactored in stages.
-"""
+"""PostgreSQL-native BIMFM Portal project modules."""
+from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import date
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request
@@ -15,8 +12,13 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import PortalProject, PortalTask, SyncedProjectTask
-
+from app.models import Freelancer, PortalProject, PortalTask
+from app.portal_project_service import (
+    active_task_overview_rows,
+    project_data_health,
+    project_overview_rows,
+    team_assignment_rows,
+)
 
 AdminResolver = Callable[[Request, Session], Any]
 TemplateContextBuilder = Callable[..., dict[str, Any]]
@@ -28,14 +30,12 @@ def create_portal_router(
     get_current_admin: AdminResolver,
     template_context: TemplateContextBuilder,
 ) -> APIRouter:
-    """Build the project-management router using existing app helpers."""
-
     router = APIRouter(tags=["BIMFM Portal"])
 
     definitions = {
         "my-work": (
             "My Work",
-            "Your assigned work, approvals, attendance and upcoming deadlines.",
+            "Current operational tasks from the shared PostgreSQL project database.",
         ),
         "projects": (
             "Projects",
@@ -43,23 +43,23 @@ def create_portal_router(
         ),
         "tasks": (
             "Tasks",
-            "Search, assign and update operational tasks from one shared database.",
+            "Active and completed operational tasks with direct PostgreSQL assignments.",
         ),
         "team-workload": (
             "Team Availability / Workload",
-            "Live attendance, active assignments and capacity by member.",
+            "All active members, including members with zero assignments.",
         ),
         "performance": (
             "Performance",
-            "Operational completion, timeliness and workload indicators.",
+            "Project completion, open work, overdue tasks, and team coverage.",
         ),
         "reports": (
             "Project Reports",
-            "Project progress, overdue work and delivery reporting.",
+            "Project progress and delivery status from portal-native records.",
         ),
         "calendar": (
             "Calendar",
-            "Project deadlines, milestones, leave, overtime and holidays.",
+            "Upcoming project and task deadlines.",
         ),
     }
 
@@ -78,23 +78,21 @@ def create_portal_router(
             module_name,
             ("BIMFM Portal", "Unified operations module."),
         )
-
-        project_count = int(
-            database.scalar(select(func.count(PortalProject.id))) or 0
-        )
-        task_count = int(database.scalar(select(func.count(PortalTask.id))) or 0)
-        active_count = int(
+        health = project_data_health(database)
+        completed_task_count = int(
             database.scalar(
                 select(func.count(PortalTask.id)).where(
-                    PortalTask.status.notin_(["COMPLETED", "CANCELLED"])
+                    PortalTask.status == "COMPLETED"
                 )
             )
             or 0
         )
-        synced_count = int(
+        overdue_task_count = int(
             database.scalar(
-                select(func.count(SyncedProjectTask.id)).where(
-                    SyncedProjectTask.is_active.is_(True)
+                select(func.count(PortalTask.id)).where(
+                    PortalTask.status.notin_(("COMPLETED", "CANCELLED")),
+                    PortalTask.due_date.is_not(None),
+                    PortalTask.due_date < date.today(),
                 )
             )
             or 0
@@ -102,67 +100,145 @@ def create_portal_router(
 
         cards = [
             {
-                "label": "Unified projects",
-                "value": project_count,
-                "note": "Shared database records",
-            },
-            {
-                "label": "Unified tasks",
-                "value": task_count,
-                "note": "Portal-native records",
+                "label": "Projects",
+                "value": health.project_count,
+                "note": "PostgreSQL project records",
             },
             {
                 "label": "Active tasks",
-                "value": active_count,
+                "value": health.active_task_count,
                 "note": "Open operational work",
             },
             {
-                "label": "Legacy synced rows",
-                "value": synced_count,
-                "note": "Available for migration",
+                "label": "Completed tasks",
+                "value": completed_task_count,
+                "note": "Portal task history",
+            },
+            {
+                "label": "Members without projects",
+                "value": health.unassigned_member_count,
+                "note": "Visible in Team Workload",
             },
         ]
 
         rows: list[list[Any]] = []
         headings: list[str] = []
+        section_title = "PostgreSQL-native records"
+        section_note = (
+            "This module reads the migrated project tables directly. "
+            "No projects.db sync or name mapping is required."
+        )
 
         if module_name == "projects":
-            headings = ["Code", "Project", "Status", "Progress", "Deadline"]
-            projects = database.scalars(
-                select(PortalProject)
-                .order_by(PortalProject.updated_at.desc())
-                .limit(50)
-            ).all()
+            headings = [
+                "Code",
+                "Project",
+                "Status",
+                "Progress",
+                "Members",
+                "Active Tasks",
+                "Deadline",
+            ]
             rows = [
                 [
-                    project.project_code,
-                    project.name,
-                    project.status,
-                    f"{project.progress}%",
-                    project.deadline or "—",
+                    row["code"],
+                    row["name"],
+                    row["status"],
+                    f"{row['progress']}%",
+                    row["member_count"],
+                    row["active_task_count"],
+                    row["deadline"],
                 ]
-                for project in projects
+                for row in project_overview_rows(database, limit=100)
             ]
         elif module_name in {"tasks", "my-work"}:
-            headings = ["Task", "Status", "Priority", "Progress", "Due"]
-            query = select(PortalTask).order_by(PortalTask.updated_at.desc()).limit(50)
-            if view == "active":
-                query = query.where(
-                    PortalTask.status.notin_(["COMPLETED", "CANCELLED"])
-                )
-            elif view == "completed":
-                query = query.where(PortalTask.status == "COMPLETED")
-
-            tasks = database.scalars(query).all()
+            headings = [
+                "Project",
+                "Task",
+                "Assignees",
+                "Status",
+                "Priority",
+                "Progress",
+                "Due",
+            ]
+            task_rows = active_task_overview_rows(database, limit=200)
+            if view == "completed":
+                completed = database.execute(
+                    select(PortalTask, PortalProject)
+                    .join(PortalProject, PortalProject.id == PortalTask.project_id)
+                    .where(PortalTask.status == "COMPLETED")
+                    .order_by(PortalTask.updated_at.desc())
+                    .limit(200)
+                ).all()
+                rows = [
+                    [
+                        project.project_code,
+                        task.title,
+                        "See project team",
+                        task.status,
+                        task.priority,
+                        f"{task.progress}%",
+                        task.due_date or "—",
+                    ]
+                    for task, project in completed
+                ]
+            else:
+                rows = [
+                    [
+                        row["project_code"],
+                        row["title"],
+                        row["assignees"],
+                        row["status"],
+                        row["priority"],
+                        f"{row['progress']}%",
+                        row["due_date"],
+                    ]
+                    for row in task_rows
+                ]
+        elif module_name == "team-workload":
+            headings = [
+                "Member",
+                "Code",
+                "Projects",
+                "Active Tasks",
+                "Completed",
+                "Overdue",
+                "Status",
+            ]
             rows = [
                 [
-                    task.title,
-                    task.status,
-                    task.priority,
-                    f"{task.progress}%",
-                    task.due_date or "—",
+                    row["name"],
+                    row["code"],
+                    row["project_count"],
+                    row["active_task_count"],
+                    row["completed_task_count"],
+                    row["overdue_task_count"],
+                    row["assignment_status"],
                 ]
-                for task in tasks
+                for row in team_assignment_rows(database)
+            ]
+        elif module_name in {"performance", "reports"}:
+            headings = ["Indicator", "Result", "Meaning"]
+            rows = [
+                ["Active projects", health.project_count, "Projects available in PostgreSQL"],
+                ["Open tasks", health.active_task_count, "Not completed or cancelled"],
+                ["Overdue tasks", overdue_task_count, "Open tasks past due date"],
+                ["Members with projects", health.assigned_member_count, "Active project membership"],
+                ["Members without projects", health.unassigned_member_count, "Needs assignment review"],
+                ["Open tasks without assignees", health.active_tasks_without_assignees, "Needs task assignment"],
+            ]
+        elif module_name == "calendar":
+            headings = ["Due Date", "Project", "Task", "Status", "Progress"]
+            rows = [
+                [
+                    row["due_date"],
+                    row["project_code"],
+                    row["title"],
+                    row["status"],
+                    f"{row['progress']}%",
+                ]
+                for row in active_task_overview_rows(database, limit=200)
+                if row["due_date"] != "—"
             ]
 
         return templates.TemplateResponse(
@@ -175,6 +251,8 @@ def create_portal_router(
                 cards=cards,
                 headings=headings,
                 rows=rows,
+                section_title=section_title,
+                section_note=section_note,
                 account=account,
             ),
         )

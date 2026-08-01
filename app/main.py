@@ -27,9 +27,6 @@ from app.config import (
     DATABASE_PATH,
     DEFAULT_TIMEZONE,
     MAX_FAILED_LOGIN_ATTEMPTS,
-    PROJECT_SYNC_SOURCE_SYSTEM,
-    PROJECT_SYNC_TOKEN,
-    PROJECT_SYNC_USING_DEFAULT_TOKEN,
     SESSION_SECRET,
     BOOTSTRAP_ADMIN_USERNAME,
     BOOTSTRAP_ADMIN_DISPLAY_NAME,
@@ -71,11 +68,8 @@ from app.models import (
     PayrollMonthSummary,
     OvertimeClaim,
     CompLeaveTransaction,
-    ProjectSourceMember,
-    ProjectSyncRun,
-    SyncedProjectTask,
     TaskMonthReview,
-    WorkSchedule,    PortalProject,    PortalTask,    PortalTaskAssignment,
+    WorkSchedule, PortalProject, PortalProjectMember, PortalTask, PortalTaskAssignment,
 )
 from app.security import (
     hash_password,
@@ -122,12 +116,14 @@ from app.hr_workflow import (
     reject_overtime_claim,
     task_minutes_for_date,
 )
-from app.project_integration import (
-    ProjectTaskSyncPayload,
-    apply_project_task_snapshot,
-    current_freelancer_project_tasks,
-    last_successful_sync,
-    map_source_member,
+from app.portal_project_service import (
+    active_task_counts_by_freelancer,
+    active_task_overview_rows,
+    current_freelancer_portal_tasks,
+    portal_task_for_freelancer,
+    project_data_health,
+    project_overview_rows,
+    team_assignment_rows,
 )
 
 
@@ -186,7 +182,7 @@ async def lifespan(app: FastAPI):
     validate_environment(
         production=IS_PRODUCTION,
         session_secret=SESSION_SECRET,
-        sync_token=PROJECT_SYNC_TOKEN,
+        sync_token="",
         cookie_https_only=COOKIE_HTTPS_ONLY,
         database_url=DATABASE_URL,
     )
@@ -314,47 +310,6 @@ def access_denied(request: Request):
         context=template_context(request),
         status_code=403,
     )
-
-
-
-
-
-
-
-
-
-def project_sync_token_valid(request: Request) -> bool:
-    submitted = request.headers.get("X-BIMFM-Sync-Token", "")
-    return bool(
-        submitted
-        and secrets.compare_digest(submitted, PROJECT_SYNC_TOKEN)
-    )
-
-
-def format_sync_timestamp(value: Optional[datetime]) -> str:
-    if value is None:
-        return "Never"
-    normalized = normalized_utc(value)
-    if normalized is None:
-        return "Never"
-    return normalized.strftime("%Y-%m-%d %H:%M:%S UTC")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

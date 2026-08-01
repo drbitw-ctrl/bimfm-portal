@@ -25,13 +25,13 @@
   <a class="kpi-card tone-red" href="/admin/attendance/today"><span class="kpi-icon">!</span><div><small>No Record</small><strong>{{ today_no_record }}</strong><p>Requires attendance follow-up</p></div></a>
   <a class="kpi-card tone-amber" href="/admin/leave-requests"><span class="kpi-icon">↗</span><div><small>Pending Leave</small><strong>{{ pending_leave_count }}</strong><p>Awaiting review</p></div></a>
   <a class="kpi-card tone-purple" href="/admin/overtime"><span class="kpi-icon">＋</span><div><small>Pending Overtime</small><strong>{{ pending_overtime_count }}</strong><p>Awaiting review</p></div></a>
-  <a class="kpi-card tone-slate" href="/admin/integration/projects"><span class="kpi-icon">▦</span><div><small>Active Assignments</small><strong>{{ active_task_count }}</strong><p>{{ overdue_task_count }} overdue task{{ '' if overdue_task_count == 1 else 's' }}</p></div></a>
+  <a class="kpi-card tone-slate" href="/admin/project-team"><span class="kpi-icon">▦</span><div><small>Active Assignments</small><strong>{{ active_task_count }}</strong><p>{{ overdue_task_count }} overdue task{{ '' if overdue_task_count == 1 else 's' }}</p></div></a>
 </section>
 
 <div class="dashboard-main-grid">
   <section class="dashboard-panel workforce-panel">
     <div class="panel-heading-modern">
-      <div><span class="eyebrow">LIVE WORKFORCE</span><h2>Today’s team status</h2><p>Attendance and current Task Manager workload in one view.</p></div>
+      <div><span class="eyebrow">LIVE WORKFORCE</span><h2>Today’s team status</h2><p>Attendance and PostgreSQL-native project workload in one view.</p></div>
       <a class="text-link" href="/admin/attendance/today">View all →</a>
     </div>
     {% if workforce_rows %}
@@ -63,10 +63,12 @@
     </section>
 
     <section class="dashboard-panel sync-card">
-      <div class="panel-heading-modern compact"><div><span class="eyebrow">TASK MANAGER</span><h2>Integration health</h2></div><span class="live-dot"></span></div>
-      <div class="sync-metric"><span>Last successful sync</span><strong>{{ last_project_sync }}</strong></div>
-      <div class="sync-metric"><span>Unmapped team members</span><strong>{{ unmapped_project_members }}</strong></div>
-      <a class="button secondary full-button" href="/admin/integration/projects">Manage integration</a>
+      <div class="panel-heading-modern compact"><div><span class="eyebrow">POSTGRESQL PROJECT DATA</span><h2>Assignment health</h2></div><span class="live-dot"></span></div>
+      <div class="sync-metric"><span>Projects in PostgreSQL</span><strong>{{ project_count }}</strong></div>
+      <div class="sync-metric"><span>Members with project assignments</span><strong>{{ assigned_project_members }}</strong></div>
+      <div class="sync-metric"><span>Members without project assignments</span><strong>{{ unassigned_project_members }}</strong></div>
+      <div class="sync-metric"><span>Open tasks without assignees</span><strong>{{ active_tasks_without_assignees }}</strong></div>
+      <a class="button secondary full-button" href="/admin/project-team">Open project team</a>
     </section>
   </aside>
 </div>

@@ -2,85 +2,21 @@
 {% block title %}Create Freelancer · {{ app_name }}{% endblock %}
 {% block content %}
 <div class="toolbar">
-    <div>
-        <span class="eyebrow">ACCOUNT CREATION</span>
-        <h1>Create Freelancer Account</h1>
-        {% if source_member %}
-        <p class="muted">
-            Creating an HR account for projects.db member
-            <strong>{{ source_member.source_member_name }}</strong>.
-            Their synchronized tasks will be mapped automatically.
-        </p>
-        {% endif %}
-    </div>
-    <a class="button secondary"
-       href="{% if source_member %}/admin/integration/projects{% else %}/admin/freelancers{% endif %}">
-        Back
-    </a>
+    <div><span class="eyebrow">ACCOUNT CREATION</span><h1>Create Freelancer Account</h1><p class="muted">Create an HR account. Project membership and task assignments are managed directly in PostgreSQL.</p></div>
+    <a class="button secondary" href="/admin/freelancers">Back</a>
 </div>
-
 <section class="panel">
-    <form method="post" action="/admin/freelancers/new"
-          class="form-grid">
+    <form method="post" action="/admin/freelancers/new" class="form-grid">
         <input type="hidden" name="csrf" value="{{ csrf_token }}">
-        <input type="hidden" name="source_member_id"
-               value="{{ source_member.id if source_member else 0 }}">
-
-        <div>
-            <label>Freelancer Code</label>
-            <input name="freelancer_code"
-                   placeholder="PH-001" maxlength="30" required>
-        </div>
-
-        <div>
-            <label>{{ t('Full Name') }}</label>
-            <input name="full_name"
-                   value="{{ source_member.source_member_name if source_member else '' }}"
-                   required>
-        </div>
-
-        <div>
-            <label>{{ t('Email') }}</label>
-            <input type="email" name="email">
-        </div>
-
-        <div>
-            <label>Timezone</label>
-            <input name="timezone_name"
-                   value="{{ default_timezone }}" required>
-        </div>
-
-        <div>
-            <label>{{ t('Username') }}</label>
-            <input name="username" autocomplete="off" required>
-        </div>
-
-        <div>
-            <label>Temporary Password</label>
-            <input type="password" name="temporary_password"
-                   minlength="8" autocomplete="new-password" required>
-        </div>
-
-        <div>
-            <label>Confirm Temporary Password</label>
-            <input type="password" name="confirm_password"
-                   minlength="8" autocomplete="new-password" required>
-        </div>
-
-        <div class="full-width note-box">
-            The freelancer will be required to change the temporary
-            password after the first successful login.
-        </div>
-
-        <div class="full-width">
-            <button class="primary" type="submit">
-                {% if source_member %}
-                Create Account and Map Project Member
-                {% else %}
-                Create Freelancer Account
-                {% endif %}
-            </button>
-        </div>
+        <div><label>Freelancer Code</label><input name="freelancer_code" placeholder="PH-001" maxlength="30" required></div>
+        <div><label>{{ t('Full Name') }}</label><input name="full_name" required></div>
+        <div><label>{{ t('Email') }}</label><input type="email" name="email"></div>
+        <div><label>Timezone</label><input name="timezone_name" value="{{ default_timezone }}" required></div>
+        <div><label>{{ t('Username') }}</label><input name="username" autocomplete="off" required></div>
+        <div><label>Temporary Password</label><input type="password" name="temporary_password" minlength="8" autocomplete="new-password" required></div>
+        <div><label>Confirm Temporary Password</label><input type="password" name="confirm_password" minlength="8" autocomplete="new-password" required></div>
+        <div class="full-width note-box">The freelancer will be required to change the temporary password after the first successful login.</div>
+        <div class="full-width"><button class="primary" type="submit">Create Freelancer Account</button></div>
     </form>
 </section>
 {% endblock %}
