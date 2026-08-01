@@ -8,6 +8,7 @@
     <p>{{ 'Review attendance, approved requests, DTRs, and finance-ready summaries.' if current_staff_role == 'FINANCE' else 'A clear view of attendance, approvals, assignments, and workforce activity.' }}</p>
     <div class="hero-actions">
       <a class="button light-button" href="/admin/attendance/today">Open attendance</a>
+      {% if can(Permission.PROJECT_EDIT) %}<a class="button glass-button" href="/portal/tasks/new">＋ {{ t('New Task') }}</a>{% endif %}
       <a class="button glass-button" href="/admin/finance">Finance center</a>
     </div>
   </div>
@@ -36,7 +37,7 @@
     </div>
     {% if workforce_rows %}
     <div class="modern-table-wrap">
-      <table class="modern-table">
+      <table class="modern-table smart-table" data-card-table>
         <thead><tr><th>{{ t('Freelancer') }}</th><th>{{ t('Status') }}</th><th>Time in</th><th>Active tasks</th><th></th></tr></thead>
         <tbody>
         {% for row in workforce_rows %}
@@ -81,6 +82,7 @@
   <section class="dashboard-panel quick-launch-panel">
     <div class="panel-heading-modern"><div><span class="eyebrow">QUICK LAUNCH</span><h2>Common workflows</h2><p>Jump directly to daily operational tools.</p></div></div>
     <div class="quick-launch-grid">
+      {% if can(Permission.PROJECT_EDIT) %}<a href="/portal/tasks/new"><span>＋</span><strong>{{ t('New Task') }}</strong><small>Create and assign project work</small></a>{% endif %}
       <a href="/admin/attendance/monthly"><span>01</span><strong>Monthly attendance</strong><small>Review attendance trends</small></a>
       <a href="/admin/dtr"><span>02</span><strong>{{ t('Monthly DTR') }}</strong><small>Generate and review records</small></a>
       <a href="/admin/finance"><span>03</span><strong>Finance center</strong><small>Whole-day payroll review</small></a>

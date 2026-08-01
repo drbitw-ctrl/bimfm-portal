@@ -24,6 +24,8 @@ class RoutePolicy:
 
 
 ROUTE_POLICIES = (
+    RoutePolicy("/portal/tasks/new", Permission.PROJECT_EDIT),
+    RoutePolicy("/portal", Permission.PROJECT_VIEW),
     RoutePolicy("/admin/staff-accounts", Permission.STAFF_MANAGE),
     RoutePolicy("/admin/settings", Permission.SETTINGS_MANAGE),
     RoutePolicy("/admin/integration", Permission.INTEGRATION_MANAGE),
@@ -53,7 +55,7 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
         with SessionLocal() as database:
             principal = principal_from_request(request, database)
             if principal is None:
-                target = "/admin/login" if path.startswith("/admin") else "/login"
+                target = "/admin/login" if path.startswith(("/admin", "/portal")) else "/login"
                 return RedirectResponse(target, status_code=303)
             if not has_permission(principal.role, matched.permission):
                 request.session["flash"] = {

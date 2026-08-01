@@ -51,7 +51,7 @@
 <section class="panel table-panel">
     <h2>Generated DTRs · {{ selected_month }}</h2>
     {% if rows %}
-    <table>
+    <table class="modern-table smart-table" data-card-table>
         <thead><tr><th>{{ t('Freelancer') }}</th><th>{{ t('Status') }}</th><th>Present</th><th>Late</th><th>Absent</th><th>{{ t('Leave') }}</th><th>Incomplete</th><th>Rendered</th><th>Action</th></tr></thead>
         <tbody>
         {% for row in rows %}

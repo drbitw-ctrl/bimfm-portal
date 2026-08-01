@@ -86,7 +86,7 @@
 <section class="panel table-panel">
     <h2>Holidays · {{ selected_month }}</h2>
     {% if holidays %}
-    <table>
+    <table class="modern-table smart-table" data-card-table>
         <thead><tr><th>{{ t('Date') }}</th><th>{{ t('Name') }}</th><th>Type</th><th>Paid</th><th>Action</th></tr></thead>
         <tbody>
         {% for holiday in holidays %}
@@ -111,7 +111,7 @@
 <section class="panel table-panel">
     <h2>Approved Leave · {{ selected_month }}</h2>
     {% if leave_rows %}
-    <table>
+    <table class="modern-table smart-table" data-card-table>
         <thead><tr><th>{{ t('Date') }}</th><th>{{ t('Freelancer') }}</th><th>Leave Type</th><th>Paid</th><th>{{ t('Notes') }}</th><th>Action</th></tr></thead>
         <tbody>
         {% for row in leave_rows %}

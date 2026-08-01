@@ -43,24 +43,36 @@
     }
   }
 
-  const currentPath = window.location.pathname;
+  const currentUrl = new URL(window.location.href);
+  const currentPath = currentUrl.pathname;
   const navLinks = Array.from(document.querySelectorAll('.side-nav nav a'));
   let bestMatch = null;
   let bestLength = -1;
 
   navLinks.forEach((link) => {
-    const linkPath = normalizePath(link.getAttribute('href') || '');
-    const exactHome = linkPath === '/admin' || linkPath === '/attendance';
-    const matches = exactHome ? currentPath === linkPath : currentPath.startsWith(linkPath);
+    const linkPath = link.dataset.navPath || normalizePath(link.getAttribute('href') || '');
+    const exact = link.dataset.navExact !== 'false';
+    const requiredQuery = link.dataset.navQuery || '';
+    const pathMatches = exact
+      ? currentPath === linkPath
+      : (currentPath === linkPath || currentPath.startsWith(`${linkPath}/`));
+    const queryMatches = !requiredQuery || currentUrl.searchParams.toString() === requiredQuery;
+    const matches = pathMatches && queryMatches;
+
     if (matches && linkPath.length > bestLength) {
       bestMatch = link;
       bestLength = linkPath.length;
     }
+
     link.addEventListener('click', () => {
-      if (window.innerWidth <= 1000) closeNavigation();
+      if (window.innerWidth <= 1050) closeNavigation();
     });
   });
-  if (bestMatch) bestMatch.classList.add('active');
+
+  if (!document.querySelector('.side-nav nav a.active') && bestMatch) {
+    bestMatch.classList.add('active');
+    bestMatch.setAttribute('aria-current', 'page');
+  }
 
   const liveDate = document.querySelector('[data-live-date]');
   if (liveDate) {
@@ -113,6 +125,17 @@
   }
 
   document.querySelectorAll('[data-table-toolbar]').forEach(prepareTableFilter);
+
+  function prepareResponsiveTable(table) {
+    const headings = Array.from(table.querySelectorAll('thead th')).map((cell) => cell.textContent.trim());
+    table.querySelectorAll('tbody tr').forEach((row) => {
+      Array.from(row.children).forEach((cell, index) => {
+        if (!cell.dataset.label && headings[index]) cell.dataset.label = headings[index];
+      });
+    });
+  }
+
+  document.querySelectorAll('table[data-card-table]').forEach(prepareResponsiveTable);
 
   document.querySelectorAll('form[data-submit-lock]').forEach((form) => {
     form.addEventListener('submit', () => {

@@ -1,27 +1,91 @@
-"""PostgreSQL-native BIMFM Portal project modules."""
+"""PostgreSQL-native BIMFM Portal project modules and task creation."""
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import date
-from typing import Any
+from datetime import date, datetime, time as clock_time, timezone
+from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.auth.permissions import Permission, has_permission, normalize_role
 from app.database import get_db
-from app.models import Freelancer, PortalProject, PortalTask
+from app.models import (
+    HRAdminAccount,
+    PortalProject,
+    PortalProjectMember,
+    PortalTask,
+    PortalTaskAssignment,
+    ProjectMember,
+)
 from app.portal_project_service import (
     active_task_overview_rows,
     project_data_health,
     project_overview_rows,
     team_assignment_rows,
 )
+from app.web_helpers import set_flash, validate_csrf, write_audit
 
 AdminResolver = Callable[[Request, Session], Any]
 TemplateContextBuilder = Callable[..., dict[str, Any]]
+
+TASK_STATUSES = (
+    ("NOT_STARTED", "Not Started"),
+    ("IN_PROGRESS", "In Progress"),
+    ("FOR_REVIEW", "Completed — For Review"),
+    ("COMPLETED", "Completed"),
+    ("ON_HOLD", "On Hold"),
+    ("UNASSIGNED", "Unassigned"),
+)
+TASK_PRIORITIES = (
+    ("LOW", "Low"),
+    ("NORMAL", "Medium"),
+    ("HIGH", "High"),
+    ("URGENT", "Critical"),
+)
+TASK_DISCIPLINES = (
+    "Architecture",
+    "Structure",
+    "MEP",
+    "GE",
+    "Civil Works",
+)
+
+
+def _parse_optional_date(value: str, *, label: str) -> Optional[date]:
+    text = (value or "").strip()
+    if not text:
+        return None
+    try:
+        return date.fromisoformat(text)
+    except ValueError as exc:
+        raise ValueError(f"{label} must use YYYY-MM-DD format.") from exc
+
+
+def _normalized_progress(value: str, *, status: str) -> int:
+    try:
+        progress = int(str(value or "0").strip())
+    except ValueError as exc:
+        raise ValueError("Progress must be a whole number from 0 to 100.") from exc
+    progress = max(0, min(100, progress))
+    if status in {"FOR_REVIEW", "COMPLETED"}:
+        return 100
+    if status == "UNASSIGNED":
+        return 0
+    return progress
+
+
+def _project_member_assignment_id(member: ProjectMember) -> Optional[int]:
+    """Return the PostgreSQL identity used by project/task assignment tables."""
+    if member.source_freelancer_id is not None:
+        return int(member.source_freelancer_id)
+    if member.freelancer_id is not None:
+        return int(member.freelancer_id)
+    return None
 
 
 def create_portal_router(
@@ -62,6 +126,352 @@ def create_portal_router(
             "Upcoming project and task deadlines.",
         ),
     }
+
+    def require_project_editor(request: Request, database: Session):
+        account = get_current_admin(request, database)
+        if not account:
+            return None
+        if not has_permission(normalize_role(account.role), Permission.PROJECT_EDIT):
+            return False
+        return account
+
+    def task_form_context(
+        request: Request,
+        database: Session,
+        *,
+        account: HRAdminAccount,
+        values: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        projects = list(
+            database.scalars(
+                select(PortalProject).order_by(
+                    PortalProject.status,
+                    PortalProject.project_code,
+                    PortalProject.name,
+                )
+            ).all()
+        )
+        project_members = list(
+            database.scalars(
+                select(ProjectMember)
+                .where(ProjectMember.is_active.is_(True))
+                .order_by(ProjectMember.member_name, ProjectMember.id)
+            ).all()
+        )
+        project_members = [
+            member
+            for member in project_members
+            if _project_member_assignment_id(member) is not None
+        ]
+        engineers = list(
+            database.scalars(
+                select(HRAdminAccount)
+                .where(HRAdminAccount.is_active.is_(True))
+                .order_by(HRAdminAccount.display_name, HRAdminAccount.username)
+            ).all()
+        )
+        defaults = {
+            "existing_project_id": 0,
+            "project_code": "",
+            "project_name": "",
+            "project_engineer_id": account.id,
+            "task_title": "",
+            "start_date": date.today().isoformat(),
+            "deadline": "",
+            "completion_date": "",
+            "status": "NOT_STARTED",
+            "priority": "NORMAL",
+            "discipline": "Architecture",
+            "project_member_id": 0,
+            "progress": 0,
+            "task_description": "",
+        }
+        if values:
+            defaults.update(values)
+        return template_context(
+            request,
+            account=account,
+            projects=projects,
+            project_members=project_members,
+            engineers=engineers,
+            task_statuses=TASK_STATUSES,
+            task_priorities=TASK_PRIORITIES,
+            task_disciplines=TASK_DISCIPLINES,
+            form_values=defaults,
+        )
+
+    @router.get("/portal/tasks/new", response_class=HTMLResponse)
+    def new_portal_task_page(
+        request: Request,
+        database: Session = Depends(get_db),
+    ):
+        account = require_project_editor(request, database)
+        if account is None:
+            return RedirectResponse("/admin/login", status_code=303)
+        if account is False:
+            set_flash(request, "You do not have permission to create project tasks.", "error")
+            return RedirectResponse("/access-denied", status_code=303)
+        return templates.TemplateResponse(
+            request=request,
+            name="admin_new_portal_task.html",
+            context=task_form_context(request, database, account=account),
+        )
+
+    @router.post("/portal/tasks/new")
+    def new_portal_task_submit(
+        request: Request,
+        csrf: str = Form(...),
+        existing_project_id: int = Form(0),
+        project_code: str = Form(""),
+        project_name: str = Form(""),
+        project_engineer_id: int = Form(0),
+        task_title: str = Form(...),
+        start_date: str = Form(""),
+        deadline: str = Form(""),
+        completion_date: str = Form(""),
+        status: str = Form("NOT_STARTED"),
+        priority: str = Form("NORMAL"),
+        discipline: str = Form("Architecture"),
+        project_member_id: int = Form(0),
+        progress: str = Form("0"),
+        task_description: str = Form(""),
+        database: Session = Depends(get_db),
+    ):
+        redirect_path = "/portal/tasks/new"
+        if not validate_csrf(request, csrf):
+            set_flash(request, "Invalid form token. Please submit the form again.", "error")
+            return RedirectResponse(redirect_path, status_code=303)
+
+        account = require_project_editor(request, database)
+        if account is None:
+            return RedirectResponse("/admin/login", status_code=303)
+        if account is False:
+            set_flash(request, "You do not have permission to create project tasks.", "error")
+            return RedirectResponse("/access-denied", status_code=303)
+
+        form_values = {
+            "existing_project_id": existing_project_id,
+            "project_code": project_code.strip(),
+            "project_name": project_name.strip(),
+            "project_engineer_id": project_engineer_id,
+            "task_title": task_title.strip(),
+            "start_date": start_date.strip(),
+            "deadline": deadline.strip(),
+            "completion_date": completion_date.strip(),
+            "status": status.strip().upper(),
+            "priority": priority.strip().upper(),
+            "discipline": discipline.strip(),
+            "project_member_id": project_member_id,
+            "progress": progress,
+            "task_description": task_description.strip(),
+        }
+
+        try:
+            normalized_status = form_values["status"]
+            valid_statuses = {value for value, _ in TASK_STATUSES}
+            if normalized_status not in valid_statuses:
+                raise ValueError("Select a valid task status.")
+
+            normalized_priority = form_values["priority"]
+            valid_priorities = {value for value, _ in TASK_PRIORITIES}
+            if normalized_priority not in valid_priorities:
+                raise ValueError("Select a valid task priority.")
+
+            normalized_discipline = form_values["discipline"]
+            if normalized_discipline not in TASK_DISCIPLINES:
+                raise ValueError("Select a valid discipline.")
+
+            title = form_values["task_title"]
+            if not title:
+                raise ValueError("Task title is required.")
+            if len(title) > 300:
+                raise ValueError("Task title must contain 300 characters or fewer.")
+
+            parsed_start = _parse_optional_date(form_values["start_date"], label="Start date")
+            parsed_deadline = _parse_optional_date(form_values["deadline"], label="Deadline")
+            parsed_completion = _parse_optional_date(
+                form_values["completion_date"], label="Completion date"
+            )
+            if parsed_start and parsed_deadline and parsed_start > parsed_deadline:
+                raise ValueError("Start date cannot be later than the deadline.")
+            if normalized_status == "COMPLETED" and parsed_completion is None:
+                raise ValueError("Completion date is required for a completed task.")
+            if parsed_completion and parsed_start and parsed_completion < parsed_start:
+                raise ValueError("Completion date cannot be earlier than the start date.")
+
+            normalized_progress = _normalized_progress(
+                form_values["progress"], status=normalized_status
+            )
+
+            project: Optional[PortalProject]
+            if existing_project_id:
+                project = database.get(PortalProject, existing_project_id)
+                if project is None:
+                    raise ValueError("The selected project was not found.")
+            else:
+                code = form_values["project_code"]
+                name = form_values["project_name"]
+                if not code or not name:
+                    raise ValueError(
+                        "Project code and project name are required when creating a new project."
+                    )
+                duplicate = database.scalar(
+                    select(PortalProject).where(
+                        func.lower(PortalProject.project_code) == code.casefold()
+                    )
+                )
+                if duplicate is not None:
+                    raise ValueError(
+                        "That project code already exists. Select the existing project instead."
+                    )
+                engineer = (
+                    database.get(HRAdminAccount, project_engineer_id)
+                    if project_engineer_id
+                    else None
+                )
+                if project_engineer_id and (engineer is None or not engineer.is_active):
+                    raise ValueError("The selected Project Engineer is unavailable.")
+                project = PortalProject(
+                    project_code=code[:120],
+                    name=name[:300],
+                    description=None,
+                    status="ACTIVE",
+                    priority=normalized_priority,
+                    discipline=normalized_discipline,
+                    start_date=parsed_start,
+                    deadline=parsed_deadline,
+                    completion_date=(parsed_completion if normalized_status == "COMPLETED" else None),
+                    progress=(normalized_progress if normalized_status == "COMPLETED" else 0),
+                    supervisor_id=engineer.id if engineer else None,
+                )
+                database.add(project)
+                database.flush()
+
+            if project_engineer_id:
+                engineer = database.get(HRAdminAccount, project_engineer_id)
+                if engineer is None or not engineer.is_active:
+                    raise ValueError("The selected Project Engineer is unavailable.")
+                if project.supervisor_id is None:
+                    project.supervisor_id = engineer.id
+            if not project.discipline:
+                project.discipline = normalized_discipline
+            if project.start_date is None:
+                project.start_date = parsed_start
+            if project.deadline is None:
+                project.deadline = parsed_deadline
+
+            completed_at = None
+            if normalized_status == "COMPLETED" and parsed_completion:
+                completed_at = datetime.combine(
+                    parsed_completion,
+                    clock_time(hour=12),
+                    tzinfo=timezone.utc,
+                )
+
+            task = PortalTask(
+                project_id=project.id,
+                title=title,
+                description=form_values["task_description"] or title,
+                status=normalized_status,
+                priority=normalized_priority,
+                discipline=normalized_discipline,
+                progress=normalized_progress,
+                start_date=parsed_start,
+                due_date=parsed_deadline,
+                completed_at=completed_at,
+                created_by_admin_id=account.id,
+            )
+            database.add(task)
+            database.flush()
+
+            assigned_member_name = "Unassigned"
+            if project_member_id and normalized_status != "UNASSIGNED":
+                member = database.get(ProjectMember, project_member_id)
+                if member is None or not member.is_active:
+                    raise ValueError("The selected project member is unavailable.")
+                assignment_id = _project_member_assignment_id(member)
+                if assignment_id is None:
+                    raise ValueError(
+                        "The selected project member has no PostgreSQL assignment identity."
+                    )
+                assigned_member_name = member.member_name
+
+                existing_membership = database.scalar(
+                    select(PortalProjectMember).where(
+                        PortalProjectMember.project_id == project.id,
+                        PortalProjectMember.freelancer_id == assignment_id,
+                    )
+                )
+                if existing_membership is None:
+                    database.add(
+                        PortalProjectMember(
+                            project_id=project.id,
+                            freelancer_id=assignment_id,
+                            member_role="MEMBER",
+                            is_active=True,
+                        )
+                    )
+                elif not existing_membership.is_active:
+                    existing_membership.is_active = True
+
+                database.add(
+                    PortalTaskAssignment(
+                        task_id=task.id,
+                        freelancer_id=assignment_id,
+                        assignment_role="ASSIGNEE",
+                    )
+                )
+
+            write_audit(
+                database,
+                actor_type="HR_ADMIN",
+                actor_id=account.id,
+                action="CREATE_PORTAL_TASK",
+                request=request,
+                target_type="PORTAL_TASK",
+                target_id=task.id,
+                details=(
+                    f"project={project.project_code}; title={task.title}; "
+                    f"status={task.status}; progress={task.progress}; "
+                    f"assigned_member={assigned_member_name}"
+                ),
+            )
+            database.commit()
+        except ValueError as exc:
+            database.rollback()
+            set_flash(request, str(exc), "error")
+            return templates.TemplateResponse(
+                request=request,
+                name="admin_new_portal_task.html",
+                context=task_form_context(
+                    request,
+                    database,
+                    account=account,
+                    values=form_values,
+                ),
+                status_code=400,
+            )
+        except IntegrityError:
+            database.rollback()
+            set_flash(
+                request,
+                "The task could not be saved because one of its project or assignment values conflicts with an existing record.",
+                "error",
+            )
+            return templates.TemplateResponse(
+                request=request,
+                name="admin_new_portal_task.html",
+                context=task_form_context(
+                    request,
+                    database,
+                    account=account,
+                    values=form_values,
+                ),
+                status_code=409,
+            )
+
+        set_flash(request, f"Task “{task.title}” was created successfully.", "success")
+        return RedirectResponse("/portal/tasks", status_code=303)
 
     @router.get("/portal/{module_name}", response_class=HTMLResponse)
     def portal_module(
@@ -121,47 +531,44 @@ def create_portal_router(
             },
         ]
 
-        rows: list[list[Any]] = []
-        headings: list[str] = []
+        columns: list[dict[str, str]] = []
+        rows: list[dict[str, Any]] = []
         section_title = "PostgreSQL-native records"
         section_note = (
             "This module reads the migrated project tables directly. "
-            "No projects.db sync or name mapping is required."
+            "No projects.db synchronization is required."
         )
 
         if module_name == "projects":
-            headings = [
-                "Code",
-                "Project",
-                "Status",
-                "Progress",
-                "Members",
-                "Active Tasks",
-                "Deadline",
+            columns = [
+                {"key": "project", "label": "Project", "type": "project"},
+                {"key": "status", "label": "Status", "type": "status"},
+                {"key": "progress", "label": "Progress", "type": "progress"},
+                {"key": "member_count", "label": "Members", "type": "number"},
+                {"key": "active_task_count", "label": "Active Tasks", "type": "number"},
+                {"key": "deadline", "label": "Deadline", "type": "date"},
             ]
             rows = [
-                [
-                    row["code"],
-                    row["name"],
-                    row["status"],
-                    f"{row['progress']}%",
-                    row["member_count"],
-                    row["active_task_count"],
-                    row["deadline"],
-                ]
-                for row in project_overview_rows(database, limit=100)
+                {
+                    "project": {"primary": row["code"], "secondary": row["name"]},
+                    "status": row["status"],
+                    "progress": int(row["progress"]),
+                    "member_count": row["member_count"],
+                    "active_task_count": row["active_task_count"],
+                    "deadline": row["deadline"],
+                }
+                for row in project_overview_rows(database, limit=200)
             ]
         elif module_name in {"tasks", "my-work"}:
-            headings = [
-                "Project",
-                "Task",
-                "Assignees",
-                "Status",
-                "Priority",
-                "Progress",
-                "Due",
+            columns = [
+                {"key": "project", "label": "Project", "type": "project"},
+                {"key": "title", "label": "Task", "type": "text"},
+                {"key": "assignees", "label": "Assignees", "type": "text"},
+                {"key": "status", "label": "Status", "type": "status"},
+                {"key": "priority", "label": "Priority", "type": "priority"},
+                {"key": "progress", "label": "Progress", "type": "progress"},
+                {"key": "due_date", "label": "Due", "type": "date"},
             ]
-            task_rows = active_task_overview_rows(database, limit=200)
             if view == "completed":
                 completed = database.execute(
                     select(PortalTask, PortalProject)
@@ -171,73 +578,90 @@ def create_portal_router(
                     .limit(200)
                 ).all()
                 rows = [
-                    [
-                        project.project_code,
-                        task.title,
-                        "See project team",
-                        task.status,
-                        task.priority,
-                        f"{task.progress}%",
-                        task.due_date or "—",
-                    ]
+                    {
+                        "project": {
+                            "primary": project.project_code,
+                            "secondary": project.name,
+                        },
+                        "title": task.title,
+                        "assignees": "See Project Team",
+                        "status": task.status,
+                        "priority": task.priority,
+                        "progress": int(task.progress or 0),
+                        "due_date": task.due_date or "—",
+                    }
                     for task, project in completed
                 ]
             else:
                 rows = [
-                    [
-                        row["project_code"],
-                        row["title"],
-                        row["assignees"],
-                        row["status"],
-                        row["priority"],
-                        f"{row['progress']}%",
-                        row["due_date"],
-                    ]
-                    for row in task_rows
+                    {
+                        "project": {
+                            "primary": row["project_code"],
+                            "secondary": row["project_name"],
+                        },
+                        "title": row["title"],
+                        "assignees": row["assignees"],
+                        "status": row["status"],
+                        "priority": row["priority"],
+                        "progress": int(row["progress"]),
+                        "due_date": row["due_date"],
+                    }
+                    for row in active_task_overview_rows(database, limit=300)
                 ]
         elif module_name == "team-workload":
-            headings = [
-                "Member",
-                "Code",
-                "Projects",
-                "Active Tasks",
-                "Completed",
-                "Overdue",
-                "Status",
+            columns = [
+                {"key": "member", "label": "Member", "type": "person"},
+                {"key": "project_count", "label": "Projects", "type": "number"},
+                {"key": "active_task_count", "label": "Active Tasks", "type": "number"},
+                {"key": "completed_task_count", "label": "Completed", "type": "number"},
+                {"key": "overdue_task_count", "label": "Overdue", "type": "warning_number"},
+                {"key": "assignment_status", "label": "Status", "type": "status"},
             ]
             rows = [
-                [
-                    row["name"],
-                    row["code"],
-                    row["project_count"],
-                    row["active_task_count"],
-                    row["completed_task_count"],
-                    row["overdue_task_count"],
-                    row["assignment_status"],
-                ]
+                {
+                    "member": {"primary": row["name"], "secondary": row["code"]},
+                    "project_count": row["project_count"],
+                    "active_task_count": row["active_task_count"],
+                    "completed_task_count": row["completed_task_count"],
+                    "overdue_task_count": row["overdue_task_count"],
+                    "assignment_status": row["assignment_status"],
+                }
                 for row in team_assignment_rows(database)
             ]
         elif module_name in {"performance", "reports"}:
-            headings = ["Indicator", "Result", "Meaning"]
+            columns = [
+                {"key": "indicator", "label": "Indicator", "type": "text"},
+                {"key": "result", "label": "Result", "type": "number"},
+                {"key": "meaning", "label": "Meaning", "type": "text"},
+            ]
             rows = [
-                ["Active projects", health.project_count, "Projects available in PostgreSQL"],
-                ["Open tasks", health.active_task_count, "Not completed or cancelled"],
-                ["Overdue tasks", overdue_task_count, "Open tasks past due date"],
-                ["Members with projects", health.assigned_member_count, "Active project membership"],
-                ["Members without projects", health.unassigned_member_count, "Needs assignment review"],
-                ["Open tasks without assignees", health.active_tasks_without_assignees, "Needs task assignment"],
+                {"indicator": "Active projects", "result": health.project_count, "meaning": "Projects available in PostgreSQL"},
+                {"indicator": "Open tasks", "result": health.active_task_count, "meaning": "Not completed or cancelled"},
+                {"indicator": "Overdue tasks", "result": overdue_task_count, "meaning": "Open tasks past due date"},
+                {"indicator": "Members with projects", "result": health.assigned_member_count, "meaning": "Active project membership"},
+                {"indicator": "Members without projects", "result": health.unassigned_member_count, "meaning": "Needs assignment review"},
+                {"indicator": "Open tasks without assignees", "result": health.active_tasks_without_assignees, "meaning": "Needs task assignment"},
             ]
         elif module_name == "calendar":
-            headings = ["Due Date", "Project", "Task", "Status", "Progress"]
+            columns = [
+                {"key": "due_date", "label": "Due Date", "type": "date"},
+                {"key": "project", "label": "Project", "type": "project"},
+                {"key": "title", "label": "Task", "type": "text"},
+                {"key": "status", "label": "Status", "type": "status"},
+                {"key": "progress", "label": "Progress", "type": "progress"},
+            ]
             rows = [
-                [
-                    row["due_date"],
-                    row["project_code"],
-                    row["title"],
-                    row["status"],
-                    f"{row['progress']}%",
-                ]
-                for row in active_task_overview_rows(database, limit=200)
+                {
+                    "due_date": row["due_date"],
+                    "project": {
+                        "primary": row["project_code"],
+                        "secondary": row["project_name"],
+                    },
+                    "title": row["title"],
+                    "status": row["status"],
+                    "progress": int(row["progress"]),
+                }
+                for row in active_task_overview_rows(database, limit=300)
                 if row["due_date"] != "—"
             ]
 
@@ -249,11 +673,14 @@ def create_portal_router(
                 page_title=page_title,
                 page_description=description,
                 cards=cards,
-                headings=headings,
+                columns=columns,
                 rows=rows,
                 section_title=section_title,
                 section_note=section_note,
                 account=account,
+                can_create_task=has_permission(
+                    normalize_role(account.role), Permission.PROJECT_EDIT
+                ),
             ),
         )
 

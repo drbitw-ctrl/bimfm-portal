@@ -38,7 +38,7 @@
     <span class="table-result-count" data-result-count></span>
   </div>
   <div class="modern-table-wrap">
-    <table class="modern-table mapping-table" id="projectMemberTable">
+    <table class="modern-table mapping-table smart-table" id="projectMemberTable" data-card-table>
       <thead>
         <tr>
           <th>Project Member</th>
@@ -114,7 +114,7 @@
   </div>
   {% if member_rows %}
   <div class="modern-table-wrap">
-    <table class="modern-table">
+    <table class="modern-table smart-table" data-card-table>
       <thead><tr><th>HR Freelancer</th><th>Projects</th><th>Active Tasks</th><th>Completed Tasks</th><th>Overdue</th><th>Assignment Status</th></tr></thead>
       <tbody>
       {% for row in member_rows %}
@@ -137,7 +137,7 @@
   <section class="dashboard-panel workforce-panel">
     <div class="panel-heading-modern"><div><span class="eyebrow">PROJECT REGISTER</span><h2>Projects</h2><p>PostgreSQL projects and current assignment coverage.</p></div><a class="text-link" href="/portal/projects">Open project module →</a></div>
     {% if project_rows %}
-    <div class="modern-table-wrap"><table class="modern-table"><thead><tr><th>Project</th><th>Status</th><th>Progress</th><th>Members</th><th>Active Tasks</th><th>Deadline</th></tr></thead><tbody>
+    <div class="modern-table-wrap"><table class="modern-table smart-table" data-card-table><thead><tr><th>Project</th><th>Status</th><th>Progress</th><th>Members</th><th>Active Tasks</th><th>Deadline</th></tr></thead><tbody>
     {% for row in project_rows %}<tr><td><strong>{{ row.code }}</strong><small>{{ row.name }}</small></td><td>{{ row.status }}</td><td>{{ row.progress }}%</td><td>{{ row.member_count }}</td><td>{{ row.active_task_count }}</td><td>{{ row.deadline }}</td></tr>{% endfor %}
     </tbody></table></div>
     {% else %}<div class="dashboard-empty">No portal projects are available.</div>{% endif %}
@@ -158,7 +158,7 @@
 <section class="dashboard-panel">
   <div class="panel-heading-modern"><div><span class="eyebrow">ACTIVE TASK REGISTER</span><h2>Open Tasks and Assignees</h2><p>Unmapped source identities are clearly identified. Mapped assignments show both the project member and HR freelancer.</p></div></div>
   {% if task_rows %}
-  <div class="modern-table-wrap"><table class="modern-table"><thead><tr><th>Project</th><th>Task</th><th>Assignees</th><th>Status</th><th>Priority</th><th>Progress</th><th>Due</th></tr></thead><tbody>
+  <div class="modern-table-wrap"><table class="modern-table smart-table" data-card-table><thead><tr><th>Project</th><th>Task</th><th>Assignees</th><th>Status</th><th>Priority</th><th>Progress</th><th>Due</th></tr></thead><tbody>
   {% for row in task_rows %}<tr><td><strong>{{ row.project_code }}</strong><small>{{ row.project_name }}</small></td><td>{{ row.title }}</td><td>{{ row.assignees }}</td><td>{{ row.status }}</td><td>{{ row.priority }}</td><td>{{ row.progress }}%</td><td>{{ row.due_date }}</td></tr>{% endfor %}
   </tbody></table></div>
   {% else %}<div class="dashboard-empty">No active portal tasks are available.</div>{% endif %}

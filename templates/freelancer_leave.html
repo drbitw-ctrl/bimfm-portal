@@ -58,9 +58,10 @@
   </form>
 </section>
 
-<section class="panel table-panel">
-  <h2>{{ t('Requests') }}</h2>
-  <table>
+<section class="panel table-panel data-register-card">
+  <div class="section-heading"><div><span class="eyebrow">LEAVE REGISTER</span><h2>{{ t('Requests') }}</h2><p>Track request type, decision, and current status.</p></div></div>
+  <div class="modern-table-wrap">
+  <table class="modern-table smart-table" data-card-table>
     <thead>
       <tr><th>{{ t('Date') }}</th><th>Type</th><th>Requested</th><th>{{ t('Status') }}</th><th>Decision</th><th>Action</th></tr>
     </thead>
@@ -91,6 +92,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
 </section>
 
 

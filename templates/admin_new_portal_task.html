@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+{% block title %}{{ t('New Task') }} · {{ app_name }}{% endblock %}
+{% block content %}
+<section class="hero-panel task-form-hero">
+  <div>
+    <span class="eyebrow">{{ t('PROJECT TASK CREATION') }}</span>
+    <h1>{{ t('New Task') }}</h1>
+    <p>{{ t('Create a new project task using the same structured fields as Task Manager Pro. Select an existing project or create a new one, then assign the task to a project member.') }}</p>
+  </div>
+  <div class="hero-actions">
+    <a class="button secondary" href="/portal/tasks">{{ t('Back to Tasks') }}</a>
+    <a class="button secondary" href="/admin/project-team">{{ t('Project Team') }}</a>
+  </div>
+</section>
+
+<form method="post" action="/portal/tasks/new" class="task-editor" data-submit-lock data-task-editor>
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+
+  <section class="content-card task-form-section">
+    <div class="form-section-heading">
+      <span class="form-step">1</span>
+      <div>
+        <span class="eyebrow">{{ t('PROJECT INFORMATION') }}</span>
+        <h2>{{ t('Select or Create a Project') }}</h2>
+        <p>{{ t('Choose an existing PostgreSQL project. Select “Create a new project” only when the project is not yet in the register.') }}</p>
+      </div>
+    </div>
+
+    <div class="form-grid task-form-grid">
+      <div class="form-span">
+        <label for="existing_project_id">{{ t('Existing Project') }}</label>
+        <select id="existing_project_id" name="existing_project_id" data-project-selector>
+          <option value="0">{{ t('Create a new project') }}</option>
+          {% for project in projects %}
+          <option value="{{ project.id }}"
+                  data-code="{{ project.project_code }}"
+                  data-name="{{ project.name }}"
+                  data-discipline="{{ project.discipline or '' }}"
+                  data-start="{{ project.start_date.isoformat() if project.start_date else '' }}"
+                  data-deadline="{{ project.deadline.isoformat() if project.deadline else '' }}"
+                  data-supervisor="{{ project.supervisor_id or 0 }}"
+                  {% if form_values.existing_project_id|int == project.id %}selected{% endif %}>
+            {{ project.project_code }} · {{ project.name }}
+          </option>
+          {% endfor %}
+        </select>
+        <small class="field-hint">{{ t('Existing project information is loaded automatically and is not duplicated.') }}</small>
+      </div>
+
+      <div data-new-project-field>
+        <label for="project_code">{{ t('Project Code') }} <span class="required-mark">*</span></label>
+        <input id="project_code" name="project_code" maxlength="120" value="{{ form_values.project_code }}" placeholder="291 or Y27-STATION">
+      </div>
+
+      <div data-new-project-field>
+        <label for="project_name">{{ t('Project Name') }} <span class="required-mark">*</span></label>
+        <input id="project_name" name="project_name" maxlength="300" value="{{ form_values.project_name }}" placeholder="{{ t('Enter the official project name') }}">
+      </div>
+
+      <div>
+        <label for="project_engineer_id">{{ t('Project Engineer / Supervisor') }}</label>
+        <select id="project_engineer_id" name="project_engineer_id">
+          <option value="0">{{ t('Not specified') }}</option>
+          {% for engineer in engineers %}
+          <option value="{{ engineer.id }}" {% if form_values.project_engineer_id|int == engineer.id %}selected{% endif %}>
+            {{ engineer.display_name }} · {{ engineer.username }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <section class="content-card task-form-section">
+    <div class="form-section-heading">
+      <span class="form-step">2</span>
+      <div>
+        <span class="eyebrow">{{ t('TASK DETAILS') }}</span>
+        <h2>{{ t('Task Information') }}</h2>
+        <p>{{ t('Set the schedule, priority, discipline, assignment, progress, and detailed instructions.') }}</p>
+      </div>
+    </div>
+
+    <div class="form-grid task-form-grid">
+      <div class="form-span">
+        <label for="task_title">{{ t('Task Title') }} <span class="required-mark">*</span></label>
+        <input id="task_title" name="task_title" maxlength="300" value="{{ form_values.task_title }}" required placeholder="{{ t('Example: Update 2F architectural model according to the latest drawings') }}">
+      </div>
+
+      <div>
+        <label for="start_date">{{ t('Start Date') }}</label>
+        <input id="start_date" type="date" name="start_date" value="{{ form_values.start_date }}">
+      </div>
+
+      <div>
+        <label for="deadline">{{ t('Deadline') }}</label>
+        <input id="deadline" type="date" name="deadline" value="{{ form_values.deadline }}">
+      </div>
+
+      <div>
+        <label for="completion_date">{{ t('Completion Date') }}</label>
+        <input id="completion_date" type="date" name="completion_date" value="{{ form_values.completion_date }}" data-completion-date>
+        <small class="field-hint">{{ t('Required only when the final status is Completed.') }}</small>
+      </div>
+
+      <div>
+        <label for="status">{{ t('Status') }}</label>
+        <select id="status" name="status" data-task-status>
+          {% for value, label in task_statuses %}
+          <option value="{{ value }}" {% if form_values.status == value %}selected{% endif %}>{{ t(label) }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label for="priority">{{ t('Priority') }}</label>
+        <select id="priority" name="priority">
+          {% for value, label in task_priorities %}
+          <option value="{{ value }}" {% if form_values.priority == value %}selected{% endif %}>{{ t(label) }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label for="discipline">{{ t('Discipline') }}</label>
+        <select id="discipline" name="discipline" data-discipline-selector>
+          {% for discipline in task_disciplines %}
+          <option value="{{ discipline }}" {% if form_values.discipline == discipline %}selected{% endif %}>{{ t(discipline) }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label for="project_member_id">{{ t('Assigned Member') }}</label>
+        <select id="project_member_id" name="project_member_id" data-member-selector>
+          <option value="0">{{ t('Unassigned') }}</option>
+          {% for member in project_members %}
+          <option value="{{ member.id }}" {% if form_values.project_member_id|int == member.id %}selected{% endif %}>
+            {{ member.member_name }}{% if member.member_code %} · {{ member.member_code }}{% endif %}{% if member.freelancer_id %} · {{ t('Mapped') }}{% else %} · {{ t('Unmapped') }}{% endif %}
+          </option>
+          {% endfor %}
+        </select>
+        <small class="field-hint">{{ t('Unmapped project members can still receive assignments. Mapping later will expose the task to their HR account.') }}</small>
+      </div>
+
+      <div>
+        <label for="progress">{{ t('Progress (%)') }}</label>
+        <div class="progress-input-row">
+          <input id="progress" type="number" name="progress" min="0" max="100" step="1" value="{{ form_values.progress }}" data-progress-input>
+          <output data-progress-output>{{ form_values.progress }}%</output>
+        </div>
+      </div>
+
+      <div class="form-span">
+        <label for="task_description">{{ t('Task Description') }}</label>
+        <textarea id="task_description" name="task_description" rows="7" maxlength="5000" placeholder="{{ t('Write the scope, model area, drawing reference, expected output, and important checks.') }}">{{ form_values.task_description }}</textarea>
+      </div>
+    </div>
+  </section>
+
+  <section class="task-form-actions">
+    <div>
+      <strong>{{ t('Ready to create this task?') }}</strong>
+      <span>{{ t('The task will be saved directly to PostgreSQL and immediately appear in the project and assignee views.') }}</span>
+    </div>
+    <div class="action-row">
+      <button class="button secondary" type="reset" data-task-reset>{{ t('Clear') }}</button>
+      <button class="button primary task-save-button" type="submit">{{ t('Save Task') }}</button>
+    </div>
+  </section>
+</form>
+
+<script>
+(function () {
+  const form = document.querySelector('[data-task-editor]');
+  if (!form) return;
+
+  const projectSelect = form.querySelector('[data-project-selector]');
+  const newProjectFields = Array.from(form.querySelectorAll('[data-new-project-field]'));
+  const projectCode = form.querySelector('#project_code');
+  const projectName = form.querySelector('#project_name');
+  const engineer = form.querySelector('#project_engineer_id');
+  const startDate = form.querySelector('#start_date');
+  const deadline = form.querySelector('#deadline');
+  const discipline = form.querySelector('[data-discipline-selector]');
+  const status = form.querySelector('[data-task-status]');
+  const member = form.querySelector('[data-member-selector]');
+  const progress = form.querySelector('[data-progress-input]');
+  const progressOutput = form.querySelector('[data-progress-output]');
+  const completionDate = form.querySelector('[data-completion-date]');
+
+  function selectedProject() {
+    return projectSelect.options[projectSelect.selectedIndex];
+  }
+
+  function applyProjectMode() {
+    const option = selectedProject();
+    const isNew = projectSelect.value === '0';
+    newProjectFields.forEach((field) => field.classList.toggle('field-disabled', !isNew));
+    projectCode.readOnly = !isNew;
+    projectName.readOnly = !isNew;
+    projectCode.required = isNew;
+    projectName.required = isNew;
+
+    if (!isNew) {
+      projectCode.value = option.dataset.code || '';
+      projectName.value = option.dataset.name || '';
+      if (option.dataset.discipline) discipline.value = option.dataset.discipline;
+      if (!startDate.value && option.dataset.start) startDate.value = option.dataset.start;
+      if (!deadline.value && option.dataset.deadline) deadline.value = option.dataset.deadline;
+      if (option.dataset.supervisor && option.dataset.supervisor !== '0') engineer.value = option.dataset.supervisor;
+    }
+  }
+
+  function applyStatusRules() {
+    const selected = status.value;
+    const completed = selected === 'COMPLETED';
+    const completionStates = selected === 'COMPLETED' || selected === 'FOR_REVIEW';
+    if (completionStates) progress.value = '100';
+    if (selected === 'UNASSIGNED') {
+      progress.value = '0';
+      member.value = '0';
+    }
+    completionDate.required = completed;
+    completionDate.closest('div').classList.toggle('field-required-state', completed);
+    updateProgress();
+  }
+
+  function updateProgress() {
+    const value = Math.max(0, Math.min(100, Number(progress.value || 0)));
+    progress.value = String(value);
+    progressOutput.textContent = `${value}%`;
+  }
+
+  projectSelect.addEventListener('change', applyProjectMode);
+  status.addEventListener('change', applyStatusRules);
+  progress.addEventListener('input', updateProgress);
+  form.querySelector('[data-task-reset]').addEventListener('click', () => {
+    window.setTimeout(() => {
+      applyProjectMode();
+      applyStatusRules();
+      updateProgress();
+    }, 0);
+  });
+
+  applyProjectMode();
+  applyStatusRules();
+  updateProgress();
+}());
+</script>
+{% endblock %}

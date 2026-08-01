@@ -1,3 +1,8 @@
+{% macro nav_link(href, label, icon, exact=true, extra_class='') -%}
+  {% set current_path = request.url.path %}
+  {% set is_active = (current_path == href) if exact else (current_path == href or current_path.startswith(href ~ '/')) %}
+  <a href="{{ href }}" class="{{ extra_class }}{% if is_active %} active{% endif %}" data-nav-path="{{ href }}" data-nav-exact="{{ 'true' if exact else 'false' }}"{% if is_active %} aria-current="page"{% endif %}><span class="nav-icon">{{ icon }}</span><span>{{ label }}</span></a>
+{%- endmacro %}
 <!DOCTYPE html>
 <html lang="{{ 'zh-Hant-TW' if locale == 'zh_TW' else 'en' }}">
 <head>
@@ -35,63 +40,70 @@
       <small>{{ t('PostgreSQL connected') }}</small>
     </div>
 
-    <nav>
+    <nav class="side-nav-links" aria-label="{{ t('Primary navigation') }}">
       {% if current_staff %}
       <span class="nav-label">{{ t('Overview') }}</span>
-      <a href="/admin"><span class="nav-icon">⌂</span><span>{{ t('Dashboard') }}</span></a>
-      <a href="/portal/my-work"><span class="nav-icon">✓</span><span>{{ t('My Work') }}</span></a>
+      {{ nav_link('/admin', t('Dashboard'), '⌂') }}
+      {{ nav_link('/portal/my-work', t('My Work'), '✓') }}
 
       <span class="nav-label">{{ t('Project Management') }}</span>
-      <a href="/portal/projects"><span class="nav-icon">▦</span><span>{{ t('Projects') }}</span></a>
-      <a href="/portal/tasks"><span class="nav-icon">☷</span><span>{{ t('Tasks') }}</span></a>
-      <a href="/admin/project-team"><span class="nav-icon">◎</span><span>{{ t('Project Team') }}</span></a>
-      <a href="/portal/team-workload"><span class="nav-icon">◫</span><span>{{ t('Team Availability / Workload') }}</span></a>
-      <a href="/portal/tasks?view=active"><span class="nav-icon">▶</span><span>{{ t('Active Tasks') }}</span></a>
-      <a href="/portal/tasks?view=completed"><span class="nav-icon">✓</span><span>{{ t('Recently Completed Tasks') }}</span></a>
-      <a href="/portal/performance"><span class="nav-icon">↗</span><span>{{ t('Performance') }}</span></a>
-      <a href="/portal/reports"><span class="nav-icon">▤</span><span>{{ t('Project Reports') }}</span></a>
-      <a href="/portal/calendar"><span class="nav-icon">□</span><span>{{ t('Calendar') }}</span></a>
+      {% if can(Permission.PROJECT_EDIT) %}
+      {{ nav_link('/portal/tasks/new', t('New Task'), '＋', true, 'nav-create-task') }}
+      {% endif %}
+      {{ nav_link('/portal/projects', t('Projects'), '▦') }}
+      {{ nav_link('/portal/tasks', t('Tasks'), '☷') }}
+      {{ nav_link('/admin/project-team', t('Project Team'), '◎') }}
+      {{ nav_link('/portal/team-workload', t('Team Availability / Workload'), '◫') }}
+      <a href="/portal/tasks?view=active" class="{% if request.url.path == '/portal/tasks' and request.query_params.get('view', 'active') == 'active' %}active{% endif %}" data-nav-path="/portal/tasks" data-nav-query="view=active"><span class="nav-icon">▶</span><span>{{ t('Active Tasks') }}</span></a>
+      <a href="/portal/tasks?view=completed" class="{% if request.url.path == '/portal/tasks' and request.query_params.get('view') == 'completed' %}active{% endif %}" data-nav-path="/portal/tasks" data-nav-query="view=completed"><span class="nav-icon">✓</span><span>{{ t('Recently Completed Tasks') }}</span></a>
+      {{ nav_link('/portal/performance', t('Performance'), '↗') }}
+      {{ nav_link('/portal/reports', t('Project Reports'), '▤') }}
+      {{ nav_link('/portal/calendar', t('Calendar'), '□') }}
 
       {% if can(Permission.ATTENDANCE_VIEW_ALL) %}
       <span class="nav-label">{{ t('HR Management') }}</span>
-      <a href="/admin/attendance/today"><span class="nav-icon">◷</span><span>{{ t('Today’s Attendance') }}</span></a>
-      <a href="/admin/attendance/monthly"><span class="nav-icon">▦</span><span>{{ t('Monthly Attendance') }}</span></a>
-      <a href="/admin/tasks/monthly"><span class="nav-icon">✓</span><span>{{ t('Daily Task Reports') }}</span></a>
-      <a href="/admin/dtr"><span class="nav-icon">▤</span><span>{{ t('Monthly DTR') }}</span></a>
+      {{ nav_link('/admin/attendance/today', t('Today’s Attendance'), '◷') }}
+      {{ nav_link('/admin/attendance/monthly', t('Monthly Attendance'), '▦') }}
+      {{ nav_link('/admin/tasks/monthly', t('Daily Task Reports'), '✓') }}
+      {{ nav_link('/admin/dtr', t('Monthly DTR'), '▤', false) }}
       {% endif %}
 
       {% if can(Permission.LEAVE_APPROVE) or can(Permission.OVERTIME_APPROVE) %}
       <span class="nav-label">{{ t('Supervision') }}</span>
-      {% if can(Permission.LEAVE_APPROVE) %}<a href="/admin/leave-requests"><span class="nav-icon">↗</span><span>{{ t('Leave Requests') }}</span></a>{% endif %}
-      {% if can(Permission.OVERTIME_APPROVE) %}<a href="/admin/overtime"><span class="nav-icon">＋</span><span>{{ t('Overtime Claims') }}</span></a>{% endif %}
+      {% if can(Permission.LEAVE_APPROVE) %}{{ nav_link('/admin/leave-requests', t('Leave Requests'), '↗') }}{% endif %}
+      {% if can(Permission.OVERTIME_APPROVE) %}{{ nav_link('/admin/overtime', t('Overtime Claims'), '＋') }}{% endif %}
       {% endif %}
 
       {% if can(Permission.FINANCE_VIEW) %}
       <span class="nav-label">{{ t('Finance') }}</span>
-      <a href="/admin/finance"><span class="nav-icon">₱</span><span>{{ t('Finance Center') }}</span></a>
+      {{ nav_link('/admin/finance', t('Finance Center'), '₱') }}
       {% endif %}
 
       {% if can(Permission.SETTINGS_MANAGE) or can(Permission.STAFF_MANAGE) %}
       <span class="nav-label">{{ t('Administration') }}</span>
-      {% if can(Permission.SETTINGS_MANAGE) %}<a href="/admin/hr/calendar"><span class="nav-icon">□</span><span>{{ t('HR Calendar') }}</span></a>{% endif %}
+      {% if can(Permission.SETTINGS_MANAGE) %}{{ nav_link('/admin/hr/calendar', t('HR Calendar'), '□') }}{% endif %}
       {% if can(Permission.STAFF_MANAGE) %}
-      <a href="/admin/freelancers"><span class="nav-icon">◎</span><span>{{ t('Freelancer Accounts') }}</span></a>
-      <a href="/admin/staff-accounts"><span class="nav-icon">♙</span><span>{{ t('Staff Access') }}</span></a>
-      <a href="/admin/settings/work-schedule"><span class="nav-icon">◫</span><span>{{ t('Work Schedule') }}</span></a>
-      <a href="/admin/settings/hr-policy"><span class="nav-icon">⚙</span><span>{{ t('HR Policy') }}</span></a>
+      {{ nav_link('/admin/freelancers', t('Freelancer Accounts'), '◎') }}
+      {{ nav_link('/admin/staff-accounts', t('Staff Access'), '♙') }}
+      {{ nav_link('/admin/settings/work-schedule', t('Work Schedule'), '◫') }}
+      {{ nav_link('/admin/settings/hr-policy', t('HR Policy'), '⚙') }}
       {% endif %}
       {% endif %}
       {% else %}
-      <span class="nav-label">{{ t('My Workspace') }}</span>
-      <a href="/attendance"><span class="nav-icon">◷</span><span>{{ t('Today’s Attendance') }}</span></a>
-      <a href="/attendance/history"><span class="nav-icon">▦</span><span>{{ t('Attendance History') }}</span></a>
-      <a href="/tasks"><span class="nav-icon">✓</span><span>{{ t('Daily Task Reports') }}</span></a>
-      <a href="/projects"><span class="nav-icon">▦</span><span>{{ t('Assigned Projects') }}</span></a>
+      <span class="nav-label">{{ t('Attendance') }}</span>
+      {{ nav_link('/attendance', t('Today’s Attendance'), '◷') }}
+      {{ nav_link('/attendance/history', t('Attendance History'), '▦') }}
+
+      <span class="nav-label">{{ t('Daily Work') }}</span>
+      {{ nav_link('/tasks', t('Daily Task Reports'), '✓') }}
+      {{ nav_link('/projects', t('Assigned Projects'), '▦') }}
+
       <span class="nav-label">{{ t('Requests') }}</span>
-      <a href="/overtime"><span class="nav-icon">＋</span><span>{{ t('Overtime & Credits') }}</span></a>
-      <a href="/leave"><span class="nav-icon">↗</span><span>{{ t('Leave Requests') }}</span></a>
+      {{ nav_link('/overtime', t('Overtime & Credits'), '＋') }}
+      {{ nav_link('/leave', t('Leave Requests'), '↗') }}
+
       <span class="nav-label">{{ t('Account') }}</span>
-      <a href="/change-password"><span class="nav-icon">⚙</span><span>{{ t('Change Password') }}</span></a>
+      {{ nav_link('/change-password', t('Change Password'), '⚙') }}
       {% endif %}
     </nav>
 

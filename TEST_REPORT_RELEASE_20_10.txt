@@ -1,0 +1,88 @@
+BIMFM PORTAL RELEASE 20.10
+CONNECTED TASK WORKSPACE AND TABLE PRESENTATION
+VALIDATION REPORT
+
+Application version:
+  2.3.5-release20.10-task-workspace
+
+Date:
+  2026-08-01
+
+AUTOMATED REGRESSION SUITE
+--------------------------
+Command:
+  python -m unittest discover -s tests -v
+
+Result:
+  85 tests run
+  85 tests passed
+  0 failures
+  0 errors
+
+PYTHON COMPILATION
+------------------
+Command:
+  python -m compileall -q app tests
+
+Result:
+  Passed
+
+NEW RELEASE 20.10 COVERAGE
+--------------------------
+  - Freelancer sidebar includes all seven self-service destinations
+  - Sidebar remains in a dedicated scrollable navigation area
+  - New Task action is permission-controlled by PROJECT_EDIT
+  - New Task form includes the desktop task-editor field set
+  - New project and task creation succeeds
+  - Existing Project Member assignment identity is preserved
+  - Project membership is created when needed
+  - Task assignment is created for the selected Project Member
+  - Created task is visible in the project task register
+  - All freelancer sidebar routes return HTTP 200
+  - Freelancer sidebar is rendered consistently on every destination
+  - All 27 portal data tables use the responsive presentation system
+  - Mobile table column labels are generated automatically
+  - Release adds no Alembic migration
+
+INTEGRATED ACCEPTANCE SCENARIO
+------------------------------
+An isolated temporary SQLite database was used to verify the full workflow:
+
+  1. Create Administrator, source assignment identity, mapped HR freelancer,
+     Project Member directory record, and freelancer login account.
+  2. Log in as Administrator.
+  3. Open /portal/tasks/new.
+  4. Create a new project and assign a new task to the Project Member.
+  5. Confirm one project, one task, one project membership, and one task
+     assignment were saved.
+  6. Confirm task status IN_PROGRESS and progress 35%.
+  7. Log in as the freelancer.
+  8. Open attendance, attendance history, daily tasks, assigned projects,
+     overtime, leave, and change-password pages.
+  9. Confirm each page returns HTTP 200 and includes the connected sidebar.
+
+DATABASE SAFETY
+---------------
+  - No new migration
+  - No automatic backfill
+  - No project-member repair
+  - No production database access during development or testing
+  - Existing PostgreSQL member mappings remain compatible
+
+PACKAGE CLEANLINESS
+-------------------
+The source and Render packages are checked to exclude:
+
+  - SQLite database files
+  - PostgreSQL credentials
+  - .env files
+  - Private config.json files
+  - __pycache__ directories
+  - Compiled .pyc or .pyo files
+  - Runtime logs
+
+LIMITATION
+----------
+Automated validation used an isolated test database. A post-deployment check
+against the live Render service and its populated PostgreSQL database remains
+required before routine production use.

@@ -2,64 +2,45 @@
 {% block title %}Attendance History · {{ app_name }}{% endblock %}
 {% block content %}
 <div class="toolbar">
-    <div>
-        <span class="eyebrow">PERSONAL ATTENDANCE</span>
-        <h1>{{ t('Attendance History') }}</h1>
-        <p class="muted">
-            {{ account.freelancer.full_name }} ·
-            Last 31 attendance records
-        </p>
-    </div>
-    <a class="button secondary" href="/attendance">
-        Back to Attendance
-    </a>
+  <div>
+    <span class="eyebrow">PERSONAL ATTENDANCE</span>
+    <h1>{{ t('Attendance History') }}</h1>
+    <p class="muted">{{ account.freelancer.full_name }} · {{ t('Last 31 attendance records') }}</p>
+  </div>
+  <a class="button secondary" href="/attendance">{{ t('Back to Today’s Attendance') }}</a>
 </div>
 
-<section class="panel table-panel">
-    {% if history_rows %}
-    <table>
-        <thead>
-            <tr>
-                <th>{{ t('Date') }}</th>
-                <th>Time In</th>
-                <th>Time Out</th>
-                <th>Gross</th>
-                <th>Rendered</th>
-                <th>Late</th>
-                <th>Undertime</th>
-                <th>Potential OT</th>
-                <th>{{ t('Status') }}</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for row in history_rows %}
-            <tr>
-                <td><strong>{{ row.date }}</strong></td>
-                <td>{{ row.time_in }}</td>
-                <td>{{ row.time_out }}</td>
-                <td>{{ row.calculation.gross }}</td>
-                <td>{{ row.calculation.rendered }}</td>
-                <td>{{ row.calculation.late }}</td>
-                <td>{{ row.calculation.undertime }}</td>
-                <td>{{ row.calculation.overtime }}</td>
-                <td>
-                    {% if row.status == "Complete" %}
-                        <span class="badge good">{{ row.status }}</span>
-                    {% elif row.status == "Missing Time Out" %}
-                        <span class="badge warning">{{ row.status }}</span>
-                    {% else %}
-                        <span class="badge">{{ row.status }}</span>
-                    {% endif %}
-                </td>
-            </tr>
-        {% endfor %}
-        </tbody>
+<section class="panel table-panel data-register-card">
+  <div class="section-heading">
+    <div><span class="eyebrow">{{ t('ATTENDANCE REGISTER') }}</span><h2>{{ t('Recent Attendance') }}</h2><p>{{ t('Server-recorded attendance, rendered time, and attendance exceptions.') }}</p></div>
+  </div>
+  {% if history_rows %}
+  <div class="table-toolbar" data-table-toolbar data-table-target="#attendanceHistoryTable" data-record-singular="record" data-record-plural="records">
+    <label class="table-search"><span class="sr-only">{{ t('Search records') }}</span><input type="search" data-table-search placeholder="{{ t('Search records') }}"></label>
+    <span class="table-result-count" data-result-count></span>
+  </div>
+  <div class="modern-table-wrap">
+    <table class="modern-table smart-table" id="attendanceHistoryTable" data-card-table>
+      <thead><tr><th>{{ t('Date') }}</th><th>Time In</th><th>Time Out</th><th>Gross</th><th>Rendered</th><th>Late</th><th>Undertime</th><th>Potential OT</th><th>{{ t('Status') }}</th></tr></thead>
+      <tbody>
+      {% for row in history_rows %}
+        <tr>
+          <td><strong class="date-cell">{{ row.date }}</strong></td>
+          <td>{{ row.time_in }}</td>
+          <td>{{ row.time_out }}</td>
+          <td>{{ row.calculation.gross }}</td>
+          <td><strong>{{ row.calculation.rendered }}</strong></td>
+          <td>{{ row.calculation.late }}</td>
+          <td>{{ row.calculation.undertime }}</td>
+          <td>{{ row.calculation.overtime }}</td>
+          <td><span class="status-chip {{ 'status-completed' if row.status == 'Complete' else ('status-on-hold' if row.status == 'Missing Time Out' else 'status-not-started') }}">{{ row.status }}</span></td>
+        </tr>
+      {% endfor %}
+      </tbody>
     </table>
-    {% else %}
-        <div class="empty-state">
-            <h2>No attendance records yet</h2>
-            <p>Your Time In and Time Out history will appear here.</p>
-        </div>
-    {% endif %}
+  </div>
+  {% else %}
+  <div class="empty-state"><h2>No attendance records yet</h2><p>Your Time In and Time Out history will appear here.</p></div>
+  {% endif %}
 </section>
 {% endblock %}
