@@ -41,7 +41,7 @@
         </td>
         <td>{{ row.reason }}</td>
         <td>
-          {% if row.status=='PENDING' %}
+          {% if row.status=='PENDING' and can(Permission.LEAVE_APPROVE) %}
           <form method="post" action="/admin/leave-requests/{{ row.id }}/review">
             <input type="hidden" name="csrf" value="{{ csrf_token }}">
             <div class="muted">Approval amount: 1 whole day</div>
@@ -52,6 +52,9 @@
               <button class="small secondary" name="decision" value="REJECT">{{ t('Reject') }}</button>
             </div>
           </form>
+          {% elif row.status == 'PENDING' %}
+            <span class="badge warning">Pending · Read only</span><br>
+            <small>Administrator review required.</small>
           {% else %}
             <strong>{{ row.status }}</strong><br>
             1 whole day<br>

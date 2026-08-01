@@ -94,12 +94,12 @@ def list_leave_requests(
     offset: int = Query(0, ge=0),
     status: str | None = Query(None, max_length=30),
     database: Session = Depends(get_database),
-    principal: Principal = Depends(require_api_permission(Permission.LEAVE_SUBMIT)),
+    principal: Principal = Depends(require_authenticated_user),
 ):
     filters = []
     if status:
         filters.append(LeaveRequest.status == status.strip().upper())
-    if not has_permission(principal.role, Permission.LEAVE_APPROVE):
+    if not has_permission(principal.role, Permission.LEAVE_VIEW_ALL):
         freelancer_id = _freelancer_id(principal)
         filters.append(LeaveRequest.freelancer_id == freelancer_id)
     total = int(database.scalar(select(func.count(LeaveRequest.id)).where(*filters)) or 0)
@@ -114,12 +114,12 @@ def list_overtime_claims(
     offset: int = Query(0, ge=0),
     status: str | None = Query(None, max_length=30),
     database: Session = Depends(get_database),
-    principal: Principal = Depends(require_api_permission(Permission.OVERTIME_SUBMIT)),
+    principal: Principal = Depends(require_authenticated_user),
 ):
     filters = []
     if status:
         filters.append(OvertimeClaim.status == status.strip().upper())
-    if not has_permission(principal.role, Permission.OVERTIME_APPROVE):
+    if not has_permission(principal.role, Permission.OVERTIME_VIEW_ALL):
         filters.append(OvertimeClaim.freelancer_id == _freelancer_id(principal))
     total = int(database.scalar(select(func.count(OvertimeClaim.id)).where(*filters)) or 0)
     records = list(database.scalars(select(OvertimeClaim).where(*filters).order_by(OvertimeClaim.attendance_date.desc(), OvertimeClaim.id.desc()).limit(limit).offset(offset)))

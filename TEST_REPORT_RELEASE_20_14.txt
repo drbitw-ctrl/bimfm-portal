@@ -1,0 +1,63 @@
+BIMFM PORTAL RELEASE 20.14
+SUPERVISOR DASHBOARD AND MEMBER TOOLS
+VALIDATION REPORT
+
+Application version:
+  2.3.9-release20.14-supervisor-dashboard-member-tools
+
+Date:
+  2026-08-01
+
+AUTOMATED REGRESSION SUITE
+--------------------------
+Command:
+  python -m unittest discover -s tests -v
+
+Result:
+  105 tests run
+  105 tests passed
+  0 failures
+  0 errors
+
+NEW RELEASE 20.14 COVERAGE
+--------------------------
+  - Dashboard includes Team Availability highlight
+  - Dashboard includes Active Tasks highlight
+  - Dashboard includes Attendance Today highlight
+  - Supervisor role appears in Staff Accounts
+  - Supervisor can view dashboard, attendance, DTR, leave, overtime,
+    Finance, project, task, and workload pages
+  - Supervisor cannot create tasks or submit staff write requests
+  - Supervisor cannot access freelancer account management
+  - Supervisor permissions contain no edit, approval, account-management,
+    settings, integration, or project-edit capabilities
+  - Administrator can reset a freelancer password
+  - Reset forces a password change and clears login lockout state
+  - Administrator can delete an unused testing member
+  - Member with project history remains protected from deletion
+  - Release 20.13 historical Quality Score recovery remains present
+  - No Release 20.14 database migration was introduced
+
+RELIABILITY CHECKS
+------------------
+  - Python application compilation passed
+  - Existing PostgreSQL-native project tests passed
+  - Existing member-mapping tests passed
+  - Existing freelancer navigation tests passed
+  - Existing editable task-register tests passed
+  - Existing Finance clarity tests passed
+  - Existing i18n and responsive-table tests passed
+
+DATABASE SAFETY
+---------------
+  - No new table or column
+  - No automatic data backfill
+  - No SQLite migration
+  - No Project Member repair operation
+  - Delete action blocks members with operational or project dependencies
+
+LIMITATION
+----------
+Validation was performed in isolated test databases. The live Render service
+and production PostgreSQL database were not accessed or modified during build
+and testing.

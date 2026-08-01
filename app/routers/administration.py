@@ -6,6 +6,103 @@ Dependencies are injected during application startup as a compatibility bridge.
 from __future__ import annotations
 
 from fastapi import APIRouter
+from sqlalchemy import func, select
+from sqlalchemy.orm import joinedload
+
+from app.auth.permissions import Permission, has_permission, normalize_role
+from app.models import (
+    AttendanceCalculation,
+    AttendanceCorrection,
+    AttendanceEvent,
+    CompLeaveTransaction,
+    DailyAttendance,
+    DailyTask,
+    DTRDailyLine,
+    Freelancer,
+    FreelancerAccount,
+    HRAdminAccount,
+    LeaveRecord,
+    LeaveRequest,
+    MonthlyCompLeaveBalance,
+    MonthlyDTR,
+    OvertimeClaim,
+    PayrollMonthSummary,
+    PortalProjectMember,
+    PortalTaskAssignment,
+    PortalTaskUpdate,
+    ProjectMember,
+    TaskMonthReview,
+)
+
+
+def _staff_can_manage(account) -> bool:
+    return bool(
+        account
+        and has_permission(
+            normalize_role(getattr(account, "role", "")),
+            Permission.STAFF_MANAGE,
+        )
+    )
+
+
+def _freelancer_delete_summary(database, freelancer_id: int) -> dict[str, object]:
+    """Return protected dependency counts for safe test-account deletion.
+
+    A real member with operational history must be disabled instead of erased.
+    Only empty/testing profiles can be permanently removed.
+    """
+    direct_models = (
+        ("Attendance events", AttendanceEvent),
+        ("Daily attendance", DailyAttendance),
+        ("Attendance corrections", AttendanceCorrection),
+        ("Attendance calculations", AttendanceCalculation),
+        ("Leave records", LeaveRecord),
+        ("Leave requests", LeaveRequest),
+        ("Compensatory leave ledger", CompLeaveTransaction),
+        ("Monthly comp balances", MonthlyCompLeaveBalance),
+        ("Monthly DTR records", MonthlyDTR),
+        ("DTR daily lines", DTRDailyLine),
+        ("Daily task reports", DailyTask),
+        ("Task month reviews", TaskMonthReview),
+        ("Overtime claims", OvertimeClaim),
+        ("Payroll summaries", PayrollMonthSummary),
+        ("Project memberships", PortalProjectMember),
+        ("Task assignments", PortalTaskAssignment),
+        ("Task updates", PortalTaskUpdate),
+    )
+    counts: list[dict[str, object]] = []
+    total = 0
+    for label, model in direct_models:
+        count = int(
+            database.scalar(
+                select(func.count(model.id)).where(
+                    model.freelancer_id == freelancer_id
+                )
+            )
+            or 0
+        )
+        if count:
+            counts.append({"label": label, "count": count})
+            total += count
+
+    directory_count = int(
+        database.scalar(
+            select(func.count(ProjectMember.id)).where(
+                (ProjectMember.freelancer_id == freelancer_id)
+                | (ProjectMember.source_freelancer_id == freelancer_id)
+            )
+        )
+        or 0
+    )
+    if directory_count:
+        counts.append({"label": "Project-member directory links", "count": directory_count})
+        total += directory_count
+
+    return {
+        "blocked": total > 0,
+        "total": total,
+        "items": counts,
+    }
 
 
 def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIRouter:
@@ -23,8 +120,17 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                     status_code=303,
                 )
 
-            if access == "readonly" and str(getattr(admin, "role", "ADMIN")).upper() == "FINANCE":
-                set_flash(request, "Finance access is read-only. Operational changes require an Administrator account.", "info")
+            if access == "readonly" and str(getattr(admin, "role", "ADMIN")).upper() in {"FINANCE", "SUPERVISOR"}:
+                role_label = (
+                    "Supervisor"
+                    if str(getattr(admin, "role", "ADMIN")).upper() == "SUPERVISOR"
+                    else "Finance"
+                )
+                set_flash(
+                    request,
+                    f"{role_label} access is read-only. Operational changes require an Administrator account.",
+                    "info",
+                )
 
             hr_freelancers = hr_freelancer_choices(database)
             freelancer_count = len(hr_freelancers)
@@ -137,6 +243,19 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                 row["assignment_status"] == "No project assignment"
                 for row in project_team_rows
             )
+            team_available_count = sum(
+                int(row["active_task_count"]) == 0
+                for row in project_team_rows
+            )
+            team_assigned_count = sum(
+                int(row["active_task_count"]) > 0
+                for row in project_team_rows
+            )
+            team_with_overdue_count = sum(
+                int(row["overdue_task_count"]) > 0
+                for row in project_team_rows
+            )
+            attendance_recorded_count = today_complete + today_working
 
             return templates.TemplateResponse(
                 request=request,
@@ -163,6 +282,10 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                     unassigned_project_members=unassigned_project_members,
                     projects_without_members=project_health.projects_without_members,
                     active_tasks_without_assignees=project_health.active_tasks_without_assignees,
+                    team_available_count=team_available_count,
+                    team_assigned_count=team_assigned_count,
+                    team_with_overdue_count=team_with_overdue_count,
+                    attendance_recorded_count=attendance_recorded_count,
                 ),
             )
 
@@ -197,8 +320,12 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
             clean_username = username.strip().lower()
             clean_name = display_name.strip()
             clean_role = role.strip().upper()
-            if clean_role not in {"ADMIN", "FINANCE"}:
-                set_flash(request, "Choose Administrator or Finance Head.", "error")
+            if clean_role not in {"ADMIN", "SUPERVISOR", "FINANCE"}:
+                set_flash(
+                    request,
+                    "Choose Administrator, Read-only Supervisor, or Finance Head.",
+                    "error",
+                )
                 return RedirectResponse("/admin/staff-accounts", status_code=303)
             if not USERNAME_PATTERN.fullmatch(clean_username) or not clean_name or len(password) < 10:
                 set_flash(request, "Use a valid username, display name, and password of at least 10 characters.", "error")
@@ -245,6 +372,8 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                     "/admin/login",
                     status_code=303,
                 )
+            if not _staff_can_manage(admin):
+                return RedirectResponse("/admin?access=readonly", status_code=303)
 
             hr_ids = [row.id for row in hr_freelancer_choices(database)]
             freelancers = list(
@@ -265,6 +394,12 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                     request,
                     admin=admin,
                     freelancers=freelancers,
+                    deletion_status={
+                        freelancer.id: _freelancer_delete_summary(
+                            database, freelancer.id
+                        )
+                        for freelancer in freelancers
+                    },
                 ),
             )
 
@@ -277,6 +412,8 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
             admin = get_current_admin(request, database)
             if admin is None:
                 return RedirectResponse("/admin/login", status_code=303)
+            if not _staff_can_manage(admin):
+                return RedirectResponse("/admin?access=readonly", status_code=303)
             return templates.TemplateResponse(
                 request=request,
                 name="admin_new_freelancer.html",
@@ -321,6 +458,8 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                     "/admin/login",
                     status_code=303,
                 )
+            if not _staff_can_manage(admin):
+                return RedirectResponse("/admin?access=readonly", status_code=303)
 
             if not freelancer_code or len(freelancer_code) > 30:
                 set_flash(
@@ -456,6 +595,8 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                     "/admin/login",
                     status_code=303,
                 )
+            if not _staff_can_manage(admin):
+                return RedirectResponse("/admin?access=readonly", status_code=303)
 
             freelancer = database.scalar(
                 select(Freelancer)
@@ -504,6 +645,222 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
             "/admin/freelancers",
             status_code=303,
         )
+
+    @router.get(
+        "/admin/freelancers/{freelancer_id}/reset-password",
+        response_class=HTMLResponse,
+    )
+    def reset_freelancer_password_page(
+        freelancer_id: int,
+        request: Request,
+    ):
+        with SessionLocal() as database:
+            admin = get_current_admin(request, database)
+            if admin is None:
+                return RedirectResponse("/admin/login", status_code=303)
+            if not _staff_can_manage(admin):
+                return RedirectResponse("/admin?access=readonly", status_code=303)
+
+            freelancer = database.scalar(
+                select(Freelancer)
+                .options(joinedload(Freelancer.account))
+                .where(Freelancer.id == freelancer_id)
+            )
+            if freelancer is None:
+                set_flash(request, "Freelancer was not found.", "error")
+                return RedirectResponse("/admin/freelancers", status_code=303)
+            if freelancer.account is None:
+                set_flash(
+                    request,
+                    "This freelancer does not have a login account to reset.",
+                    "error",
+                )
+                return RedirectResponse("/admin/freelancers", status_code=303)
+
+            return templates.TemplateResponse(
+                request=request,
+                name="admin_reset_freelancer_password.html",
+                context=template_context(
+                    request,
+                    admin=admin,
+                    freelancer=freelancer,
+                ),
+            )
+
+    @router.post("/admin/freelancers/{freelancer_id}/reset-password")
+    def reset_freelancer_password(
+        freelancer_id: int,
+        request: Request,
+        csrf: str = Form(...),
+        temporary_password: str = Form(...),
+        confirm_password: str = Form(...),
+    ):
+        redirect_path = f"/admin/freelancers/{freelancer_id}/reset-password"
+        if not validate_csrf(request, csrf):
+            set_flash(request, "Invalid form token.", "error")
+            return RedirectResponse(redirect_path, status_code=303)
+
+        if len(temporary_password) < 10:
+            set_flash(
+                request,
+                "Temporary password must contain at least 10 characters.",
+                "error",
+            )
+            return RedirectResponse(redirect_path, status_code=303)
+        if temporary_password != confirm_password:
+            set_flash(request, "Password confirmation does not match.", "error")
+            return RedirectResponse(redirect_path, status_code=303)
+
+        with SessionLocal() as database:
+            admin = get_current_admin(request, database)
+            if admin is None:
+                return RedirectResponse("/admin/login", status_code=303)
+            if not _staff_can_manage(admin):
+                return RedirectResponse("/admin?access=readonly", status_code=303)
+
+            freelancer = database.scalar(
+                select(Freelancer)
+                .options(joinedload(Freelancer.account))
+                .where(Freelancer.id == freelancer_id)
+            )
+            if freelancer is None or freelancer.account is None:
+                set_flash(request, "Freelancer login account was not found.", "error")
+                return RedirectResponse("/admin/freelancers", status_code=303)
+
+            freelancer.account.password_hash = hash_password(temporary_password)
+            freelancer.account.must_change_password = True
+            freelancer.account.failed_login_count = 0
+            freelancer.account.locked_until = None
+            freelancer.account.updated_at = utc_now()
+            write_audit(
+                database,
+                actor_type="HR_ADMIN",
+                actor_id=admin.id,
+                action="RESET_FREELANCER_PASSWORD",
+                request=request,
+                target_type="FREELANCER",
+                target_id=freelancer.id,
+                details=(
+                    f"Reset password for {freelancer.full_name}; "
+                    "forced password change on next login."
+                ),
+            )
+            database.commit()
+
+        set_flash(
+            request,
+            "Temporary password saved. The member must change it at the next login.",
+            "success",
+        )
+        return RedirectResponse("/admin/freelancers", status_code=303)
+
+    @router.get(
+        "/admin/freelancers/{freelancer_id}/delete",
+        response_class=HTMLResponse,
+    )
+    def delete_freelancer_page(
+        freelancer_id: int,
+        request: Request,
+    ):
+        with SessionLocal() as database:
+            admin = get_current_admin(request, database)
+            if admin is None:
+                return RedirectResponse("/admin/login", status_code=303)
+            if not _staff_can_manage(admin):
+                return RedirectResponse("/admin?access=readonly", status_code=303)
+
+            freelancer = database.scalar(
+                select(Freelancer)
+                .options(joinedload(Freelancer.account))
+                .where(Freelancer.id == freelancer_id)
+            )
+            if freelancer is None:
+                set_flash(request, "Freelancer was not found.", "error")
+                return RedirectResponse("/admin/freelancers", status_code=303)
+
+            return templates.TemplateResponse(
+                request=request,
+                name="admin_delete_freelancer.html",
+                context=template_context(
+                    request,
+                    admin=admin,
+                    freelancer=freelancer,
+                    deletion=_freelancer_delete_summary(
+                        database, freelancer.id
+                    ),
+                ),
+            )
+
+    @router.post("/admin/freelancers/{freelancer_id}/delete")
+    def delete_freelancer(
+        freelancer_id: int,
+        request: Request,
+        csrf: str = Form(...),
+        confirm_name: str = Form(...),
+    ):
+        redirect_path = f"/admin/freelancers/{freelancer_id}/delete"
+        if not validate_csrf(request, csrf):
+            set_flash(request, "Invalid form token.", "error")
+            return RedirectResponse(redirect_path, status_code=303)
+
+        with SessionLocal() as database:
+            admin = get_current_admin(request, database)
+            if admin is None:
+                return RedirectResponse("/admin/login", status_code=303)
+            if not _staff_can_manage(admin):
+                return RedirectResponse("/admin?access=readonly", status_code=303)
+
+            freelancer = database.scalar(
+                select(Freelancer)
+                .options(joinedload(Freelancer.account))
+                .where(Freelancer.id == freelancer_id)
+            )
+            if freelancer is None:
+                set_flash(request, "Freelancer was not found.", "error")
+                return RedirectResponse("/admin/freelancers", status_code=303)
+
+            deletion = _freelancer_delete_summary(database, freelancer.id)
+            if deletion["blocked"]:
+                set_flash(
+                    request,
+                    "This member has operational history or project links and cannot be deleted. Disable the account instead.",
+                    "error",
+                )
+                return RedirectResponse(redirect_path, status_code=303)
+
+            if confirm_name.strip().casefold() != freelancer.full_name.strip().casefold():
+                set_flash(
+                    request,
+                    "Type the member's complete name exactly to confirm deletion.",
+                    "error",
+                )
+                return RedirectResponse(redirect_path, status_code=303)
+
+            deleted_name = freelancer.full_name
+            deleted_code = freelancer.freelancer_code
+            target_id = freelancer.id
+            write_audit(
+                database,
+                actor_type="HR_ADMIN",
+                actor_id=admin.id,
+                action="DELETE_UNUSED_TEST_MEMBER",
+                request=request,
+                target_type="FREELANCER",
+                target_id=target_id,
+                details=f"Deleted unused member {deleted_name} ({deleted_code}).",
+            )
+            # The Freelancer.account relationship is configured with
+            # delete-orphan cascade, so deleting the member removes the login
+            # account in the same transaction without issuing duplicate deletes.
+            database.delete(freelancer)
+            database.commit()
+
+        set_flash(
+            request,
+            f"Unused member {deleted_name} was permanently deleted.",
+            "success",
+        )
+        return RedirectResponse("/admin/freelancers", status_code=303)
 
     @router.get("/admin/settings/work-schedule", response_class=HTMLResponse)
     def work_schedule_page(request: Request):

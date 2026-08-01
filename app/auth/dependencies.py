@@ -75,5 +75,5 @@ def require_permission(permission: Permission | str) -> Callable:
 
 require_admin = require_permission(Permission.STAFF_MANAGE)
 require_finance = require_permission(Permission.FINANCE_VIEW)
-require_supervisor = require_permission(Permission.LEAVE_APPROVE)
+require_supervisor = require_permission(Permission.LEAVE_VIEW_ALL)
 require_employee = require_permission(Permission.ATTENDANCE_VIEW_OWN)

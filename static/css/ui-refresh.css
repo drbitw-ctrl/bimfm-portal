@@ -2248,3 +2248,252 @@ html[data-theme="dark"] .mapping-table .unmapped-row {
     flex: 1 1 180px;
   }
 }
+
+/* Release 20.14 — operational focus, read-only supervisor, member tools */
+.role-pill.supervisor {
+  background: color-mix(in srgb, #edf0ff 82%, var(--ui-surface));
+  color: #4c4aa2;
+  border: 1px solid color-mix(in srgb, #716fd0 38%, var(--ui-border));
+}
+
+.readonly-role-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 18px;
+  padding: 13px 16px;
+  border: 1px solid color-mix(in srgb, #716fd0 32%, var(--ui-border));
+  border-radius: 15px;
+  color: var(--ui-text-strong);
+  background: color-mix(in srgb, #edf0ff 74%, var(--ui-surface));
+  box-shadow: var(--ui-shadow-sm);
+}
+
+.readonly-role-banner > span {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  color: #fff;
+  background: #605eb8;
+}
+
+.readonly-role-banner > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.readonly-role-banner small { color: var(--ui-muted); }
+
+/* Defense-in-depth presentation: Supervisor pages never display write forms. */
+.readonly-supervisor-layout main form[method="post"]:not([data-readonly-allowed]) {
+  display: none !important;
+}
+
+.dashboard-focus-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin: 20px 0;
+}
+
+.dashboard-focus-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 190px;
+  padding: 23px;
+  border: 1px solid var(--ui-border);
+  border-radius: 22px;
+  color: var(--ui-text);
+  text-decoration: none;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-sm);
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.dashboard-focus-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--ui-border-strong);
+  box-shadow: var(--ui-shadow-md);
+}
+
+.dashboard-focus-card::after {
+  content: "";
+  position: absolute;
+  right: -48px;
+  bottom: -64px;
+  width: 160px;
+  height: 160px;
+  border: 28px solid currentColor;
+  border-radius: 50%;
+  opacity: 0.035;
+}
+
+.dashboard-focus-card.availability {
+  background: linear-gradient(145deg, color-mix(in srgb, #e8f7ee 72%, var(--ui-surface)), var(--ui-surface));
+  border-color: color-mix(in srgb, #55a873 34%, var(--ui-border));
+}
+
+.dashboard-focus-card.tasks {
+  background: linear-gradient(145deg, color-mix(in srgb, #e9f3ff 72%, var(--ui-surface)), var(--ui-surface));
+  border-color: color-mix(in srgb, #4f8fda 34%, var(--ui-border));
+}
+
+.dashboard-focus-card.attendance {
+  background: linear-gradient(145deg, color-mix(in srgb, #fff4dc 72%, var(--ui-surface)), var(--ui-surface));
+  border-color: color-mix(in srgb, #d49a2b 34%, var(--ui-border));
+}
+
+.focus-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.focus-card-head > span:first-child {
+  color: var(--ui-muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.focus-card-icon {
+  display: grid;
+  place-items: center;
+  width: 43px;
+  height: 43px;
+  border-radius: 14px;
+  color: var(--ui-brand-800);
+  background: color-mix(in srgb, var(--ui-brand-100) 76%, var(--ui-surface));
+}
+
+.dashboard-focus-card > strong {
+  color: var(--ui-text-strong);
+  font-size: clamp(2.25rem, 4vw, 3.3rem);
+  line-height: 1;
+  letter-spacing: -0.055em;
+}
+
+.dashboard-focus-card > p {
+  margin: 8px 0 18px;
+  color: var(--ui-muted);
+  font-size: 0.78rem;
+}
+
+.focus-card-breakdown {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: auto;
+}
+
+.focus-card-breakdown span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--ui-border) 75%, transparent);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--ui-surface) 82%, transparent);
+}
+
+.focus-card-breakdown b {
+  color: var(--ui-text-strong);
+  font-size: 1rem;
+}
+
+.focus-card-breakdown small {
+  overflow: hidden;
+  color: var(--ui-muted);
+  font-size: 0.62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table-action-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.danger-button {
+  color: #fff !important;
+  border-color: #b83a3a !important;
+  background: #b83a3a !important;
+}
+
+.danger-button:hover { background: #962d2d !important; }
+
+.protected-record-note {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  color: var(--ui-muted);
+  background: var(--ui-surface-soft);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.compact-form-panel {
+  max-width: 680px;
+  padding: clamp(22px, 4vw, 32px);
+}
+
+.account-recovery-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.account-recovery-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.account-recovery-summary small { color: var(--ui-muted); }
+.person-avatar.large { width: 52px; height: 52px; font-size: 1.1rem; }
+.form-actions { margin-top: 22px; }
+.danger-notice { border-color: color-mix(in srgb, #c43f3f 34%, var(--ui-border)); }
+
+.dependency-list {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0;
+}
+
+.dependency-list > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 11px 13px;
+  border: 1px solid var(--ui-border);
+  border-radius: 11px;
+  background: var(--ui-surface-soft);
+}
+
+@media (max-width: 1050px) {
+  .dashboard-focus-grid { grid-template-columns: 1fr; }
+  .dashboard-focus-card { min-height: 170px; }
+}
+
+@media (max-width: 650px) {
+  .focus-card-breakdown { grid-template-columns: 1fr; }
+  .focus-card-breakdown small { white-space: normal; }
+  .table-action-group { align-items: stretch; }
+  .table-action-group > * { flex: 1 1 100%; }
+}

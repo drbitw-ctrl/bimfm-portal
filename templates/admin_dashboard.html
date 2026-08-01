@@ -1,32 +1,75 @@
 {% extends "base.html" %}
-{% block title %}HR Overview · {{ app_name }}{% endblock %}
+{% block title %}Operations Overview · {{ app_name }}{% endblock %}
 {% block content %}
 <section class="dashboard-hero">
   <div>
-    <span class="eyebrow hero-eyebrow">{{ 'FINANCE WORKSPACE' if current_staff_role == 'FINANCE' else 'PEOPLE OPERATIONS' }}</span>
+    <span class="eyebrow hero-eyebrow">
+      {{ 'FINANCE WORKSPACE' if current_staff_role == 'FINANCE' else ('READ-ONLY OPERATIONS' if current_staff_role == 'SUPERVISOR' else 'PEOPLE OPERATIONS') }}
+    </span>
     <h1>Good day, {{ admin.display_name }}</h1>
-    <p>{{ 'Review attendance, approved requests, DTRs, and finance-ready summaries.' if current_staff_role == 'FINANCE' else 'A clear view of attendance, approvals, assignments, and workforce activity.' }}</p>
+    <p>
+      {% if current_staff_role == 'FINANCE' %}
+      Review attendance, finalized DTRs, and finance-ready summaries.
+      {% elif current_staff_role == 'SUPERVISOR' %}
+      View team availability, attendance, active tasks, requests, DTR, and finance records without changing operational data.
+      {% else %}
+      A clear view of team availability, attendance today, active tasks, approvals, and workforce activity.
+      {% endif %}
+    </p>
     <div class="hero-actions">
       <a class="button light-button" href="/admin/attendance/today">Open attendance</a>
       {% if can(Permission.PROJECT_EDIT) %}<a class="button glass-button" href="/portal/tasks/new">＋ {{ t('New Task') }}</a>{% endif %}
-      <a class="button glass-button" href="/admin/finance">Finance center</a>
+      {% if can(Permission.FINANCE_VIEW) %}<a class="button glass-button" href="/admin/finance">Finance center</a>{% endif %}
     </div>
   </div>
   <div class="hero-status-card">
-    <span>Today’s operating status</span>
-    <strong>{{ today_working + today_complete }} / {{ active_freelancer_count }}</strong>
-    <small>active freelancers have an attendance record</small>
-    <div class="hero-progress"><i style="width: {{ (((today_working + today_complete) / active_freelancer_count * 100) if active_freelancer_count else 0)|round(0) }}%"></i></div>
+    <span>Attendance today</span>
+    <strong>{{ attendance_recorded_count }} / {{ active_freelancer_count }}</strong>
+    <small>active members have an attendance record</small>
+    <div class="hero-progress"><i style="width: {{ ((attendance_recorded_count / active_freelancer_count * 100) if active_freelancer_count else 0)|round(0) }}%"></i></div>
   </div>
 </section>
 
+<section class="dashboard-focus-grid" aria-label="Operations highlights">
+  <a class="dashboard-focus-card availability" href="/portal/team-workload">
+    <div class="focus-card-head"><span>Team Availability</span><span class="focus-card-icon">◫</span></div>
+    <strong>{{ team_available_count }}</strong>
+    <p>member{{ '' if team_available_count == 1 else 's' }} currently have no active task</p>
+    <div class="focus-card-breakdown">
+      <span><b>{{ team_assigned_count }}</b><small>With active tasks</small></span>
+      <span><b>{{ unassigned_project_members }}</b><small>No project assignment</small></span>
+      <span><b>{{ team_with_overdue_count }}</b><small>With overdue work</small></span>
+    </div>
+  </a>
+
+  <a class="dashboard-focus-card tasks" href="/portal/tasks?view=active">
+    <div class="focus-card-head"><span>Active Tasks</span><span class="focus-card-icon">▶</span></div>
+    <strong>{{ active_task_count }}</strong>
+    <p>open tasks across the PostgreSQL project workspace</p>
+    <div class="focus-card-breakdown">
+      <span><b>{{ overdue_task_count }}</b><small>Overdue</small></span>
+      <span><b>{{ active_tasks_without_assignees }}</b><small>Without assignee</small></span>
+      <span><b>{{ project_count }}</b><small>Projects</small></span>
+    </div>
+  </a>
+
+  <a class="dashboard-focus-card attendance" href="/admin/attendance/today">
+    <div class="focus-card-head"><span>Attendance Today</span><span class="focus-card-icon">◷</span></div>
+    <strong>{{ attendance_recorded_count }}</strong>
+    <p>of {{ active_freelancer_count }} active members recorded attendance</p>
+    <div class="focus-card-breakdown">
+      <span><b>{{ today_working }}</b><small>Working now</small></span>
+      <span><b>{{ today_complete }}</b><small>Completed</small></span>
+      <span><b>{{ today_no_record }}</b><small>No record</small></span>
+    </div>
+  </a>
+</section>
+
 <section class="dashboard-kpi-grid">
-  <a class="kpi-card tone-blue" href="/admin/attendance/today"><span class="kpi-icon">✓</span><div><small>Present / Complete</small><strong>{{ today_complete }}</strong><p>Completed time in and out</p></div></a>
-  <a class="kpi-card tone-green" href="/admin/attendance/today"><span class="kpi-icon">◷</span><div><small>Working Now</small><strong>{{ today_working }}</strong><p>Currently timed in</p></div></a>
-  <a class="kpi-card tone-red" href="/admin/attendance/today"><span class="kpi-icon">!</span><div><small>No Record</small><strong>{{ today_no_record }}</strong><p>Requires attendance follow-up</p></div></a>
-  <a class="kpi-card tone-amber" href="/admin/leave-requests"><span class="kpi-icon">↗</span><div><small>Pending Leave</small><strong>{{ pending_leave_count }}</strong><p>Awaiting review</p></div></a>
-  <a class="kpi-card tone-purple" href="/admin/overtime"><span class="kpi-icon">＋</span><div><small>Pending Overtime</small><strong>{{ pending_overtime_count }}</strong><p>Awaiting review</p></div></a>
-  <a class="kpi-card tone-slate" href="/admin/project-team"><span class="kpi-icon">▦</span><div><small>Active Assignments</small><strong>{{ active_task_count }}</strong><p>{{ overdue_task_count }} overdue task{{ '' if overdue_task_count == 1 else 's' }}</p></div></a>
+  {% if can(Permission.LEAVE_VIEW_ALL) %}<a class="kpi-card tone-amber" href="/admin/leave-requests"><span class="kpi-icon">↗</span><div><small>Pending Leave</small><strong>{{ pending_leave_count }}</strong><p>{{ 'Awaiting review' if can(Permission.LEAVE_APPROVE) else 'Read-only view' }}</p></div></a>{% endif %}
+  {% if can(Permission.OVERTIME_VIEW_ALL) %}<a class="kpi-card tone-purple" href="/admin/overtime"><span class="kpi-icon">＋</span><div><small>Pending Overtime</small><strong>{{ pending_overtime_count }}</strong><p>{{ 'Awaiting review' if can(Permission.OVERTIME_APPROVE) else 'Read-only view' }}</p></div></a>{% endif %}
+  <a class="kpi-card tone-blue" href="/portal/projects"><span class="kpi-icon">▦</span><div><small>Projects</small><strong>{{ project_count }}</strong><p>Project records in PostgreSQL</p></div></a>
+  <a class="kpi-card tone-red" href="/portal/tasks?view=active"><span class="kpi-icon">!</span><div><small>Overdue Tasks</small><strong>{{ overdue_task_count }}</strong><p>Past deadline and still open</p></div></a>
 </section>
 
 <div class="dashboard-main-grid">
@@ -42,7 +85,7 @@
         <tbody>
         {% for row in workforce_rows %}
           <tr>
-            <td><div class="person-cell"><span class="person-avatar">{{ row.name[:1]|upper }}</span><div><strong>{{ row.name }}</strong><small>{{ row.code }}</small></div></div></td>
+            <td><div class="person-cell"><span class="person-avatar">{{ row.name[:1]|upper }}</span><div><strong>{{ row.name }}</strong></div></div></td>
             <td><span class="status-chip status-{{ row.status|lower|replace(' ', '-') }}">{{ row.status }}</span></td>
             <td><strong class="table-value">{{ row.time_in }}</strong></td>
             <td><span class="task-count">{{ row.active_tasks }}</span></td>
@@ -56,12 +99,14 @@
   </section>
 
   <aside class="dashboard-side-stack">
+    {% if can(Permission.LEAVE_VIEW_ALL) or can(Permission.OVERTIME_VIEW_ALL) %}
     <section class="dashboard-panel approval-panel">
-      <div class="panel-heading-modern compact"><div><span class="eyebrow">ACTION CENTER</span><h2>Pending approvals</h2></div><span class="count-bubble">{{ pending_action_count }}</span></div>
-      <a class="approval-row" href="/admin/leave-requests"><span class="approval-icon leave">L</span><div><strong>Leave requests</strong><small>Supervisor decision required</small></div><b>{{ pending_leave_count }}</b></a>
-      <a class="approval-row" href="/admin/overtime"><span class="approval-icon overtime">OT</span><div><strong>Overtime claims</strong><small>Review hours and credits</small></div><b>{{ pending_overtime_count }}</b></a>
+      <div class="panel-heading-modern compact"><div><span class="eyebrow">ACTION CENTER</span><h2>{{ 'Pending approvals' if can(Permission.LEAVE_APPROVE) or can(Permission.OVERTIME_APPROVE) else 'Pending requests' }}</h2></div><span class="count-bubble">{{ pending_action_count }}</span></div>
+      {% if can(Permission.LEAVE_VIEW_ALL) %}<a class="approval-row" href="/admin/leave-requests"><span class="approval-icon leave">L</span><div><strong>Leave requests</strong><small>{{ 'Administrator decision required' if not can(Permission.LEAVE_APPROVE) else 'Review required' }}</small></div><b>{{ pending_leave_count }}</b></a>{% endif %}
+      {% if can(Permission.OVERTIME_VIEW_ALL) %}<a class="approval-row" href="/admin/overtime"><span class="approval-icon overtime">OT</span><div><strong>Overtime claims</strong><small>{{ 'Administrator decision required' if not can(Permission.OVERTIME_APPROVE) else 'Review hours and credits' }}</small></div><b>{{ pending_overtime_count }}</b></a>{% endif %}
       {% if pending_action_count == 0 %}<div class="all-clear"><span>✓</span><div><strong>All caught up</strong><small>No requests are waiting for review.</small></div></div>{% endif %}
     </section>
+    {% endif %}
 
     <section class="dashboard-panel sync-card">
       <div class="panel-heading-modern compact"><div><span class="eyebrow">POSTGRESQL PROJECT DATA</span><h2>Assignment health</h2></div><span class="live-dot"></span></div>
@@ -85,9 +130,9 @@
       {% if can(Permission.PROJECT_EDIT) %}<a href="/portal/tasks/new"><span>＋</span><strong>{{ t('New Task') }}</strong><small>Create and assign project work</small></a>{% endif %}
       <a href="/admin/attendance/monthly"><span>01</span><strong>Monthly attendance</strong><small>Review attendance trends</small></a>
       <a href="/admin/dtr"><span>02</span><strong>{{ t('Monthly DTR') }}</strong><small>Generate and review records</small></a>
-      <a href="/admin/finance"><span>03</span><strong>Finance center</strong><small>Whole-day payroll review</small></a>
-      <a href="/admin/hr/calendar"><span>04</span><strong>HR calendar</strong><small>Leave and holidays</small></a>
-      {% if current_staff_role == 'ADMIN' %}<a href="/admin/freelancers"><span>05</span><strong>Freelancers</strong><small>Accounts and profiles</small></a><a href="/admin/staff-accounts"><span>06</span><strong>Staff access</strong><small>Roles and permissions</small></a>{% endif %}
+      {% if can(Permission.FINANCE_VIEW) %}<a href="/admin/finance"><span>03</span><strong>Finance center</strong><small>Whole-day payroll review</small></a>{% endif %}
+      {% if can(Permission.SETTINGS_MANAGE) %}<a href="/admin/hr/calendar"><span>04</span><strong>HR calendar</strong><small>Leave and holidays</small></a>{% endif %}
+      {% if can(Permission.STAFF_MANAGE) %}<a href="/admin/freelancers"><span>05</span><strong>Freelancers</strong><small>Accounts and profiles</small></a><a href="/admin/staff-accounts"><span>06</span><strong>Staff access</strong><small>Roles and permissions</small></a>{% endif %}
     </div>
   </section>
 </div>

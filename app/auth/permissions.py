@@ -1,6 +1,6 @@
 """Central role and permission policy.
 
-Database role values remain stable while route code checks capabilities.  This
+Database role values remain stable while route code checks capabilities. This
 keeps authorization extensible and prevents role-name comparisons from being
 scattered throughout the application.
 """
@@ -24,8 +24,10 @@ class Permission(StrEnum):
     ATTENDANCE_VIEW_ALL = "attendance.view_all"
     ATTENDANCE_EDIT = "attendance.edit"
     LEAVE_SUBMIT = "leave.submit"
+    LEAVE_VIEW_ALL = "leave.view_all"
     LEAVE_APPROVE = "leave.approve"
     OVERTIME_SUBMIT = "overtime.submit"
+    OVERTIME_VIEW_ALL = "overtime.view_all"
     OVERTIME_APPROVE = "overtime.approve"
     FINANCE_VIEW = "finance.view"
     FINANCE_EXPORT = "finance.export"
@@ -38,17 +40,16 @@ class Permission(StrEnum):
 
 _ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
     Role.ADMIN: frozenset(Permission),
+    # Release 20.14: Supervisor is a true read-only management role. It can
+    # inspect operational, project, attendance, request, DTR and finance data,
+    # but it cannot create, approve, edit, delete, export or configure records.
     Role.SUPERVISOR: frozenset({
         Permission.DASHBOARD_VIEW,
-        Permission.ATTENDANCE_VIEW_OWN,
         Permission.ATTENDANCE_VIEW_ALL,
-        Permission.ATTENDANCE_EDIT,
-        Permission.LEAVE_SUBMIT,
-        Permission.LEAVE_APPROVE,
-        Permission.OVERTIME_SUBMIT,
-        Permission.OVERTIME_APPROVE,
+        Permission.LEAVE_VIEW_ALL,
+        Permission.OVERTIME_VIEW_ALL,
+        Permission.FINANCE_VIEW,
         Permission.PROJECT_VIEW,
-        Permission.PROJECT_EDIT,
     }),
     Role.FINANCE: frozenset({
         Permission.DASHBOARD_VIEW,

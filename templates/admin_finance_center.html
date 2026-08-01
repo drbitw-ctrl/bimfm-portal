@@ -5,7 +5,7 @@
   <div>
     <span class="eyebrow">WHOLE-DAY PAYROLL REVIEW</span>
     <h1>{{ t('Finance Center') }}</h1>
-    {% if current_staff_role == 'FINANCE' %}<span class="role-pill finance">{{ t('Finance Head · Read only') }}</span>{% endif %}
+    {% if current_staff_role == 'FINANCE' %}<span class="role-pill finance">{{ t('Finance Head · Read only') }}</span>{% elif current_staff_role == 'SUPERVISOR' %}<span class="role-pill supervisor">{{ t('Supervisor · Read only') }}</span>{% endif %}
     <p class="muted">A salary-free monthly overview that separates physical attendance, leave utilization, and payroll treatment. No decimal day or multiplier values are shown.</p>
   </div>
   <div class="action-row">

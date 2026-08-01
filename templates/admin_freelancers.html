@@ -2,85 +2,86 @@
 {% block title %}Freelancer Accounts · {{ app_name }}{% endblock %}
 {% block content %}
 <div class="toolbar">
-    <div>
-        <span class="eyebrow">ACCOUNT MANAGEMENT</span>
-        <h1>{{ t('Freelancer Accounts') }}</h1>
-    </div>
-    <div class="action-row">
-        <a class="button primary" href="/admin/freelancers/new">
-            Create Account
-        </a>
-        <a class="button secondary" href="/admin">{{ t('Dashboard') }}</a>
-    </div>
+  <div>
+    <span class="eyebrow">ACCOUNT MANAGEMENT</span>
+    <h1>{{ t('Freelancer Accounts') }}</h1>
+    <p class="muted">Manage member access, issue temporary passwords, and remove unused testing accounts.</p>
+  </div>
+  <div class="action-row">
+    <a class="button primary" href="/admin/freelancers/new">Create Account</a>
+    <a class="button secondary" href="/admin">{{ t('Dashboard') }}</a>
+  </div>
 </div>
 
 <section class="panel table-panel">
-    {% if freelancers %}
+  {% if freelancers %}
+  <div class="responsive-table">
     <table class="modern-table smart-table" data-card-table>
-        <thead>
-            <tr>
-                <th>Code</th>
-                <th>{{ t('Name') }}</th>
-                <th>{{ t('Username') }}</th>
-                <th>Password State</th>
-                <th>{{ t('Status') }}</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for freelancer in freelancers %}
-            <tr>
-                <td>{{ freelancer.freelancer_code }}</td>
-                <td>
-                    <strong>{{ freelancer.full_name }}</strong>
-                    {% if freelancer.email %}
-                        <small>{{ freelancer.email }}</small>
-                    {% endif %}
-                </td>
-                <td>
-                    {% if freelancer.account %}
-                        {{ freelancer.account.username }}
-                    {% else %}
-                        —
-                    {% endif %}
-                </td>
-                <td>
-                    {% if freelancer.account and freelancer.account.must_change_password %}
-                        <span class="badge warning">Temporary</span>
-                    {% else %}
-                        <span class="badge good">Personal</span>
-                    {% endif %}
-                </td>
-                <td>
-                    {% if freelancer.is_active %}
-                        <span class="badge good">{{ t('Active') }}</span>
-                    {% else %}
-                        <span class="badge danger">Disabled</span>
-                    {% endif %}
-                </td>
-                <td>
-                    <form method="post"
-                          action="/admin/freelancers/{{ freelancer.id }}/toggle">
-                        <input type="hidden" name="csrf"
-                               value="{{ csrf_token }}">
-                        <button class="small secondary" type="submit">
-                            {% if freelancer.is_active %}
-                                Disable
-                            {% else %}
-                                Enable
-                            {% endif %}
-                        </button>
-                    </form>
-                </td>
-            </tr>
-        {% endfor %}
-        </tbody>
+      <thead>
+        <tr>
+          <th>{{ t('Name') }}</th>
+          <th>{{ t('Username') }}</th>
+          <th>Password State</th>
+          <th>{{ t('Status') }}</th>
+          <th>Account Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for freelancer in freelancers %}
+        {% set deletion = deletion_status.get(freelancer.id, {}) %}
+        <tr>
+          <td>
+            <div class="person-cell">
+              <span class="person-avatar">{{ freelancer.full_name[:1]|upper }}</span>
+              <div>
+                <strong>{{ freelancer.full_name }}</strong>
+                {% if freelancer.email %}<small>{{ freelancer.email }}</small>{% endif %}
+              </div>
+            </div>
+          </td>
+          <td>{{ freelancer.account.username if freelancer.account else '—' }}</td>
+          <td>
+            {% if freelancer.account and freelancer.account.must_change_password %}
+              <span class="badge warning">Temporary</span>
+            {% elif freelancer.account %}
+              <span class="badge good">Personal</span>
+            {% else %}
+              <span class="badge warning">No login</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if freelancer.is_active %}
+              <span class="badge good">{{ t('Active') }}</span>
+            {% else %}
+              <span class="badge danger">Disabled</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="table-action-group">
+              <form method="post" action="/admin/freelancers/{{ freelancer.id }}/toggle" class="inline-form">
+                <input type="hidden" name="csrf" value="{{ csrf_token }}">
+                <button class="button small secondary" type="submit">{{ 'Disable' if freelancer.is_active else 'Enable' }}</button>
+              </form>
+              {% if freelancer.account %}
+              <a class="button small secondary" href="/admin/freelancers/{{ freelancer.id }}/reset-password">Reset password</a>
+              {% endif %}
+              {% if not deletion.get('blocked') %}
+              <a class="button small danger-button" href="/admin/freelancers/{{ freelancer.id }}/delete">Delete member</a>
+              {% else %}
+              <span class="protected-record-note" title="This member has operational history or project links and must be disabled instead of deleted.">Protected record</span>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
     </table>
-    {% else %}
-        <div class="empty-state">
-            <h2>No freelancer accounts yet</h2>
-            <p>Create the first account to begin testing.</p>
-        </div>
-    {% endif %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h2>No freelancer accounts yet</h2>
+    <p>Create the first account to begin testing.</p>
+  </div>
+  {% endif %}
 </section>
 {% endblock %}
