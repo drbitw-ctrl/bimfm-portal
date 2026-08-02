@@ -1521,6 +1521,28 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
             record.time_out_utc = official_utc
             record.status = "COMPLETE"
 
+            # A trusted attendance Time Out also closes any active Work Order.
+            # This is an Administrator control and is intentionally not exposed
+            # as a freelancer-facing fallback option. Attendance must still save
+            # even if the Work Order safeguard encounters an unexpected problem.
+            auto_closed_work_order = None
+            try:
+                with database.begin_nested():
+                    auto_closed_work_order = auto_stop_active_work_session(
+                        database,
+                        freelancer=account.freelancer,
+                        stopped_at=official_utc,
+                    )
+                    if auto_closed_work_order is not None:
+                        _, fallback_daily_task = auto_closed_work_order
+                        invalidate_task_review(
+                            database,
+                            account.freelancer_id,
+                            fallback_daily_task.task_date.strftime("%Y-%m"),
+                        )
+            except Exception:
+                auto_closed_work_order = None
+
             database.add(
                 AttendanceEvent(
                     freelancer_id=account.freelancer_id,
@@ -1557,6 +1579,22 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                 target_id=record.id,
                 details=f"Official UTC timestamp: {official_utc.isoformat()}",
             )
+            if auto_closed_work_order is not None:
+                fallback_session, _ = auto_closed_work_order
+                write_audit(
+                    database,
+                    actor_type="SYSTEM",
+                    actor_id=None,
+                    action="AUTO_STOP_WORK_ORDER_AT_TIME_OUT",
+                    request=request,
+                    target_type="TASK_WORK_SESSION",
+                    target_id=fallback_session.id,
+                    details=(
+                        f"Attendance Time Out closed {fallback_session.project_name} / "
+                        f"{fallback_session.task_title}; recorded "
+                        f"{fallback_session.duration_minutes} minutes."
+                    ),
+                )
 
             try:
                 database.commit()

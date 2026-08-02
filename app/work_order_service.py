@@ -1,7 +1,7 @@
 """Timed work orders, live-work visibility, and email-style reminders."""
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from email.message import EmailMessage
 import math
 import smtplib
@@ -19,8 +19,10 @@ from app.config import (
     SMTP_PORT,
     SMTP_USERNAME,
     SMTP_USE_TLS,
+    WORK_ORDER_MAX_ACTIVE_HOURS,
 )
 from app.models import (
+    AuditLog,
     DailyTask,
     Freelancer,
     HRAdminAccount,
@@ -29,6 +31,7 @@ from app.models import (
     TaskReminder,
     TaskWorkSession,
 )
+from app.hr_workflow import invalidate_task_review
 from app.models.common import utc_now
 from app.portal_project_service import current_freelancer_portal_tasks, portal_task_for_freelancer
 
@@ -108,25 +111,25 @@ def start_work_session(
     return session
 
 
-def stop_work_session(
+def _complete_work_session(
     database: Session,
     *,
     freelancer: Freelancer,
+    session: TaskWorkSession,
+    stopped_at: datetime,
     notes: str = "",
-    stopped_at: Optional[datetime] = None,
 ) -> tuple[TaskWorkSession, DailyTask]:
-    session = active_work_session(database, freelancer.id)
-    if session is None:
-        raise ValueError("There is no active work order to stop.")
+    """Finalize one active timer and mirror it into Daily Tasks.
 
-    stop_time = _aware(stopped_at or utc_now())
+    The helper accepts an explicit session so Administrator-only safeguards can
+    close stale timers without depending on a second active-session lookup.
+    """
+    stop_time = _aware(stopped_at)
     start_time = _aware(session.started_at)
     if stop_time <= start_time:
         raise ValueError("The stop time must be later than the start time.")
 
     elapsed_seconds = (stop_time - start_time).total_seconds()
-    # Record every genuine session and round partial minutes upward so short
-    # checks do not disappear from the operational record.
     duration_minutes = max(1, int(math.ceil(elapsed_seconds / 60.0)))
 
     task = database.get(PortalTask, session.portal_task_id) if session.portal_task_id else None
@@ -134,6 +137,7 @@ def stop_work_session(
     portal_status = str(getattr(task, "status", "IN_PROGRESS") or "IN_PROGRESS").upper()
     daily_status = "COMPLETED" if portal_status == "COMPLETED" else "IN_PROGRESS"
     progress = max(0, min(100, int(getattr(task, "progress", 0) or 0)))
+    clean_notes = notes.strip() or None
 
     daily_task = DailyTask(
         freelancer_id=freelancer.id,
@@ -144,12 +148,11 @@ def stop_work_session(
         project_name=(project.name if project else session.project_name),
         discipline=(getattr(task, "discipline", None) or getattr(project, "discipline", None) or session.discipline),
         task_description=(getattr(task, "title", None) or session.task_title),
-        # Accomplishment and project progress remain management-controlled.
         accomplishment=None,
         task_status=daily_status,
         minutes_spent=duration_minutes,
         completion_percentage=progress,
-        notes=notes.strip() or None,
+        notes=clean_notes,
     )
     database.add(daily_task)
     database.flush()
@@ -157,11 +160,108 @@ def stop_work_session(
     session.status = STOPPED_SESSION_STATUS
     session.stopped_at = stop_time
     session.duration_minutes = duration_minutes
-    session.notes = notes.strip() or None
+    session.notes = clean_notes
     session.daily_task_id = daily_task.id
     session.updated_at = stop_time
     database.flush()
     return session, daily_task
+
+
+def stop_work_session(
+    database: Session,
+    *,
+    freelancer: Freelancer,
+    notes: str = "",
+    stopped_at: Optional[datetime] = None,
+) -> tuple[TaskWorkSession, DailyTask]:
+    session = active_work_session(database, freelancer.id)
+    if session is None:
+        raise ValueError("There is no active work order to stop.")
+    return _complete_work_session(
+        database,
+        freelancer=freelancer,
+        session=session,
+        stopped_at=_aware(stopped_at or utc_now()),
+        notes=notes,
+    )
+
+
+def auto_stop_active_work_session(
+    database: Session,
+    *,
+    freelancer: Freelancer,
+    stopped_at: datetime,
+) -> Optional[tuple[TaskWorkSession, DailyTask]]:
+    """Silently close the freelancer's timer at a trusted system timestamp."""
+    session = active_work_session(database, freelancer.id)
+    if session is None:
+        return None
+    stop_time = _aware(stopped_at)
+    if stop_time <= _aware(session.started_at):
+        return None
+    return _complete_work_session(
+        database,
+        freelancer=freelancer,
+        session=session,
+        stopped_at=stop_time,
+    )
+
+
+def reconcile_stale_work_sessions(
+    database: Session,
+    *,
+    now: Optional[datetime] = None,
+) -> list[tuple[TaskWorkSession, DailyTask]]:
+    """Cap forgotten active timers without exposing a freelancer-facing control.
+
+    Attendance Time Out is the normal trusted stop. This background safeguard
+    handles sessions that remain open beyond the Administrator-configured cap.
+    """
+    current = _aware(now or utc_now())
+    cutoff = current - timedelta(hours=WORK_ORDER_MAX_ACTIVE_HOURS)
+    statement = (
+        select(TaskWorkSession, Freelancer)
+        .join(Freelancer, Freelancer.id == TaskWorkSession.freelancer_id)
+        .where(
+            TaskWorkSession.status == ACTIVE_SESSION_STATUS,
+            TaskWorkSession.stopped_at.is_(None),
+            TaskWorkSession.started_at <= cutoff,
+            Freelancer.is_active.is_(True),
+        )
+        .order_by(TaskWorkSession.started_at, TaskWorkSession.id)
+    )
+    closed: list[tuple[TaskWorkSession, DailyTask]] = []
+    for session, freelancer in database.execute(statement).all():
+        capped_stop = _aware(session.started_at) + timedelta(hours=WORK_ORDER_MAX_ACTIVE_HOURS)
+        completed = _complete_work_session(
+            database,
+            freelancer=freelancer,
+            session=session,
+            stopped_at=capped_stop,
+        )
+        session_row, daily_task = completed
+        invalidate_task_review(
+            database,
+            freelancer.id,
+            daily_task.task_date.strftime("%Y-%m"),
+        )
+        database.add(
+            AuditLog(
+                actor_type="SYSTEM",
+                actor_id=None,
+                action="AUTO_CLOSE_STALE_WORK_ORDER",
+                target_type="TASK_WORK_SESSION",
+                target_id=session_row.id,
+                details=(
+                    f"Administrator safeguard closed {session_row.project_name} / "
+                    f"{session_row.task_title} at the {WORK_ORDER_MAX_ACTIVE_HOURS}-hour cap; "
+                    f"recorded {session_row.duration_minutes} minutes."
+                ),
+                ip_address=None,
+            )
+        )
+        closed.append(completed)
+    return closed
 
 
 def freelancer_work_order_view(database: Session, freelancer: Freelancer) -> dict[str, Any]:

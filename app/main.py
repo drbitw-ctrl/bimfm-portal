@@ -122,6 +122,7 @@ from app.work_order_service import (
     active_work_session,
     start_work_session,
     stop_work_session,
+    auto_stop_active_work_session,
     freelancer_work_order_view,
     live_work_rows,
     unread_reminder_count,

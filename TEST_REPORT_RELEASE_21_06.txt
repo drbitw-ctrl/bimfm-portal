@@ -1,0 +1,59 @@
+BIMFM Portal Release 21.06 Test Report
+======================================
+Version: 3.0.6-release21.06-password-work-order-safeguard
+Date: 2026-08-02
+
+RESULT
+------
+PASS
+Failures: 0
+Errors: 0
+
+PASSWORD WORKFLOWS
+------------------
+PASS - Administrator forced first-login password change
+PASS - Supervisor forced first-login password change
+PASS - Finance Head forced first-login password change
+PASS - Freelancer forced first-login password change
+PASS - Supervisor password form remains visible under read-only presentation rules
+PASS - Current password verification
+PASS - New password hash stored
+PASS - must_change_password cleared after successful change
+PASS - Administrator-only reset permissions preserved
+
+LOGIN PRESENTATION
+------------------
+PASS - Staff page title displays Administration Login
+PASS - Staff page heading displays Administration Login
+PASS - Administration Access wording rendered
+PASS - Freelancer Login links to Administration Login
+
+WORK ORDER SAFEGUARDS
+---------------------
+PASS - Attendance Time Out closes an active Work Order
+PASS - Official Attendance Time Out timestamp used as stop time
+PASS - Linked Daily Task record created
+PASS - Recorded minutes feed existing utilization data
+PASS - Stale active session detected
+PASS - Stale active session capped at 16 hours
+PASS - Stale session creates linked Daily Task record
+PASS - Administrator audit record created
+PASS - No freelancer-facing fallback control added
+PASS - Safeguard failures do not block Attendance Time Out
+
+STATIC AND STRUCTURAL VALIDATION
+--------------------------------
+PASS - Python compilation
+PASS - Application import
+PASS - JavaScript syntax
+PASS - 48 Jinja templates parsed
+PASS - 1,816 English localization keys
+PASS - 1,816 Traditional Chinese localization keys
+PASS - Localization catalog parity
+PASS - Alembic head: 20260802_0009
+PASS - No new migration
+
+DATABASE TESTING
+----------------
+All workflow tests used isolated SQLite databases.
+Production PostgreSQL data was not accessed or modified.

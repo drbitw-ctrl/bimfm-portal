@@ -7,6 +7,9 @@ records.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
+import threading
+import time
 
 from fastapi import Request
 from fastapi.responses import RedirectResponse
@@ -14,8 +17,10 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.auth.dependencies import principal_from_request
 from app.auth.permissions import Permission, Role, has_permission
+from app.config import WORK_ORDER_RECONCILE_INTERVAL_SECONDS
 from app.database import SessionLocal
 from app.models import FreelancerAccount, HRAdminAccount
+from app.work_order_service import reconcile_stale_work_sessions
 
 
 @dataclass(frozen=True)
@@ -44,6 +49,38 @@ SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 READ_ONLY_STAFF_ROLES = {Role.SUPERVISOR, Role.FINANCE}
 FINANCE_WRITE_EXCEPTIONS = {"/admin/dtr/generate"}
 STAFF_SELF_SERVICE_WRITE_PATHS = {"/admin/change-password"}
+_safeguard_lock = threading.Lock()
+_last_work_order_reconcile = 0.0
+_logger = logging.getLogger(__name__)
+
+
+def _run_work_order_safeguard_if_due() -> None:
+    """Reconcile forgotten timers at a low frequency without delaying requests."""
+    global _last_work_order_reconcile
+    now_monotonic = time.monotonic()
+    if now_monotonic - _last_work_order_reconcile < WORK_ORDER_RECONCILE_INTERVAL_SECONDS:
+        return
+    if not _safeguard_lock.acquire(blocking=False):
+        return
+    try:
+        now_monotonic = time.monotonic()
+        if now_monotonic - _last_work_order_reconcile < WORK_ORDER_RECONCILE_INTERVAL_SECONDS:
+            return
+        with SessionLocal() as database:
+            try:
+                closed = reconcile_stale_work_sessions(database)
+                if closed:
+                    database.commit()
+                else:
+                    database.rollback()
+            except Exception:
+                database.rollback()
+                _logger.exception("Work Order safeguard reconciliation failed")
+        _last_work_order_reconcile = time.monotonic()
+    finally:
+        _safeguard_lock.release()
+
+
 PASSWORD_CHANGE_ALLOWED_PATHS = {
     "/admin/change-password", "/admin/logout", "/change-password", "/logout",
     "/admin/login", "/login", "/setup", "/language",
@@ -55,6 +92,8 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         if path.startswith("/static/"):
             return await call_next(request)
+
+        _run_work_order_safeguard_if_due()
 
         # Force temporary-password replacement before any operational page is
         # available. Existing production staff accounts migrate with the flag

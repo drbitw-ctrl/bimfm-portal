@@ -1,18 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Staff Login · {{ app_name }}{% endblock %}
+{% block title %}{{ t('Administration Login') }} · {{ app_name }}{% endblock %}
 {% block content %}
 <section class="auth-card modern-auth">
   <div class="auth-company-lockup"><img src="{{ url_for('static', path='/images/bimfm-company-logo-web.png') }}" alt="BIMFM Technology · 繽紛科技"></div>
-  <span class="eyebrow">{{ t('SECURE STAFF ACCESS') }}</span>
-  <h1>{{ t('Welcome back') }}</h1>
-  <p class="muted">{{ t('Administrators and the Finance Head use the same secure sign-in.') }}</p>
+  <span class="eyebrow">{{ t('ADMINISTRATION ACCESS') }}</span>
+  <h1>{{ t('Administration Login') }}</h1>
+  <p class="muted">{{ t('Authorized administration, supervision, and finance access.') }}</p>
   <form method="post" action="/admin/login" data-submit-lock>
     <input type="hidden" name="csrf" value="{{ csrf_token }}">
     <label>{{ t('Username') }}</label>
     <input name="username" autocomplete="username" placeholder="{{ t('Enter your username') }}" required autofocus>
     <label>{{ t('Password') }}</label>
     <input type="password" name="password" autocomplete="current-password" placeholder="{{ t('Enter your password') }}" required>
-    <button class="primary full-width" type="submit">{{ t('Sign in to staff workspace') }}</button>
+    <button class="primary full-width" type="submit">{{ t('Sign in to Administration') }}</button>
   </form>
   <p class="link-row"><a href="/login">{{ t('Go to Freelancer Login') }}</a></p>
 </section>

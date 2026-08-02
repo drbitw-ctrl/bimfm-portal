@@ -293,8 +293,16 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
 
             admin_names = admin_name_map(database)
             recent_activity = []
+            activity_query = select(AuditLog)
+            if str(getattr(admin, "role", "ADMIN") or "ADMIN").upper() != "ADMIN":
+                activity_query = activity_query.where(
+                    AuditLog.action.notin_((
+                        "AUTO_STOP_WORK_ORDER_AT_TIME_OUT",
+                        "AUTO_CLOSE_STALE_WORK_ORDER",
+                    ))
+                )
             for item in database.scalars(
-                select(AuditLog).order_by(AuditLog.created_at.desc()).limit(8)
+                activity_query.order_by(AuditLog.created_at.desc()).limit(8)
             ).all():
                 actor_name = (
                     admin_names.get(int(item.actor_id), "HR Administrator")

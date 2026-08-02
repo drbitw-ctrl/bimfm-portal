@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 APP_NAME = "BIMFM Portal"
-APP_VERSION = "3.0.5-release21.05-calendar-utilization-dashboard"
+APP_VERSION = "3.0.6-release21.06-password-work-order-safeguard"
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
@@ -59,6 +59,25 @@ LOG_LEVEL = os.getenv("BIMFM_LOG_LEVEL", "INFO").strip().upper()
 API_RATE_LIMIT_PER_MINUTE = int(os.getenv("BIMFM_API_RATE_LIMIT_PER_MINUTE", "120"))
 LOGIN_RATE_LIMIT_PER_MINUTE = int(os.getenv("BIMFM_LOGIN_RATE_LIMIT_PER_MINUTE", "20"))
 TRUST_PROXY_HEADERS = os.getenv("BIMFM_TRUST_PROXY_HEADERS", "false").strip().lower() == "true"
+
+# Administrator-controlled fallback for forgotten Work Order timers. The portal
+# closes an active timer at attendance Time Out. Sessions that remain active
+# without a Time Out are capped in the background so one forgotten timer cannot
+# inflate utilization indefinitely.
+def _bounded_int_environment(name: str, default: int, minimum: int, maximum: int) -> int:
+    try:
+        value = int(os.getenv(name, str(default)) or str(default))
+    except (TypeError, ValueError):
+        value = default
+    return max(minimum, min(maximum, value))
+
+
+WORK_ORDER_MAX_ACTIVE_HOURS = _bounded_int_environment(
+    "BIMFM_WORK_ORDER_MAX_ACTIVE_HOURS", 16, 8, 24
+)
+WORK_ORDER_RECONCILE_INTERVAL_SECONDS = _bounded_int_environment(
+    "BIMFM_WORK_ORDER_RECONCILE_INTERVAL_SECONDS", 300, 60, 3600
+)
 
 
 # Optional outbound email for task reminders. In-app reminders always work;
