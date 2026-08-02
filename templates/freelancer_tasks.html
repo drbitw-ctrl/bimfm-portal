@@ -1,211 +1,137 @@
 {% extends "base.html" %}
-{% block title %}Daily Tasks · {{ app_name }}{% endblock %}
+{% block title %}{{ t('Work Orders') }} · {{ app_name }}{% endblock %}
 {% block content %}
-<div class="toolbar">
-    <div>
-        <span class="eyebrow">MONTHLY DAILY TASK INPUT</span>
-        <h1>Daily Tasks</h1>
-        <p class="muted">
-            {{ account.freelancer.full_name }} · {{ selected_month }} ·
-            Total {{ total_minutes // 60 }}h {{ '%02d' % (total_minutes % 60) }}m
-        </p>
-    </div>
-    <div class="action-row">
-        <a class="button secondary" href="/projects">{{ t('Assigned Projects') }}</a>
-        <a class="button secondary" href="/attendance">{{ t('Attendance') }}</a>
-    </div>
-</div>
-
-<section class="panel">
-    <form method="get" class="inline-filter">
-        <div>
-            <label>{{ t('Month') }}</label>
-            <input type="month" name="month" value="{{ selected_month }}">
-        </div>
-        <div class="filter-action">
-            <button class="primary">Open Month</button>
-        </div>
-    </form>
-    {% if month_locked %}
-    <div class="flash error">
-        This month is locked. Task changes are disabled.
-    </div>
-    {% endif %}
+<section class="work-order-header compact-page-header">
+  <div>
+    <span class="eyebrow">{{ t('LIVE TASK TIMER') }}</span>
+    <h1>{{ t('Work Orders') }}</h1>
+    <p>{{ t('Choose an assigned task, start working, and stop the timer when you change or finish your work session.') }}</p>
+  </div>
+  <div class="compact-header-actions">
+    <a class="button secondary" href="/projects">{{ t('Assigned Projects') }}</a>
+    <a class="button secondary" href="/reminders">{{ t('Reminders') }}{% if unread_reminder_count %}<span class="button-count">{{ unread_reminder_count }}</span>{% endif %}</a>
+  </div>
 </section>
 
-{% if selected_project_task %}
-<section class="panel linked-assignment-panel">
-    <span class="eyebrow">SELECTED ASSIGNMENT</span>
-    <h2>{{ selected_project_task.project_name }}</h2>
-    <p>{{ selected_project_task.task_description or 'No assignment description provided.' }}</p>
-    <div class="assignment-meta compact">
-        <div>
-            <span>Discipline</span>
-            <strong>{{ discipline_label(selected_project_task.discipline) }}</strong>
-        </div>
-        <div>
-            <span>Deadline</span>
-            <strong>
-                {{ selected_project_task.deadline.isoformat()
-                   if selected_project_task.deadline else 'No deadline' }}
-            </strong>
-        </div>
-        <div>
-            <span>{{ t('Status') }}</span>
-            <strong>{{ selected_project_task.project_status or '—' }}</strong>
-        </div>
-        <div>
-            <span>Progress</span>
-            <strong>{{ selected_project_task.progress }}%</strong>
-        </div>
-    </div>
-    <p class="muted small-note">
-        The daily report will retain a reference to this PostgreSQL portal task.
-        Previously submitted reports remain unchanged when the project task is
-        updated later.
-    </p>
+{% if work_orders.active_session %}
+<section class="active-work-order-card" data-active-work-order data-started-at="{{ work_orders.active_started_iso }}">
+  <div class="active-work-order-main">
+    <span class="live-pulse"><i></i>{{ t('Working now') }}</span>
+    <h2>{{ work_orders.active_session.task_title }}</h2>
+    <p>{{ work_orders.active_session.project_name }}{% if work_orders.active_session.discipline %} · {{ discipline_label(work_orders.active_session.discipline) }}{% endif %}</p>
+  </div>
+  <div class="active-work-order-clock">
+    <span>{{ t('Elapsed time') }}</span>
+    <strong data-live-elapsed>00:00:00</strong>
+    <small>{{ t('Started') }} {{ work_orders.active_session.started_at }}</small>
+  </div>
+  <form method="post" action="/tasks/work-orders/stop" class="stop-work-order-form">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <label>
+      <span>{{ t('Optional work note') }}</span>
+      <input name="notes" maxlength="500" placeholder="{{ t('Briefly note what you worked on.') }}">
+    </label>
+    <button class="button danger-button work-order-stop-button" type="submit">■ {{ t('Stop and record time') }}</button>
+  </form>
+</section>
+{% else %}
+<section class="work-order-ready-banner">
+  <div><span class="ready-icon">▶</span><div><strong>{{ t('Ready to start work') }}</strong><small>{{ t('Select one task below. Only one timer can run at a time.') }}</small></div></div>
+  <span class="status-chip status-available">{{ t('No active timer') }}</span>
 </section>
 {% endif %}
 
-<section class="panel">
-    <h2>Add Daily Task</h2>
-    <form method="post" action="/tasks/new" class="form-grid">
+<section class="panel work-order-assignment-panel">
+  <div class="section-heading compact">
+    <div>
+      <span class="eyebrow">{{ t('CURRENT ASSIGNMENTS') }}</span>
+      <h2>{{ t('Assigned Tasks') }}</h2>
+      <p>{{ t('Task progress and accomplishment remain controlled by management. The timer records actual work time only.') }}</p>
+    </div>
+    <span class="count-bubble">{{ work_orders.assigned_tasks|length }}</span>
+  </div>
+
+  {% if work_orders.assigned_tasks %}
+  <div class="work-order-task-grid">
+    {% for task in work_orders.assigned_tasks %}
+    <article class="work-order-task-card priority-{{ task.priority|lower }}{% if work_orders.active_session and work_orders.active_session.portal_task_id == task.id %} is-running{% endif %}">
+      <div class="work-order-task-head">
+        <span class="priority-chip priority-{{ task.priority|lower }}">{{ t(task.priority|replace('_', ' ')|title) }}</span>
+        <span class="status-chip status-{{ task.project_status|lower|replace('_','-') }}">{{ t(task.project_status|replace('_',' ')|title) }}</span>
+      </div>
+      <h3>{{ task.task_description }}</h3>
+      <p>{{ task.project_name }}</p>
+      <dl class="work-order-task-meta">
+        <div><dt>{{ t('Discipline') }}</dt><dd>{{ discipline_label(task.discipline) }}</dd></div>
+        <div><dt>{{ t('Progress') }}</dt><dd>{{ task.progress }}%</dd></div>
+        <div><dt>{{ t('Deadline') }}</dt><dd>{{ task.deadline.isoformat() if task.deadline else t('No deadline') }}</dd></div>
+      </dl>
+      <span class="member-task-bar" aria-hidden="true"><i style="width: {{ task.progress }}%"></i></span>
+      <form method="post" action="/tasks/work-orders/{{ task.id }}/start">
         <input type="hidden" name="csrf" value="{{ csrf_token }}">
-        <input type="hidden" name="portal_task_id"
-               value="{{ selected_project_task.id if selected_project_task else 0 }}">
+        <button class="button primary work-order-start-button" type="submit"
+                {% if work_orders.active_session %}disabled title="{{ t('Stop the current timer before starting another task.') }}"{% endif %}>
+          ▶ {{ t('Start working') }}
+        </button>
+      </form>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state"><p>{{ t('No active task is currently assigned.') }}</p></div>
+  {% endif %}
+</section>
 
-        <div>
-            <label>{{ t('Date') }}</label>
-            <input type="date" name="task_date" required
-                   {% if month_locked %}disabled{% endif %}>
-        </div>
-
-        <input type="hidden" name="project_code" value="{{ selected_project_task.project_code if selected_project_task else '' }}">
-
-        <div class="form-span">
-            <label>Project Name</label>
-            <input name="project_name"
-                   value="{{ selected_project_task.project_name if selected_project_task and selected_project_task.project_name else '' }}"
-                   placeholder="Example: 220.桃園長庚醫院" required
-                   {% if month_locked %}disabled{% endif %}>
-        </div>
-
-        <div>
-            <label>Discipline</label>
-            <input name="discipline"
-                   value="{{ discipline_label(selected_project_task.discipline) if selected_project_task and selected_project_task.discipline else '' }}"
-                   placeholder="AR / ST / MEP / GE"
-                   {% if month_locked %}disabled{% endif %}>
-        </div>
-
-        <div class="full-width">
-            <label>Task Description</label>
-            <textarea name="task_description" rows="3" required
-                      {% if month_locked %}disabled{% endif %}>{{ selected_project_task.task_description if selected_project_task and selected_project_task.task_description else '' }}</textarea>
-        </div>
-
-        <div class="full-width">
-            <label>Accomplishment / Output</label>
-            <textarea name="accomplishment" rows="3"
-                      placeholder="Describe what you completed today."
-                      {% if month_locked %}disabled{% endif %}></textarea>
-        </div>
-
-        <div>
-            <label>{{ t('Status') }}</label>
-            <select name="task_status" {% if month_locked %}disabled{% endif %}>
-                <option>COMPLETED</option>
-                <option>IN_PROGRESS</option>
-                <option>ON_HOLD</option>
-            </select>
-        </div>
-
-        <div>
-            <label>Time Spent</label>
-            <input type="number" name="hours_spent"
-                   min="0.25" max="24" step="0.25" placeholder="e.g. 4.5 hours" required
-                   {% if month_locked %}disabled{% endif %}>
-        </div>
-
-        <div>
-            <label>Completion Percentage</label>
-            <input type="number" name="completion_percentage" min="0" max="100" step="1"
-                   value="{{ selected_project_task.progress if selected_project_task else 0 }}" required
-                   {% if month_locked %}disabled{% endif %}>
-        </div>
-
-        <div class="full-width">
-            <label>{{ t('Notes') }}</label>
-            <textarea name="notes" rows="2"
-                      {% if month_locked %}disabled{% endif %}></textarea>
-        </div>
-
-        <div class="full-width">
-            <button class="primary"
-                    {% if month_locked %}disabled{% endif %}>
-                Add Task
-            </button>
-        </div>
-    </form>
+<section class="panel work-order-today-panel">
+  <div class="section-heading compact">
+    <div><span class="eyebrow">{{ t('TODAY’S RECORDED WORK') }}</span><h2>{{ t('Today’s Work Sessions') }}</h2><p>{{ work_orders.today }} · {{ duration_label(work_orders.today_total_minutes) }}</p></div>
+  </div>
+  {% if work_orders.today_sessions %}
+  <div class="modern-table-wrap">
+    <table class="modern-table smart-table" data-card-table>
+      <thead><tr><th>{{ t('Project') }}</th><th>{{ t('Task') }}</th><th>{{ t('Started') }}</th><th>{{ t('Stopped') }}</th><th>{{ t('Actual Time') }}</th><th>{{ t('Status') }}</th></tr></thead>
+      <tbody>
+      {% for row in work_orders.today_sessions %}
+      <tr data-task-state="{{ 'ongoing' if row.status == 'ACTIVE' else 'closed' }}">
+        <td>{{ row.project_name }}</td>
+        <td>{{ row.task_title }}</td>
+        <td>{{ row.started_at }}</td>
+        <td>{{ row.stopped_at or '—' }}</td>
+        <td>{% if row.status == 'ACTIVE' %}<span class="live-inline-timer" data-started-at="{{ row.started_at.isoformat() }}">{{ t('Running') }}</span>{% else %}<strong>{{ duration_label(row.duration_minutes) }}</strong>{% endif %}</td>
+        <td><span class="status-chip status-{{ row.status|lower }}">{{ t('Working now') if row.status == 'ACTIVE' else t('Recorded') }}</span></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<div class="empty-state"><p>{{ t('No work sessions recorded today.') }}</p></div>{% endif %}
 </section>
 
 <section class="panel table-panel data-register-card">
-    <div class="section-heading">
-        <div><span class="eyebrow">MONTHLY WORK REGISTER</span><h2>Monthly Entries</h2><p>Daily outputs, time spent, progress, and source assignments for {{ selected_month }}.</p></div>
-    </div>
-    {% if rows %}
-    <div class="table-toolbar" data-table-toolbar data-table-target="#dailyTaskTable" data-record-singular="entry" data-record-plural="entries">
-        <label class="table-search"><span class="sr-only">Search daily tasks</span><input type="search" data-table-search placeholder="Search project, task, status, or output"></label>
-        <span class="table-result-count" data-result-count></span>
-    </div>
-    <div class="modern-table-wrap">
+  <div class="section-heading compact">
+    <div><span class="eyebrow">{{ t('MONTHLY TIME REGISTER') }}</span><h2>{{ t('Recorded Work History') }}</h2><p>{{ t('Timer-generated entries used by DTR and Task Time Utilization.') }}</p></div>
+    <form method="get" class="inline-month-control"><label><span>{{ t('Month') }}</span><input type="month" name="month" value="{{ selected_month }}"></label><button class="button secondary">{{ t('Open Month') }}</button></form>
+  </div>
+  {% if month_locked %}<div class="flash error">{{ t('This month is locked. Task changes are disabled.') }}</div>{% endif %}
+  {% if rows %}
+  <div class="table-toolbar" data-table-toolbar data-table-target="#dailyTaskTable" data-record-singular="entry" data-record-plural="entries">
+    <label class="table-search"><span class="sr-only">{{ t('Search work records') }}</span><input type="search" data-table-search placeholder="{{ t('Search project, task, status, or note') }}"></label>
+    <span class="table-result-count" data-result-count></span>
+  </div>
+  <div class="modern-table-wrap">
     <table class="modern-table smart-table dense-table" id="dailyTaskTable" data-card-table data-sortable-task-table>
-        <thead>
-            <tr>
-                <th data-sort-type="date">{{ t('Date') }}</th>
-                <th data-sort-type="text">Project</th>
-                <th data-sort-type="text">Source</th>
-                <th data-sort-type="text">Discipline</th>
-                <th data-sort-type="text">Task</th>
-                <th data-sort-type="text">Output</th>
-                <th data-sort-type="status">{{ t('Status') }}</th>
-                <th data-sort-type="number">Completion</th>
-                <th data-sort-type="number">{{ t('Hours') }}</th>
-                <th data-sort-type="none">Action</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for row in rows %}
-            <tr data-task-state="{{ 'closed' if row.task_status in ['COMPLETED', 'CANCELLED'] else 'ongoing' }}">
-                <td><strong class="date-cell">{{ row.task_date }}</strong></td>
-                <td><div class="table-identity-cell"><div><strong>{{ row.project_name or 'Project' }}</strong></div></div></td>
-                <td>
-                    {% if row.portal_task_id %}<span class="status-chip status-completed">Portal Task</span>
-                    {% elif row.synced_project_task_id %}<span class="status-chip status-on-hold">Imported Task</span>
-                    {% else %}<span class="status-chip status-not-started">Manual</span>{% endif %}
-                </td>
-                <td>{{ discipline_label(row.discipline) }}</td>
-                <td>{{ row.task_description }}</td>
-                <td>{{ row.accomplishment or '—' }}</td>
-                <td><span class="status-chip status-{{ row.task_status|lower|replace('_','-') }}">{{ row.task_status.replace('_',' ').title() }}</span></td>
-                <td><div class="table-progress-cell"><strong>{{ row.completion_percentage }}%</strong><span class="mini-progress"><i style="width: {{ row.completion_percentage }}%"></i></span></div></td>
-                <td data-sort-value="{{ row.minutes_spent }}"><strong>{{ duration_label(row.minutes_spent) }}</strong></td>
-                <td>
-                    <div class="action-row">
-                        <a class="button small secondary" href="/tasks/{{ row.id }}/edit">{{ t('Edit') }}</a>
-                        <form method="post" action="/tasks/{{ row.id }}/delete">
-                            <input type="hidden" name="csrf" value="{{ csrf_token }}">
-                            <button class="small secondary" {% if month_locked %}disabled{% endif %}>Delete</button>
-                        </form>
-                    </div>
-                </td>
-            </tr>
-        {% endfor %}
-        </tbody>
+      <thead><tr><th data-sort-type="date">{{ t('Date') }}</th><th data-sort-type="text">{{ t('Project') }}</th><th data-sort-type="text">{{ t('Discipline') }}</th><th data-sort-type="text">{{ t('Task') }}</th><th data-sort-type="status">{{ t('Status') }}</th><th data-sort-type="number">{{ t('Actual Time') }}</th><th data-sort-type="text">{{ t('Notes') }}</th></tr></thead>
+      <tbody>
+      {% for row in rows %}
+        <tr data-task-state="{{ 'closed' if row.task_status in ['COMPLETED', 'CANCELLED'] else 'ongoing' }}">
+          <td>{{ row.task_date }}</td><td>{{ row.project_name or row.project_code }}</td><td>{{ discipline_label(row.discipline) }}</td><td>{{ row.task_description }}</td>
+          <td><span class="status-chip status-{{ row.task_status|lower|replace('_','-') }}">{{ t(row.task_status|replace('_',' ')|title) }}</span></td>
+          <td data-sort-value="{{ row.minutes_spent }}"><strong>{{ duration_label(row.minutes_spent) }}</strong></td><td>{{ row.notes or '—' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
     </table>
-    </div>
-    {% else %}
-    <div class="empty-state"><p>No tasks entered for this month.</p></div>
-    {% endif %}
+  </div>
+  {% else %}<div class="empty-state"><p>{{ t('No recorded work for this month.') }}</p></div>{% endif %}
 </section>
 {% endblock %}

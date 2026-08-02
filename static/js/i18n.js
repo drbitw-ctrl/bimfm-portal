@@ -33,7 +33,19 @@
     INVALID_RECORD: 'Invalid Record',
     ACCOUNT_DISABLED: 'Account Disabled',
     CURRENTLY_WORKING: 'Currently Working',
-    NO_RECORD: 'No Record'
+    NO_RECORD: 'No Record',
+    NORMAL: 'Normal',
+    URGENT: 'Urgent',
+    HIGH: 'High',
+    LOW: 'Low',
+    MEDIUM: 'Medium',
+    CRITICAL: 'Critical',
+    ASSIGNED: 'Assigned',
+    AVAILABLE: 'Available',
+    BUSY: 'Busy',
+    WORKING_NOW: 'Working Now',
+    NO_ACTIVE_TASK: 'No active task',
+    NO_ACTIVE_TASKS: 'No active tasks'
   };
 
   const countLabel = (amount, singular, plural) => {

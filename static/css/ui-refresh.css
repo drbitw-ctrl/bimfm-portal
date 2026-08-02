@@ -3666,3 +3666,336 @@ html[data-theme="dark"] .time-under { color: #7fd7ad; }
 @media (max-width: 520px) {
   .time-utilization-summary { grid-template-columns: 1fr; }
 }
+
+/* ========================================================================== 
+   Release 21.00 — work-order operations, compact registers, and stronger state
+   ========================================================================== */
+.operations-page-header,
+.compact-page-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 22px 26px;
+  border: 1px solid var(--ui-border);
+  border-radius: 22px;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-sm);
+}
+
+.operations-page-header.compact {
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 20px 24px 14px;
+}
+
+.operations-header-copy h1,
+.compact-page-header h1 {
+  margin: 4px 0 5px;
+  font-size: clamp(1.65rem, 2.5vw, 2.25rem);
+  letter-spacing: -0.045em;
+}
+
+.operations-header-copy p,
+.compact-page-header p {
+  max-width: 850px;
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.operations-header-actions,
+.compact-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.operations-stat-strip {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 5px;
+}
+
+.operations-stat-chip {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 2px 10px;
+  min-height: 68px;
+  padding: 11px 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 14px;
+  background: var(--ui-surface-soft);
+}
+
+.operations-stat-chip span {
+  color: var(--ui-muted);
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.operations-stat-chip strong {
+  grid-row: 1 / 3;
+  grid-column: 1;
+  min-width: 44px;
+  font-size: 1.55rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.operations-stat-chip span,
+.operations-stat-chip small {
+  grid-column: 2;
+}
+
+.operations-stat-chip small {
+  font-size: 0.64rem;
+}
+
+.operations-page-header + .data-register-card .section-heading {
+  padding-top: 20px;
+  padding-bottom: 14px;
+}
+
+/* Strong, immediately recognizable dashboard state colors. */
+.member-availability-card.available,
+.team-command-stat.available {
+  border-color: color-mix(in srgb, var(--ui-success) 72%, var(--ui-border));
+  background: color-mix(in srgb, var(--ui-success-soft) 78%, var(--ui-success) 10%);
+  box-shadow: inset 5px 0 0 var(--ui-success), 0 8px 22px color-mix(in srgb, var(--ui-success) 14%, transparent);
+}
+
+.member-availability-card.state-working,
+.team-command-stat.busy,
+.team-command-stat.tasks {
+  border-color: color-mix(in srgb, var(--ui-info) 72%, var(--ui-border));
+  background: color-mix(in srgb, var(--ui-info-soft) 78%, var(--ui-info) 11%);
+  box-shadow: inset 5px 0 0 var(--ui-info), 0 8px 22px color-mix(in srgb, var(--ui-info) 14%, transparent);
+}
+
+.member-availability-card.state-assigned {
+  border-color: color-mix(in srgb, var(--ui-warning) 72%, var(--ui-border));
+  background: color-mix(in srgb, var(--ui-warning-soft) 80%, var(--ui-warning) 10%);
+  box-shadow: inset 5px 0 0 var(--ui-warning), 0 8px 22px color-mix(in srgb, var(--ui-warning) 14%, transparent);
+}
+
+.member-availability-card.has-overdue,
+.member-availability-card.state-overdue,
+.team-command-stat.risk {
+  border-color: color-mix(in srgb, var(--ui-danger) 78%, var(--ui-border));
+  background: color-mix(in srgb, var(--ui-danger-soft) 76%, var(--ui-danger) 12%);
+  box-shadow: inset 5px 0 0 var(--ui-danger), 0 8px 22px color-mix(in srgb, var(--ui-danger) 16%, transparent);
+}
+
+.availability-badge.working {
+  color: var(--ui-info);
+  border-color: color-mix(in srgb, var(--ui-info) 35%, var(--ui-border));
+  background: color-mix(in srgb, var(--ui-info-soft) 72%, var(--ui-info) 12%);
+}
+.availability-badge.working i { background: var(--ui-info); }
+.availability-badge.assigned {
+  color: var(--ui-warning);
+  border-color: color-mix(in srgb, var(--ui-warning) 35%, var(--ui-border));
+  background: color-mix(in srgb, var(--ui-warning-soft) 72%, var(--ui-warning) 12%);
+}
+.availability-badge.assigned i { background: var(--ui-warning); }
+
+/* Live work-order management board. */
+.live-work-panel { margin-bottom: 18px; }
+.live-work-summary { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.live-pulse,
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ui-danger);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.live-pulse i,
+.live-badge::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ui-danger);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--ui-danger) 17%, transparent);
+  animation: livePulse 1.8s ease-out infinite;
+}
+@keyframes livePulse { 0%, 40% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-danger) 20%, transparent); } 100% { box-shadow: 0 0 0 10px transparent; } }
+.live-work-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.live-work-card {
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--ui-info) 42%, var(--ui-border));
+  border-radius: 17px;
+  background: color-mix(in srgb, var(--ui-info-soft) 84%, var(--ui-surface));
+  box-shadow: inset 4px 0 0 var(--ui-info);
+}
+.live-work-member { display: flex; align-items: center; gap: 9px; }
+.live-work-member > div { display: flex; min-width: 0; flex: 1; flex-direction: column; }
+.live-work-member small { font-size: 0.62rem; }
+.live-badge { color: var(--ui-danger); font-size: 0.6rem; }
+.live-work-card h3 { margin: 15px 0 4px; font-size: 0.94rem; }
+.live-work-card > p { margin: 0; color: var(--ui-muted); font-size: 0.69rem; }
+.live-work-meta { display: grid; grid-template-columns: 1.2fr 0.8fr 0.55fr; gap: 8px; margin-top: 14px; }
+.live-work-meta span { display: flex; flex-direction: column; gap: 3px; padding: 8px; border-radius: 10px; background: color-mix(in srgb, var(--ui-surface) 68%, transparent); }
+.live-work-meta small { font-size: 0.57rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.live-work-meta strong { font-size: 0.71rem; font-variant-numeric: tabular-nums; }
+.live-work-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+
+/* Freelancer work-order timer. */
+.work-order-header { margin-bottom: 14px; }
+.button-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 99px;
+  color: #fff;
+  background: var(--ui-danger);
+  font-size: 0.62rem;
+}
+.active-work-order-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(260px, 0.7fr);
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 20px 22px;
+  border: 1px solid color-mix(in srgb, var(--ui-info) 58%, var(--ui-border));
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--ui-info-soft) 82%, var(--ui-surface));
+  box-shadow: inset 6px 0 0 var(--ui-info), var(--ui-shadow-sm);
+}
+.active-work-order-main h2 { margin: 8px 0 4px; font-size: 1.25rem; }
+.active-work-order-main p { margin: 0; color: var(--ui-muted); }
+.active-work-order-clock { display: flex; min-width: 150px; flex-direction: column; align-items: center; padding: 12px 16px; border-radius: 15px; background: var(--ui-surface); }
+.active-work-order-clock span,
+.active-work-order-clock small { color: var(--ui-muted); font-size: 0.61rem; }
+.active-work-order-clock strong { margin: 4px 0; font-size: 1.75rem; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.stop-work-order-form { display: grid; gap: 9px; }
+.stop-work-order-form label { display: grid; gap: 5px; }
+.stop-work-order-form label span { font-size: 0.64rem; font-weight: 800; }
+.work-order-stop-button { width: 100%; }
+.work-order-ready-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 14px 18px;
+  border: 1px solid color-mix(in srgb, var(--ui-success) 50%, var(--ui-border));
+  border-radius: 17px;
+  background: color-mix(in srgb, var(--ui-success-soft) 84%, var(--ui-surface));
+  box-shadow: inset 5px 0 0 var(--ui-success);
+}
+.work-order-ready-banner > div { display: flex; align-items: center; gap: 12px; }
+.work-order-ready-banner > div > div { display: flex; flex-direction: column; }
+.ready-icon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; color: #fff; background: var(--ui-success); }
+.status-available { color: var(--ui-success); background: var(--ui-success-soft); }
+.work-order-task-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.work-order-task-card {
+  display: flex;
+  min-height: 260px;
+  flex-direction: column;
+  padding: 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: 17px;
+  background: var(--ui-surface-soft);
+}
+.work-order-task-card.priority-urgent { border-color: color-mix(in srgb, var(--ui-danger) 55%, var(--ui-border)); box-shadow: inset 4px 0 0 var(--ui-danger); }
+.work-order-task-card.priority-high { border-color: color-mix(in srgb, var(--ui-warning) 55%, var(--ui-border)); box-shadow: inset 4px 0 0 var(--ui-warning); }
+.work-order-task-card.priority-normal { border-color: color-mix(in srgb, var(--ui-info) 48%, var(--ui-border)); box-shadow: inset 4px 0 0 var(--ui-info); }
+.work-order-task-card.priority-low { border-color: color-mix(in srgb, var(--ui-success) 48%, var(--ui-border)); box-shadow: inset 4px 0 0 var(--ui-success); }
+.work-order-task-card.is-running { background: color-mix(in srgb, var(--ui-info-soft) 78%, var(--ui-info) 8%); }
+.work-order-task-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.work-order-task-card h3 { margin: 14px 0 5px; font-size: 0.92rem; }
+.work-order-task-card > p { margin: 0; color: var(--ui-muted); font-size: 0.68rem; }
+.work-order-task-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin: 15px 0 10px; }
+.work-order-task-meta div { display: flex; flex-direction: column; gap: 2px; padding: 7px; border-radius: 10px; background: var(--ui-surface); }
+.work-order-task-meta dt { color: var(--ui-muted); font-size: 0.55rem; text-transform: uppercase; }
+.work-order-task-meta dd { margin: 0; font-size: 0.68rem; font-weight: 850; }
+.work-order-task-card form { margin-top: auto; padding-top: 13px; }
+.work-order-start-button { width: 100%; }
+.inline-month-control { display: flex; align-items: flex-end; gap: 8px; }
+.inline-month-control label { display: grid; gap: 4px; }
+.inline-month-control span { font-size: 0.61rem; font-weight: 800; }
+
+/* Email-style reminders. */
+.reminder-shortcut { position: relative; }
+.reminder-shortcut b { position: absolute; top: -5px; right: -5px; display: grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 99px; color: #fff; background: var(--ui-danger); font-size: 0.56rem; }
+.reminder-inbox { display: grid; gap: 12px; }
+.email-reminder-card { overflow: hidden; border: 1px solid var(--ui-border); border-radius: 18px; background: var(--ui-surface); box-shadow: var(--ui-shadow-xs); }
+.email-reminder-card.unread { border-color: color-mix(in srgb, var(--ui-info) 50%, var(--ui-border)); box-shadow: inset 5px 0 0 var(--ui-info), var(--ui-shadow-sm); }
+.email-reminder-meta { display: flex; align-items: center; gap: 10px; padding: 13px 17px; border-bottom: 1px solid var(--ui-border); background: var(--ui-surface-soft); }
+.email-reminder-meta > div { display: flex; flex: 1; flex-direction: column; }
+.email-avatar { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; color: #fff; background: var(--ui-brand-700); font-weight: 900; }
+.email-reminder-content { padding: 18px 20px; }
+.email-reminder-content h2 { margin: 5px 0 10px; font-size: 1.05rem; }
+.email-reminder-content p { margin: 0; white-space: pre-wrap; line-height: 1.65; }
+.email-reminder-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 17px; border-top: 1px solid var(--ui-border); color: var(--ui-muted); background: var(--ui-surface-soft); font-size: 0.65rem; }
+.reminder-compose-layout { display: grid; grid-template-columns: minmax(240px, 0.4fr) minmax(0, 1fr); gap: 16px; }
+.reminder-task-summary dl { display: grid; gap: 8px; margin-top: 18px; }
+.reminder-task-summary dl div { display: flex; justify-content: space-between; gap: 15px; padding: 9px 0; border-bottom: 1px solid var(--ui-border); }
+.reminder-task-summary dt { color: var(--ui-muted); }
+.email-compose-chrome { display: flex; align-items: center; gap: 9px; margin: -20px -20px 18px; padding: 13px 18px; border-bottom: 1px solid var(--ui-border); background: var(--ui-surface-soft); }
+.email-compose-chrome small { margin-left: auto; }
+.email-compose-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+
+/* Two-step protected-account deletion. */
+.danger-header { border-color: color-mix(in srgb, var(--ui-danger) 35%, var(--ui-border)); }
+.deletion-step-indicator { display: grid; grid-template-columns: auto minmax(30px, 1fr) auto; align-items: center; gap: 10px; margin-bottom: 20px; }
+.deletion-step-indicator span { display: flex; align-items: center; gap: 8px; color: var(--ui-muted); font-size: 0.7rem; font-weight: 800; }
+.deletion-step-indicator span b { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--ui-border); border-radius: 50%; background: var(--ui-surface-soft); }
+.deletion-step-indicator span.active { color: var(--ui-danger); }
+.deletion-step-indicator span.active b { color: #fff; border-color: var(--ui-danger); background: var(--ui-danger); }
+.deletion-step-indicator span.complete { color: var(--ui-success); }
+.deletion-step-indicator span.complete b { color: #fff; border-color: var(--ui-success); background: var(--ui-success); }
+.deletion-step-indicator i { height: 2px; background: var(--ui-border); }
+.dependency-list-danger { border: 1px solid color-mix(in srgb, var(--ui-danger) 24%, var(--ui-border)); border-radius: 14px; overflow: hidden; }
+.dependency-total { color: var(--ui-danger); background: var(--ui-danger-soft); }
+.deletion-confirm-form { display: grid; gap: 14px; margin-top: 18px; }
+.deletion-confirm-form > label:not(.form-check) { display: grid; gap: 6px; }
+.deletion-confirm-form label > span { font-size: 0.68rem; font-weight: 850; }
+.deletion-confirm-form code { width: fit-content; padding: 5px 8px; border-radius: 7px; color: var(--ui-danger); background: var(--ui-danger-soft); }
+.destructive-check { padding: 12px; border: 1px solid color-mix(in srgb, var(--ui-danger) 30%, var(--ui-border)); border-radius: 12px; background: var(--ui-danger-soft); }
+.dependency-summary-inline { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: var(--ui-danger-soft); }
+.dependency-summary-inline strong { color: var(--ui-danger); font-size: 1.3rem; }
+
+@media (max-width: 1100px) {
+  .operations-stat-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .live-work-grid,
+  .work-order-task-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .active-work-order-card { grid-template-columns: minmax(0, 1fr) auto; }
+  .stop-work-order-form { grid-column: 1 / -1; }
+}
+
+@media (max-width: 760px) {
+  .operations-page-header,
+  .compact-page-header,
+  .operations-page-header.compact { grid-template-columns: 1fr; padding: 17px; }
+  .operations-header-actions,
+  .compact-header-actions { justify-content: flex-start; }
+  .operations-stat-strip,
+  .live-work-grid,
+  .work-order-task-grid,
+  .reminder-compose-layout { grid-template-columns: 1fr; }
+  .active-work-order-card { grid-template-columns: 1fr; }
+  .active-work-order-clock { align-items: flex-start; }
+  .live-work-meta,
+  .work-order-task-meta { grid-template-columns: 1fr 1fr; }
+  .email-compose-actions,
+  .email-reminder-footer { align-items: flex-start; flex-direction: column; }
+  .inline-month-control { align-items: stretch; flex-direction: column; }
+}

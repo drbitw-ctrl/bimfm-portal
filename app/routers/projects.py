@@ -112,6 +112,10 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
             account = get_current_freelancer_account(request, database)
             if account is None:
                 return RedirectResponse("/login", status_code=303)
+            if account.must_change_password:
+                return RedirectResponse("/change-password", status_code=303)
+
+            work_orders = freelancer_work_order_view(database, account.freelancer)
             rows = list(
                 database.scalars(
                     select(DailyTask)
@@ -123,7 +127,6 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
                     .order_by(DailyTask.task_date.desc(), DailyTask.id.desc())
                 ).all()
             )
-            total_minutes = sum(row.minutes_spent for row in rows)
             selected_project_task = None
             if project_task_id > 0:
                 selected_project_task = portal_task_for_freelancer(
@@ -140,193 +143,195 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
                     account=account,
                     rows=rows,
                     selected_month=selected_month,
-                    total_minutes=total_minutes,
+                    total_minutes=sum(row.minutes_spent for row in rows),
                     month_locked=month_is_locked(database, selected_month),
                     selected_project_task=selected_project_task,
+                    work_orders=work_orders,
                 ),
             )
 
-    @router.post("/tasks/new")
-    def create_daily_task(
+    @router.post("/tasks/work-orders/{task_id}/start")
+    def start_freelancer_work_order(
+        task_id: int,
         request: Request,
         csrf: str = Form(...),
-        task_date: str = Form(...),
-        project_name: str = Form(...),
-        project_code: str = Form(""),
-        discipline: str = Form(""),
-        task_description: str = Form(...),
-        portal_task_id: int = Form(0),
-        synced_project_task_id: int = Form(0),
-        accomplishment: str = Form(""),
-        task_status: str = Form("COMPLETED"),
-        hours_spent: str = Form(...),
-        completion_percentage: str = Form(...),
-        notes: str = Form(""),
     ):
-        del synced_project_task_id  # Retained only for old cached forms.
-        redirect_path = f"/tasks?month={task_date[:7]}"
         if not validate_csrf(request, csrf):
             set_flash(request, "Invalid form token.", "error")
-            return RedirectResponse(redirect_path, status_code=303)
-        try:
-            parsed_date = date.fromisoformat(task_date)
-            minutes = _parse_hours_to_minutes(hours_spent)
-            completion = _parse_completion_percentage(completion_percentage)
-        except ValueError as exc:
-            set_flash(request, str(exc), "error")
-            return RedirectResponse(redirect_path, status_code=303)
-        if not project_name.strip() or not task_description.strip():
-            set_flash(request, "Project name and task description are required.", "error")
-            return RedirectResponse(redirect_path, status_code=303)
-        normalized_task_status = task_status.strip().upper()
-        if normalized_task_status not in {"COMPLETED", "IN_PROGRESS", "ON_HOLD"}:
-            set_flash(request, "Invalid task status.", "error")
-            return RedirectResponse(redirect_path, status_code=303)
-
+            return RedirectResponse("/tasks", status_code=303)
         with SessionLocal() as database:
             account = get_current_freelancer_account(request, database)
             if account is None:
                 return RedirectResponse("/login", status_code=303)
-            month_key = parsed_date.strftime("%Y-%m")
-            if month_is_locked(database, month_key):
-                set_flash(request, "This month is locked. Daily tasks cannot be changed.", "error")
-                return RedirectResponse(redirect_path, status_code=303)
-
-            linked_project_task = None
-            if portal_task_id > 0:
-                linked_project_task = portal_task_for_freelancer(
+            try:
+                session = start_work_session(
                     database,
-                    task_id=portal_task_id,
-                    freelancer_id=account.freelancer_id,
+                    freelancer=account.freelancer,
+                    task_id=task_id,
                 )
-                if linked_project_task is None:
-                    set_flash(request, "The selected PostgreSQL project task is unavailable.", "error")
-                    return RedirectResponse(redirect_path, status_code=303)
-
-            local_today = current_attendance_date(account.freelancer.timezone_name)
-            if parsed_date > local_today:
-                set_flash(request, "Daily tasks cannot be submitted for a future date.", "error")
-                return RedirectResponse(redirect_path, status_code=303)
-
-            resolved_project_name = (
-                linked_project_task.project_name
-                if linked_project_task is not None
-                else " ".join(project_name.strip().split())
-            )
-            resolved_project_code = (
-                linked_project_task.project_code
-                if linked_project_task is not None
-                else (project_code.strip() or _internal_daily_project_code(resolved_project_name))
-            )
-            resolved_discipline = (
-                linked_project_task.discipline
-                if linked_project_task is not None and linked_project_task.discipline
-                else discipline.strip() or None
-            )
-            task = DailyTask(
-                freelancer_id=account.freelancer_id,
-                portal_task_id=linked_project_task.id if linked_project_task else None,
-                synced_project_task_id=None,
-                task_date=parsed_date,
-                project_code=resolved_project_code,
-                project_name=resolved_project_name,
-                discipline=resolved_discipline,
-                task_description=task_description.strip(),
-                accomplishment=accomplishment.strip() or None,
-                task_status=normalized_task_status,
-                minutes_spent=minutes,
-                completion_percentage=completion,
-                notes=notes.strip() or None,
-            )
-            database.add(task)
-            invalidate_task_review(database, account.freelancer_id, month_key)
+            except ValueError as exc:
+                set_flash(request, str(exc), "error")
+                return RedirectResponse("/tasks", status_code=303)
             write_audit(
                 database,
                 actor_type="FREELANCER",
                 actor_id=account.freelancer_id,
-                action="CREATE_DAILY_TASK",
+                action="START_TASK_WORK_ORDER",
                 request=request,
-                target_type="DAILY_TASK",
+                target_type="TASK_WORK_SESSION",
+                target_id=session.id,
+                details=f"Started {session.project_name} / {session.task_title}.",
+            )
+            database.commit()
+        set_flash(request, "Work timer started.", "success")
+        return RedirectResponse("/tasks", status_code=303)
+
+    @router.post("/tasks/work-orders/stop")
+    def stop_freelancer_work_order(
+        request: Request,
+        csrf: str = Form(...),
+        notes: str = Form(""),
+    ):
+        if not validate_csrf(request, csrf):
+            set_flash(request, "Invalid form token.", "error")
+            return RedirectResponse("/tasks", status_code=303)
+        with SessionLocal() as database:
+            account = get_current_freelancer_account(request, database)
+            if account is None:
+                return RedirectResponse("/login", status_code=303)
+            try:
+                session, daily_task = stop_work_session(
+                    database,
+                    freelancer=account.freelancer,
+                    notes=notes,
+                )
+            except ValueError as exc:
+                set_flash(request, str(exc), "error")
+                return RedirectResponse("/tasks", status_code=303)
+            month_key = daily_task.task_date.strftime("%Y-%m")
+            invalidate_task_review(database, account.freelancer_id, month_key)
+            invalidate_dtr(database, account.freelancer_id, month_key)
+            write_audit(
+                database,
+                actor_type="FREELANCER",
+                actor_id=account.freelancer_id,
+                action="STOP_TASK_WORK_ORDER",
+                request=request,
+                target_type="TASK_WORK_SESSION",
+                target_id=session.id,
                 details=(
-                    f"{parsed_date} {resolved_project_name} {minutes_label(minutes)}; "
-                    f"{completion}% complete; portal_task_id={task.portal_task_id or 'manual'}"
+                    f"Stopped {session.project_name} / {session.task_title}; "
+                    f"recorded {session.duration_minutes} minutes."
                 ),
             )
             database.commit()
-        set_flash(request, "Daily task added.", "success")
-        return RedirectResponse(redirect_path, status_code=303)
+        set_flash(request, "Work timer stopped and actual time was recorded.", "success")
+        return RedirectResponse("/tasks", status_code=303)
 
-    @router.get("/tasks/{task_id}/edit", response_class=HTMLResponse)
-    def edit_task_page(task_id: int, request: Request):
+    @router.get("/reminders", response_class=HTMLResponse)
+    def freelancer_reminders(request: Request):
         with SessionLocal() as database:
             account = get_current_freelancer_account(request, database)
-            if account is None: return RedirectResponse("/login",303)
-            task = database.get(DailyTask, task_id)
-            if task is None or task.freelancer_id != account.freelancer_id:
-                set_flash(request, "Daily task not found.", "error"); return RedirectResponse("/tasks",303)
-            return templates.TemplateResponse(request=request, name="freelancer_task_edit.html",
-                context=template_context(request, account=account, task=task,
-                                         month_locked=month_is_locked(database,task.task_date.strftime('%Y-%m'))))
+            if account is None:
+                return RedirectResponse("/login", status_code=303)
+            rows = reminder_rows(database, account.freelancer_id)
+            return templates.TemplateResponse(
+                request=request,
+                name="freelancer_reminders.html",
+                context=template_context(request, account=account, rows=rows),
+            )
+
+    @router.post("/reminders/{reminder_id}/read")
+    def read_freelancer_reminder(
+        reminder_id: int,
+        request: Request,
+        csrf: str = Form(...),
+    ):
+        if not validate_csrf(request, csrf):
+            return RedirectResponse("/reminders", status_code=303)
+        with SessionLocal() as database:
+            account = get_current_freelancer_account(request, database)
+            if account is None:
+                return RedirectResponse("/login", status_code=303)
+            if mark_reminder_read(database, reminder_id, account.freelancer_id):
+                database.commit()
+        return RedirectResponse("/reminders", status_code=303)
+
+    @router.post("/tasks/new")
+    def reject_manual_daily_task_creation(
+        request: Request,
+        csrf: str = Form(...),
+    ):
+        """Version 21.00 records freelancer time only through Work Orders."""
+        if not validate_csrf(request, csrf):
+            set_flash(request, "Invalid form token.", "error")
+            return RedirectResponse("/tasks", status_code=303)
+        with SessionLocal() as database:
+            account = get_current_freelancer_account(request, database)
+            if account is None:
+                return RedirectResponse("/login", status_code=303)
+        set_flash(
+            request,
+            "Manual time entry is disabled. Start and stop an assigned Work Order instead.",
+            "error",
+        )
+        return RedirectResponse("/tasks", status_code=303)
+
+    @router.get("/tasks/{task_id}/edit", response_class=HTMLResponse)
+    def reject_manual_daily_task_edit_page(task_id: int, request: Request):
+        del task_id
+        with SessionLocal() as database:
+            account = get_current_freelancer_account(request, database)
+            if account is None:
+                return RedirectResponse("/login", status_code=303)
+        set_flash(
+            request,
+            "Timed work records are system-generated and cannot be edited by freelancers.",
+            "error",
+        )
+        return RedirectResponse("/tasks", status_code=303)
 
     @router.post("/tasks/{task_id}/edit")
-    def edit_task_submit(
-        task_id: int, request: Request, csrf: str = Form(...),
-        project_name: str = Form(...), project_code: str = Form(""), discipline: str = Form(""),
-        task_description: str = Form(...), accomplishment: str = Form(""),
-        task_status: str = Form("COMPLETED"), hours_spent: str = Form(...),
-        completion_percentage: str = Form(...), notes: str = Form(""),
+    def reject_manual_daily_task_edit(
+        task_id: int,
+        request: Request,
+        csrf: str = Form(...),
     ):
-        if not validate_csrf(request, csrf): return RedirectResponse(f"/tasks/{task_id}/edit",303)
-        try:
-            minutes = _parse_hours_to_minutes(hours_spent)
-            completion = _parse_completion_percentage(completion_percentage)
-        except ValueError as exc:
-            set_flash(request,str(exc),"error"); return RedirectResponse(f"/tasks/{task_id}/edit",303)
-        if not project_name.strip() or not task_description.strip():
-            set_flash(request, "Project name and task description are required.", "error")
-            return RedirectResponse(f"/tasks/{task_id}/edit",303)
-        normalized_task_status = task_status.strip().upper()
-        if normalized_task_status not in {"COMPLETED", "IN_PROGRESS", "ON_HOLD"}:
-            set_flash(request, "Invalid task status.", "error")
-            return RedirectResponse(f"/tasks/{task_id}/edit",303)
+        del task_id
+        if not validate_csrf(request, csrf):
+            set_flash(request, "Invalid form token.", "error")
+            return RedirectResponse("/tasks", status_code=303)
         with SessionLocal() as database:
-            account=get_current_freelancer_account(request,database)
-            if account is None: return RedirectResponse('/login',303)
-            task=database.get(DailyTask,task_id)
-            if task is None or task.freelancer_id != account.freelancer_id:
-                return RedirectResponse('/tasks',303)
-            month_key=task.task_date.strftime('%Y-%m')
-            if month_is_locked(database,month_key):
-                set_flash(request,'This month is locked.', 'error'); return RedirectResponse(f'/tasks?month={month_key}',303)
-            cleaned_project_name=" ".join(project_name.strip().split())
-            task.project_name=cleaned_project_name
-            if project_code.strip():
-                task.project_code=project_code.strip()
-            elif not task.project_code:
-                task.project_code=_internal_daily_project_code(cleaned_project_name)
-            task.discipline=discipline.strip() or None; task.task_description=task_description.strip()
-            task.accomplishment=accomplishment.strip() or None; task.task_status=normalized_task_status
-            task.minutes_spent=minutes; task.completion_percentage=completion; task.notes=notes.strip() or None
-            invalidate_task_review(database,account.freelancer_id,month_key)
-            write_audit(database,actor_type='FREELANCER',actor_id=account.freelancer_id,
-                        action='UPDATE_DAILY_TASK',request=request,target_type='DAILY_TASK',target_id=task.id)
-            database.commit()
-        set_flash(request,'Daily task updated.','success'); return RedirectResponse(f'/tasks?month={month_key}',303)
+            account = get_current_freelancer_account(request, database)
+            if account is None:
+                return RedirectResponse("/login", status_code=303)
+        set_flash(
+            request,
+            "Timed work records are system-generated and cannot be edited by freelancers.",
+            "error",
+        )
+        return RedirectResponse("/tasks", status_code=303)
 
     @router.post("/tasks/{task_id}/delete")
-    def delete_daily_task(task_id:int,request:Request,csrf:str=Form(...)):
-        if not validate_csrf(request,csrf): return RedirectResponse('/tasks',303)
+    def reject_manual_daily_task_delete(
+        task_id: int,
+        request: Request,
+        csrf: str = Form(...),
+    ):
+        del task_id
+        if not validate_csrf(request, csrf):
+            set_flash(request, "Invalid form token.", "error")
+            return RedirectResponse("/tasks", status_code=303)
         with SessionLocal() as database:
-            account=get_current_freelancer_account(request,database)
-            if account is None: return RedirectResponse('/login',303)
-            task=database.get(DailyTask,task_id)
-            if task is None or task.freelancer_id != account.freelancer_id: return RedirectResponse('/tasks',303)
-            month_key=task.task_date.strftime('%Y-%m')
-            if month_is_locked(database,month_key):
-                set_flash(request,'This month is locked.','error'); return RedirectResponse(f'/tasks?month={month_key}',303)
-            invalidate_task_review(database,account.freelancer_id,month_key)
-            database.delete(task); database.commit()
-        set_flash(request,'Daily task removed.','success'); return RedirectResponse(f'/tasks?month={month_key}',303)
+            account = get_current_freelancer_account(request, database)
+            if account is None:
+                return RedirectResponse("/login", status_code=303)
+        set_flash(
+            request,
+            "Timed work records cannot be deleted by freelancers. Contact an Administrator for corrections.",
+            "error",
+        )
+        return RedirectResponse("/tasks", status_code=303)
 
     @router.get("/admin/tasks/monthly", response_class=HTMLResponse)
     def admin_tasks_monthly(request:Request,month:str="",freelancer_id:int=0):

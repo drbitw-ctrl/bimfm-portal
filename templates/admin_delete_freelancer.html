@@ -1,49 +1,61 @@
 {% extends "base.html" %}
-{% block title %}Delete Member · {{ app_name }}{% endblock %}
+{% block title %}{{ t('Delete Freelancer Account') }} · {{ app_name }}{% endblock %}
 {% block content %}
-<div class="page-heading">
-  <div>
-    <span class="eyebrow">TEST ACCOUNT CLEANUP</span>
-    <h1>Delete member</h1>
-    <p class="muted">Permanent deletion is available only for unused testing accounts.</p>
-  </div>
-  <a class="button secondary" href="/admin/freelancers">Back to Freelancer Accounts</a>
-</div>
+<section class="compact-page-header danger-header">
+  <div><span class="eyebrow">{{ t('TWO-STEP ACCOUNT DELETION') }}</span><h1>{{ t('Delete Freelancer Account') }}</h1><p>{{ t('Protected accounts may be deleted only after reviewing dependencies and completing a second Administrator verification.') }}</p></div>
+  <a class="button secondary" href="/admin/freelancers">{{ t('Back to Freelancer Accounts') }}</a>
+</section>
 
-<section class="panel danger-zone-card">
+<section class="panel danger-zone-card two-step-delete-card">
+  <div class="deletion-step-indicator" aria-label="{{ t('Deletion verification progress') }}">
+    <span class="{{ 'active' if deletion_step == 1 else 'complete' }}"><b>1</b>{{ t('Review records') }}</span>
+    <i></i>
+    <span class="{{ 'active' if deletion_step == 2 else '' }}"><b>2</b>{{ t('Verify and purge') }}</span>
+  </div>
+
   <div class="account-recovery-summary">
     <span class="person-avatar large">{{ freelancer.full_name[:1]|upper }}</span>
-    <div>
-      <strong>{{ freelancer.full_name }}</strong>
-      <small>{{ freelancer.account.username if freelancer.account else 'No login account' }}</small>
-    </div>
+    <div><strong>{{ freelancer.full_name }}</strong><small>{{ freelancer.freelancer_code }} · {{ freelancer.account.username if freelancer.account else t('No login account') }}</small></div>
+    {% if deletion.blocked %}<span class="status-chip status-overdue">{{ t('Protected account') }}</span>{% else %}<span class="status-chip status-available">{{ t('No linked history') }}</span>{% endif %}
   </div>
 
-  {% if deletion.blocked %}
+  {% if deletion_step == 1 %}
   <div class="notice danger-notice">
-    <strong>This member cannot be deleted.</strong>
-    Operational history or project links were found. Disable the account instead so historical records remain trustworthy.
+    {% if deletion.blocked %}
+    <strong>{{ t('This account contains linked records.') }}</strong>
+    {{ t('Continuing will permanently remove the member’s owned HR, DTR, time, assignment, payroll, and notification records. Shared projects and shared portal tasks will remain.') }}
+    {% else %}
+    <strong>{{ t('This account has no protected history.') }}</strong>
+    {{ t('The member profile and login account will be removed after the second verification.') }}
+    {% endif %}
   </div>
-  <div class="dependency-list">
-    {% for item in deletion['items'] %}
-    <div><span>{{ item.label }}</span><strong>{{ item.count }}</strong></div>
-    {% endfor %}
+
+  {% if deletion.items %}
+  <div class="dependency-list dependency-list-danger">
+    {% for item in deletion['items'] %}<div><span>{{ t(item.label) }}</span><strong>{{ item.count }}</strong></div>{% endfor %}
+    <div class="dependency-total"><span>{{ t('Total linked records') }}</span><strong>{{ deletion.total }}</strong></div>
   </div>
-  <div class="action-row form-actions">
-    <a class="button secondary" href="/admin/freelancers">Return to accounts</a>
-  </div>
-  {% else %}
-  <div class="notice danger-notice">
-    <strong>Permanent action:</strong> this removes the member profile and login account. It cannot be undone through the portal.
-  </div>
-  <form method="post" action="/admin/freelancers/{{ freelancer.id }}/delete">
+  {% endif %}
+
+  <form method="post" action="/admin/freelancers/{{ freelancer.id }}/delete/review" class="deletion-confirm-form">
     <input type="hidden" name="csrf" value="{{ csrf_token }}">
-    <label>Type the complete member name to confirm</label>
-    <input name="confirm_name" required autocomplete="off" placeholder="{{ freelancer.full_name }}">
-    <div class="action-row form-actions">
-      <button class="button danger-button" type="submit">Permanently delete member</button>
-      <a class="button secondary" href="/admin/freelancers">Cancel</a>
-    </div>
+    <label><span>{{ t('Type the complete member name') }}</span><input name="confirm_name" required autocomplete="off" placeholder="{{ freelancer.full_name }}"></label>
+    {% if deletion.blocked %}
+    <label class="form-check destructive-check"><input class="form-check-input" type="checkbox" name="acknowledge_history" value="yes" id="ackHistory" required><span class="form-check-label">{{ t('I understand that the linked records listed above will also be permanently deleted and reports may change.') }}</span></label>
+    {% endif %}
+    <div class="action-row form-actions"><button class="button danger-button" type="submit">{{ t('Continue to final verification') }}</button><a class="button secondary" href="/admin/freelancers">{{ t('Cancel') }}</a></div>
+  </form>
+  {% else %}
+  <div class="notice danger-notice final-warning">
+    <strong>{{ t('Final irreversible step') }}</strong>
+    {{ t('Verify your Administrator password and enter the purge phrase exactly. This operation runs in one database transaction.') }}
+  </div>
+  <div class="dependency-summary-inline"><span>{{ t('Linked records to remove') }}</span><strong>{{ deletion.total }}</strong></div>
+  <form method="post" action="/admin/freelancers/{{ freelancer.id }}/delete/purge" class="deletion-confirm-form">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <label><span>{{ t('Current Administrator password') }}</span><input type="password" name="current_password" required autocomplete="current-password"></label>
+    <label><span>{{ t('Type the final purge phrase') }}</span><code>{{ confirmation_phrase }}</code><input name="confirm_phrase" required autocomplete="off" placeholder="{{ confirmation_phrase }}"></label>
+    <div class="action-row form-actions"><button class="button danger-button" type="submit">{{ t('Permanently purge account and records') }}</button><a class="button secondary" href="/admin/freelancers">{{ t('Cancel') }}</a></div>
   </form>
   {% endif %}
 </section>

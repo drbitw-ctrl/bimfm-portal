@@ -17,6 +17,7 @@ from app.auth.permissions import Permission, has_permission, normalize_role
 from app.database import get_db
 from app.models import (
     HRAdminAccount,
+    Freelancer,
     PortalProject,
     PortalProjectMember,
     PortalTask,
@@ -25,6 +26,7 @@ from app.models import (
 )
 from app.performance_reporting import build_performance_dashboard, build_project_reports
 from app.task_time_reporting import build_task_time_utilization
+from app.work_order_service import create_task_reminder, live_work_rows
 from app.portal_project_service import (
     active_task_overview_rows,
     project_data_health,
@@ -119,6 +121,38 @@ def _task_completion_date(task: PortalTask) -> str:
     return task.completed_at.date().isoformat()
 
 
+def _task_reminder_recipients(database: Session, task_id: int) -> list[Freelancer]:
+    assignment_ids = {
+        int(value)
+        for value in database.scalars(
+            select(PortalTaskAssignment.freelancer_id).where(
+                PortalTaskAssignment.task_id == task_id
+            )
+        ).all()
+        if value is not None
+    }
+    if not assignment_ids:
+        return []
+    source_to_hr = {
+        int(source_id): int(hr_id)
+        for source_id, hr_id in database.execute(
+            select(ProjectMember.source_freelancer_id, ProjectMember.freelancer_id).where(
+                ProjectMember.source_freelancer_id.in_(tuple(assignment_ids)),
+                ProjectMember.freelancer_id.is_not(None),
+            )
+        ).all()
+        if source_id is not None and hr_id is not None
+    }
+    resolved_ids = {source_to_hr.get(value, value) for value in assignment_ids}
+    return list(
+        database.scalars(
+            select(Freelancer)
+            .where(Freelancer.id.in_(tuple(resolved_ids)))
+            .order_by(Freelancer.full_name)
+        ).all()
+    )
+
+
 def create_portal_router(
     *,
     templates: Jinja2Templates,
@@ -141,8 +175,8 @@ def create_portal_router(
             "Complete task register with active, review, completed, unassigned, and on-hold records.",
         ),
         "team-workload": (
-            "Team Availability / Workload",
-            "All active members, including members with zero assignments.",
+            "Team Availability",
+            "See current availability, live work, and assigned workload for every active member.",
         ),
         "performance": (
             "Performance",
@@ -970,6 +1004,110 @@ def create_portal_router(
         set_flash(request, f"Task “{task_title}” was deleted.", "success")
         return RedirectResponse("/portal/tasks", status_code=303)
 
+    @router.get("/portal/live-work.json", response_class=JSONResponse)
+    def portal_live_work_json(
+        request: Request,
+        database: Session = Depends(get_db),
+    ):
+        account = get_current_admin(request, database)
+        if not account:
+            return JSONResponse({"error": "Authentication required."}, status_code=401)
+        if not has_permission(normalize_role(account.role), Permission.PROJECT_VIEW):
+            return JSONResponse({"error": "Access denied."}, status_code=403)
+        payload = []
+        for row in live_work_rows(database):
+            payload.append({
+                **row,
+                "started_at": row["started_at_iso"],
+                "due_date": row["due_date"].isoformat() if row["due_date"] else None,
+            })
+        return JSONResponse({"rows": payload, "count": len(payload)})
+
+    @router.get("/portal/tasks/{task_id}/reminder", response_class=HTMLResponse)
+    def task_reminder_page(
+        task_id: int,
+        request: Request,
+        database: Session = Depends(get_db),
+    ):
+        account = get_current_admin(request, database)
+        if not account:
+            return RedirectResponse("/admin/login", status_code=303)
+        if not has_permission(normalize_role(account.role), Permission.TASK_REMINDER_SEND):
+            return RedirectResponse("/admin?access=readonly", status_code=303)
+        task = database.get(PortalTask, task_id)
+        if task is None:
+            set_flash(request, "Task was not found.", "error")
+            return RedirectResponse("/portal/tasks", status_code=303)
+        project = database.get(PortalProject, task.project_id)
+        recipients = _task_reminder_recipients(database, task.id)
+        return templates.TemplateResponse(
+            request=request,
+            name="task_reminder_compose.html",
+            context=template_context(
+                request,
+                account=account,
+                task=task,
+                project=project,
+                recipients=recipients,
+                default_subject=f"Task reminder: {task.title}",
+            ),
+        )
+
+    @router.post("/portal/tasks/{task_id}/reminder")
+    def send_task_reminder(
+        task_id: int,
+        request: Request,
+        csrf: str = Form(...),
+        freelancer_id: int = Form(...),
+        subject: str = Form(...),
+        message: str = Form(...),
+        database: Session = Depends(get_db),
+    ):
+        redirect_path = f"/portal/tasks/{task_id}/reminder"
+        if not validate_csrf(request, csrf):
+            set_flash(request, "Invalid form token.", "error")
+            return RedirectResponse(redirect_path, status_code=303)
+        account = get_current_admin(request, database)
+        if not account:
+            return RedirectResponse("/admin/login", status_code=303)
+        if not has_permission(normalize_role(account.role), Permission.TASK_REMINDER_SEND):
+            return RedirectResponse("/admin?access=readonly", status_code=303)
+        task = database.get(PortalTask, task_id)
+        recipients = _task_reminder_recipients(database, task_id) if task else []
+        recipient = next((row for row in recipients if int(row.id) == int(freelancer_id)), None)
+        if task is None or recipient is None:
+            set_flash(request, "Choose an assigned freelancer.", "error")
+            return RedirectResponse(redirect_path, status_code=303)
+        try:
+            reminder = create_task_reminder(
+                database,
+                task=task,
+                freelancer=recipient,
+                sender=account,
+                subject=subject,
+                message=message,
+            )
+        except ValueError as exc:
+            set_flash(request, str(exc), "error")
+            return RedirectResponse(redirect_path, status_code=303)
+        write_audit(
+            database,
+            actor_type="HR_ADMIN",
+            actor_id=account.id,
+            action="SEND_TASK_REMINDER",
+            request=request,
+            target_type="TASK_REMINDER",
+            target_id=reminder.id,
+            details=(
+                f"Sent reminder to {recipient.full_name} for task {task.title}; "
+                f"email_sent={reminder.email_sent}."
+            ),
+        )
+        database.commit()
+        delivery = "Email and in-app reminder sent." if reminder.email_sent else "In-app reminder sent."
+        set_flash(request, delivery, "success")
+        return RedirectResponse("/portal/tasks?view=active", status_code=303)
+
     @router.get("/portal/{module_name}", response_class=HTMLResponse)
     def portal_module(
         request: Request,
@@ -1073,6 +1211,7 @@ def create_portal_router(
         section_note = "This module reads the migrated project tables directly. No projects.db synchronization is required."
         task_filters: dict[str, list[dict[str, str]]] | None = None
         can_edit_tasks = has_permission(normalize_role(account.role), Permission.PROJECT_EDIT)
+        can_remind_tasks = has_permission(normalize_role(account.role), Permission.TASK_REMINDER_SEND)
 
         if module_name == "projects":
             columns = [
@@ -1119,7 +1258,7 @@ def create_portal_router(
             columns = [
                 {"key": "project", "label": "Project", "type": "project", "sort": "text"},
                 {"key": "title", "label": "Task", "type": "text", "sort": "text"},
-                {"key": "assignees", "label": "Assigned Member", "type": "text", "sort": "text"},
+                {"key": "assignees", "label": "Assigned Member", "type": "translatable_text", "sort": "text"},
                 {"key": "status", "label": "Status", "type": "quick_status" if can_edit_tasks else "status", "sort": "status"},
                 {"key": "priority", "label": "Priority", "type": "priority", "sort": "priority"},
                 {"key": "discipline", "label": "Discipline", "type": "text", "sort": "text"},
@@ -1129,7 +1268,7 @@ def create_portal_router(
                 {"key": "due_date", "label": "Deadline", "type": "date", "sort": "date"},
                 {"key": "completion_date", "label": "Completed", "type": "quick_completed" if can_edit_tasks else "date", "sort": "date"},
             ]
-            if can_edit_tasks:
+            if can_edit_tasks or can_remind_tasks:
                 columns.append({"key": "action", "label": "Action", "type": "action", "sort": "none"})
             rows = []
             for row in source_rows:
@@ -1176,10 +1315,10 @@ def create_portal_router(
                     "due_date": row["due_date"],
                     "completion_date": row["completion_date"],
                 }
-                if can_edit_tasks:
+                if can_edit_tasks or can_remind_tasks:
                     item["action"] = {
-                        "href": f"/portal/tasks/{row['id']}/edit",
-                        "label": "Edit",
+                        "edit_href": (f"/portal/tasks/{row['id']}/edit" if can_edit_tasks else ""),
+                        "reminder_href": (f"/portal/tasks/{row['id']}/reminder" if can_remind_tasks and status_value not in {"COMPLETED", "CANCELLED"} else ""),
                     }
                 rows.append(item)
 
@@ -1213,7 +1352,7 @@ def create_portal_router(
             columns = [
                 {"key": "project", "label": "Project", "type": "project", "sort": "text"},
                 {"key": "title", "label": "Task", "type": "text", "sort": "text"},
-                {"key": "assignees", "label": "Assignees", "type": "text", "sort": "text"},
+                {"key": "assignees", "label": "Assignees", "type": "translatable_text", "sort": "text"},
                 {"key": "status", "label": "Status", "type": "status", "sort": "status"},
                 {"key": "priority", "label": "Priority", "type": "priority", "sort": "priority"},
                 {"key": "progress", "label": "Progress", "type": "progress", "sort": "number"},
@@ -1236,25 +1375,37 @@ def create_portal_router(
                 for row in active_task_overview_rows(database, limit=300)
             ]
         elif module_name == "team-workload":
+            live_by_member = {
+                int(row["freelancer_id"]): row for row in live_work_rows(database)
+            }
             columns = [
                 {"key": "member", "label": "Member", "type": "person"},
-                {"key": "project_count", "label": "Projects", "type": "number"},
+                {"key": "availability", "label": "Availability", "type": "status"},
+                {"key": "working_task", "label": "Working Now", "type": "translatable_text"},
+                {"key": "working_project", "label": "Current Project", "type": "text"},
+                {"key": "elapsed", "label": "Elapsed", "type": "elapsed_minutes"},
                 {"key": "active_task_count", "label": "Active Tasks", "type": "number"},
-                {"key": "completed_task_count", "label": "Completed", "type": "number"},
                 {"key": "overdue_task_count", "label": "Overdue", "type": "warning_number"},
-                {"key": "assignment_status", "label": "Status", "type": "status"},
+                {"key": "assignment_status", "label": "Assignment Status", "type": "status"},
             ]
-            rows = [
-                {
-                    "member": {"primary": row["name"], "secondary": ""},
-                    "project_count": row["project_count"],
+            rows = []
+            for row in team_assignment_rows(database):
+                live = live_by_member.get(int(row["freelancer_id"]))
+                availability = (
+                    "Working Now" if live
+                    else "Busy" if int(row["active_task_count"]) > 0
+                    else "Available"
+                )
+                rows.append({
+                    "member": {"primary": row["name"], "secondary": row.get("member_code", "")},
+                    "availability": availability,
+                    "working_task": live["task_title"] if live else "No active timer",
+                    "working_project": live["project_name"] if live else "—",
+                    "elapsed": int(live["elapsed_minutes"]) if live else None,
                     "active_task_count": row["active_task_count"],
-                    "completed_task_count": row["completed_task_count"],
                     "overdue_task_count": row["overdue_task_count"],
                     "assignment_status": row["assignment_status"],
-                }
-                for row in team_assignment_rows(database)
-            ]
+                })
         elif module_name == "calendar":
             columns = [
                 {"key": "due_date", "label": "Due Date", "type": "date", "sort": "date"},
@@ -1297,6 +1448,7 @@ def create_portal_router(
                 task_filters=task_filters,
                 can_create_task=can_edit_tasks,
                 can_edit_tasks=can_edit_tasks,
+                can_remind_tasks=can_remind_tasks,
                 task_quick_edit_options=(
                     {
                         "statuses": TASK_STATUSES,

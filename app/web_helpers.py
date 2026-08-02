@@ -21,6 +21,7 @@ from app.models import (
     FreelancerAccount,
     HRAdminAccount,
     HRPolicy,
+    TaskReminder,
 )
 
 def utc_now() -> datetime:
@@ -126,11 +127,20 @@ def template_context(
         flash["message"] = translate(str(flash["message"]))
 
     freelancer_can_view_project_engineer = False
+    unread_reminder_count = 0
     if current_freelancer:
         with SessionLocal() as database:
             policy = database.scalar(select(HRPolicy).order_by(HRPolicy.id))
             freelancer_can_view_project_engineer = bool(
                 policy and policy.show_project_engineer_to_freelancers
+            )
+            unread_reminder_count = int(
+                database.scalar(
+                    select(func.count(TaskReminder.id)).where(
+                        TaskReminder.freelancer_id == current_freelancer["member_id"],
+                        TaskReminder.read_at.is_(None),
+                    )
+                ) or 0
             )
 
     context = {
@@ -149,6 +159,7 @@ def template_context(
         "current_staff_role": (str(getattr(current_staff, "role", "ADMIN") or "ADMIN").upper() if current_staff else None),
         "current_freelancer": current_freelancer,
         "freelancer_can_view_project_engineer": freelancer_can_view_project_engineer,
+        "unread_reminder_count": unread_reminder_count,
         "Permission": Permission,
         "can": (
             (lambda permission: has_permission(normalize_role(current_staff.role), permission))

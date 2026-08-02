@@ -70,7 +70,7 @@ from app.models import (
     CompLeaveTransaction,
     TaskMonthReview,
     WorkSchedule, PortalProject, PortalProjectMember, PortalTask, PortalTaskAssignment,
-    ProjectMember,
+    ProjectMember, TaskWorkSession, TaskReminder,
 )
 from app.security import (
     hash_password,
@@ -116,6 +116,18 @@ from app.hr_workflow import (
     reject_leave_request,
     reject_overtime_claim,
     task_minutes_for_date,
+)
+
+from app.work_order_service import (
+    active_work_session,
+    start_work_session,
+    stop_work_session,
+    freelancer_work_order_view,
+    live_work_rows,
+    unread_reminder_count,
+    reminder_rows,
+    mark_reminder_read,
+    create_task_reminder,
 )
 from app.portal_project_service import (
     active_task_counts_by_freelancer,

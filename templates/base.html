@@ -51,7 +51,7 @@
       {{ nav_link('/portal/tasks/new', t('New Task'), '＋', true, 'nav-create-task') }}
       {% endif %}
       <a href="/portal/tasks" class="{% if request.url.path == '/portal/tasks' and not request.query_params.get('view') %}active{% endif %}" data-nav-path="/portal/tasks" data-nav-query=""><span class="nav-icon">☷</span><span>{{ t('Tasks') }}</span></a>
-      {{ nav_link('/portal/team-workload', t('Team Availability / Workload'), '◫') }}
+      {{ nav_link('/portal/team-workload', t('Team Availability'), '◫') }}
       <a href="/portal/tasks?view=active" class="{% if request.url.path == '/portal/tasks' and request.query_params.get('view') == 'active' %}active{% endif %}" data-nav-path="/portal/tasks" data-nav-query="view=active"><span class="nav-icon">▶</span><span>{{ t('Active Tasks') }}</span></a>
       <a href="/portal/tasks?view=completed" class="{% if request.url.path == '/portal/tasks' and request.query_params.get('view') == 'completed' %}active{% endif %}" data-nav-path="/portal/tasks" data-nav-query="view=completed"><span class="nav-icon">✓</span><span>{{ t('Recently Completed Tasks') }}</span></a>
       {{ nav_link('/portal/performance', t('Performance'), '↗') }}
@@ -96,9 +96,10 @@
       {{ nav_link('/attendance/history', t('Attendance History'), '▦') }}
 
       <span class="nav-label">{{ t('Daily Work') }}</span>
-      {{ nav_link('/tasks', t('Daily Task Reports'), '✓') }}
+      {{ nav_link('/tasks', t('Work Orders'), '▶') }}
       {{ nav_link('/projects', t('Assigned Projects'), '▦') }}
       {{ nav_link('/projects/completed', t('Recently Completed Tasks'), '✓') }}
+      {{ nav_link('/reminders', t('Reminders'), '✉') }}
 
       <span class="nav-label">{{ t('Requests') }}</span>
       {{ nav_link('/overtime', t('Overtime & Credits'), '＋') }}
@@ -126,6 +127,7 @@
       <div class="topbar-spacer"></div>
       <div class="topbar-date" data-live-date aria-hidden="true"></div>
       {% if not current_staff or can(Permission.LEAVE_VIEW_ALL) %}<a class="topbar-icon-button topbar-shortcut" href="{{ '/admin/leave-requests' if current_staff else '/leave' }}" title="{{ t('Open requests') }}" aria-label="{{ t('Open requests') }}"><span>⌁</span><em>{{ t('Requests') }}</em></a>{% endif %}
+      {% if not current_staff %}<a class="topbar-icon-button reminder-shortcut" href="/reminders" title="{{ t('Reminders') }}" aria-label="{{ t('Reminders') }}"><span>✉</span>{% if unread_reminder_count %}<b>{{ unread_reminder_count }}</b>{% endif %}</a>{% endif %}
       <button class="topbar-icon-button theme-toggle" type="button" data-theme-toggle aria-label="{{ t('Toggle theme') }}" title="{{ t('Toggle theme') }}"><span class="theme-icon-light">☀</span><span class="theme-icon-dark">☾</span></button>
       <form class="language-switcher" method="post" action="/language" data-readonly-allowed><input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="next_url" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button name="locale" value="en" class="lang-button {{ 'active' if locale == 'en' else '' }}" type="submit">EN</button><span>/</span><button name="locale" value="zh_TW" class="lang-button {{ 'active' if locale == 'zh_TW' else '' }}" type="submit">繁中</button></form>
       <div class="user-menu">

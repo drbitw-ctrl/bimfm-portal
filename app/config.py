@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 APP_NAME = "BIMFM Portal"
-APP_VERSION = "2.3.18-release20.23-localization-privacy-admin-time-fallback"
+APP_VERSION = "3.0.0-release21.00-work-order-operations"
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
@@ -59,3 +59,13 @@ LOG_LEVEL = os.getenv("BIMFM_LOG_LEVEL", "INFO").strip().upper()
 API_RATE_LIMIT_PER_MINUTE = int(os.getenv("BIMFM_API_RATE_LIMIT_PER_MINUTE", "120"))
 LOGIN_RATE_LIMIT_PER_MINUTE = int(os.getenv("BIMFM_LOGIN_RATE_LIMIT_PER_MINUTE", "20"))
 TRUST_PROXY_HEADERS = os.getenv("BIMFM_TRUST_PROXY_HEADERS", "false").strip().lower() == "true"
+
+
+# Optional outbound email for task reminders. In-app reminders always work;
+# email delivery is attempted only when the host and sender are configured.
+SMTP_HOST = os.getenv("BIMFM_SMTP_HOST", "").strip()
+SMTP_PORT = int(os.getenv("BIMFM_SMTP_PORT", "587") or "587")
+SMTP_USERNAME = os.getenv("BIMFM_SMTP_USERNAME", "").strip()
+SMTP_PASSWORD = os.getenv("BIMFM_SMTP_PASSWORD", "")
+SMTP_FROM_EMAIL = os.getenv("BIMFM_SMTP_FROM_EMAIL", "").strip()
+SMTP_USE_TLS = os.getenv("BIMFM_SMTP_USE_TLS", "true").strip().lower() == "true"

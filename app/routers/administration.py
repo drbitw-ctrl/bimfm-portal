@@ -6,7 +6,7 @@ Dependencies are injected during application startup as a compatibility bridge.
 from __future__ import annotations
 
 from fastapi import APIRouter
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import joinedload
 
 from app.auth.permissions import Permission, has_permission, normalize_role
@@ -33,6 +33,8 @@ from app.models import (
     PortalTaskUpdate,
     ProjectMember,
     TaskMonthReview,
+    TaskReminder,
+    TaskWorkSession,
 )
 
 
@@ -47,10 +49,11 @@ def _staff_can_manage(account) -> bool:
 
 
 def _freelancer_delete_summary(database, freelancer_id: int) -> dict[str, object]:
-    """Return protected dependency counts for safe test-account deletion.
+    """Return dependency counts for the two-step account-deletion review.
 
-    A real member with operational history must be disabled instead of erased.
-    Only empty/testing profiles can be permanently removed.
+    Linked records mark the profile as protected in normal operation. Release
+    21.00 allows an Administrator to override that protection only through the
+    explicit two-step purge flow.
     """
     direct_models = (
         ("Attendance events", AttendanceEvent),
@@ -70,6 +73,8 @@ def _freelancer_delete_summary(database, freelancer_id: int) -> dict[str, object
         ("Project memberships", PortalProjectMember),
         ("Task assignments", PortalTaskAssignment),
         ("Task updates", PortalTaskUpdate),
+        ("Timed work sessions", TaskWorkSession),
+        ("Task reminders", TaskReminder),
     )
     counts: list[dict[str, object]] = []
     total = 0
@@ -105,6 +110,39 @@ def _freelancer_delete_summary(database, freelancer_id: int) -> dict[str, object
         "total": total,
         "items": counts,
     }
+
+
+def _purge_freelancer_records(database, freelancer_id: int) -> dict[str, int]:
+    """Delete records directly owned by one freelancer in dependency order.
+
+    This is intentionally available only behind the two-step protected-account
+    confirmation flow. Shared projects and portal tasks are retained; assignment,
+    time, HR, payroll, and account records belonging to the selected identity are
+    removed.
+    """
+    deleted: dict[str, int] = {}
+    for table in reversed(Base.metadata.sorted_tables):
+        if table.name in {
+            Freelancer.__tablename__,
+            FreelancerAccount.__tablename__,
+            AuditLog.__tablename__,
+            HRAdminAccount.__tablename__,
+        }:
+            continue
+        conditions = []
+        for column in table.columns:
+            if any(
+                foreign_key.target_fullname == "freelancers.id"
+                for foreign_key in column.foreign_keys
+            ):
+                conditions.append(column == freelancer_id)
+        if not conditions:
+            continue
+        result = database.execute(delete(table).where(or_(*conditions)))
+        count = int(result.rowcount or 0)
+        if count:
+            deleted[table.name] = count
+    return deleted
 
 
 def _staff_account_delete_summary(database, account_id: int) -> dict[str, object]:
@@ -293,6 +331,8 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                 int(row["freelancer_id"]): row for row in today_rows
             }
             task_details_by_member = active_task_details_by_freelancer(database)
+            live_work = live_work_rows(database)
+            live_work_by_member = {int(row["freelancer_id"]): row for row in live_work}
             member_workload_rows = []
             for team_row in project_team_rows:
                 freelancer_id = int(team_row["freelancer_id"])
@@ -307,6 +347,13 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                         "time_in": attendance_row.get("time_in", "—"),
                         "current_tasks": current_tasks[:3],
                         "remaining_task_count": max(0, len(current_tasks) - 3),
+                        "live_work": live_work_by_member.get(freelancer_id),
+                        "work_state": (
+                            "overdue" if int(team_row["overdue_task_count"]) > 0
+                            else "working" if freelancer_id in live_work_by_member
+                            else "assigned" if active_tasks
+                            else "available"
+                        ),
                     }
                 )
 
@@ -362,6 +409,7 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                     busy_member_rows=busy_member_rows,
                     member_workload_count=len(member_workload_rows),
                     attendance_recorded_count=attendance_recorded_count,
+                    live_work_rows=live_work,
                 ),
             )
 
@@ -980,7 +1028,6 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                 return RedirectResponse("/admin/login", status_code=303)
             if not _staff_can_manage(admin):
                 return RedirectResponse("/admin?access=readonly", status_code=303)
-
             freelancer = database.scalar(
                 select(Freelancer)
                 .options(joinedload(Freelancer.account))
@@ -989,7 +1036,6 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
             if freelancer is None:
                 set_flash(request, "Freelancer was not found.", "error")
                 return RedirectResponse("/admin/freelancers", status_code=303)
-
             return templates.TemplateResponse(
                 request=request,
                 name="admin_delete_freelancer.html",
@@ -997,89 +1043,169 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                     request,
                     admin=admin,
                     freelancer=freelancer,
-                    deletion=_freelancer_delete_summary(
-                        database, freelancer.id
-                    ),
+                    deletion=_freelancer_delete_summary(database, freelancer.id),
+                    deletion_step=1,
                 ),
             )
 
-    @router.post("/admin/freelancers/{freelancer_id}/delete")
-    def delete_freelancer(
+    @router.post("/admin/freelancers/{freelancer_id}/delete/review")
+    def review_freelancer_deletion(
         freelancer_id: int,
         request: Request,
         csrf: str = Form(...),
         confirm_name: str = Form(...),
+        acknowledge_history: str = Form(""),
     ):
         redirect_path = f"/admin/freelancers/{freelancer_id}/delete"
         if not validate_csrf(request, csrf):
             set_flash(request, "Invalid form token.", "error")
             return RedirectResponse(redirect_path, status_code=303)
-
         with SessionLocal() as database:
             admin = get_current_admin(request, database)
             if admin is None:
                 return RedirectResponse("/admin/login", status_code=303)
             if not _staff_can_manage(admin):
                 return RedirectResponse("/admin?access=readonly", status_code=303)
+            freelancer = database.get(Freelancer, freelancer_id)
+            if freelancer is None:
+                set_flash(request, "Freelancer was not found.", "error")
+                return RedirectResponse("/admin/freelancers", status_code=303)
+            deletion = _freelancer_delete_summary(database, freelancer.id)
+            if confirm_name.strip().casefold() != freelancer.full_name.strip().casefold():
+                set_flash(request, "Type the member's complete name exactly.", "error")
+                return RedirectResponse(redirect_path, status_code=303)
+            if deletion["blocked"] and acknowledge_history != "yes":
+                set_flash(request, "Confirm that linked historical records will also be permanently removed.", "error")
+                return RedirectResponse(redirect_path, status_code=303)
+            request.session["freelancer_delete_intent"] = {
+                "freelancer_id": freelancer.id,
+                "admin_id": admin.id,
+                "expires_at": int(utc_now().timestamp()) + 600,
+            }
+        return RedirectResponse(
+            f"/admin/freelancers/{freelancer_id}/delete/confirm",
+            status_code=303,
+        )
 
+    @router.get(
+        "/admin/freelancers/{freelancer_id}/delete/confirm",
+        response_class=HTMLResponse,
+    )
+    def confirm_freelancer_deletion_page(
+        freelancer_id: int,
+        request: Request,
+    ):
+        with SessionLocal() as database:
+            admin = get_current_admin(request, database)
+            if admin is None:
+                return RedirectResponse("/admin/login", status_code=303)
+            intent = request.session.get("freelancer_delete_intent") or {}
+            valid = (
+                int(intent.get("freelancer_id", 0)) == freelancer_id
+                and int(intent.get("admin_id", 0)) == admin.id
+                and int(intent.get("expires_at", 0)) >= int(utc_now().timestamp())
+            )
+            if not valid:
+                request.session.pop("freelancer_delete_intent", None)
+                set_flash(request, "Deletion confirmation expired. Start again.", "error")
+                return RedirectResponse(
+                    f"/admin/freelancers/{freelancer_id}/delete",
+                    status_code=303,
+                )
             freelancer = database.scalar(
                 select(Freelancer)
                 .options(joinedload(Freelancer.account))
                 .where(Freelancer.id == freelancer_id)
             )
             if freelancer is None:
-                set_flash(request, "Freelancer was not found.", "error")
                 return RedirectResponse("/admin/freelancers", status_code=303)
+            return templates.TemplateResponse(
+                request=request,
+                name="admin_delete_freelancer.html",
+                context=template_context(
+                    request,
+                    admin=admin,
+                    freelancer=freelancer,
+                    deletion=_freelancer_delete_summary(database, freelancer.id),
+                    deletion_step=2,
+                    confirmation_phrase=f"PURGE {freelancer.freelancer_code}",
+                ),
+            )
+
+    @router.post("/admin/freelancers/{freelancer_id}/delete/purge")
+    def purge_freelancer_account(
+        freelancer_id: int,
+        request: Request,
+        csrf: str = Form(...),
+        current_password: str = Form(...),
+        confirm_phrase: str = Form(...),
+    ):
+        redirect_path = f"/admin/freelancers/{freelancer_id}/delete/confirm"
+        if not validate_csrf(request, csrf):
+            set_flash(request, "Invalid form token.", "error")
+            return RedirectResponse(redirect_path, status_code=303)
+        with SessionLocal() as database:
+            admin = get_current_admin(request, database)
+            if admin is None:
+                return RedirectResponse("/admin/login", status_code=303)
+            if not _staff_can_manage(admin):
+                return RedirectResponse("/admin?access=readonly", status_code=303)
+            intent = request.session.get("freelancer_delete_intent") or {}
+            if not (
+                int(intent.get("freelancer_id", 0)) == freelancer_id
+                and int(intent.get("admin_id", 0)) == admin.id
+                and int(intent.get("expires_at", 0)) >= int(utc_now().timestamp())
+            ):
+                request.session.pop("freelancer_delete_intent", None)
+                set_flash(request, "Deletion confirmation expired. Start again.", "error")
+                return RedirectResponse(
+                    f"/admin/freelancers/{freelancer_id}/delete",
+                    status_code=303,
+                )
+            freelancer = database.scalar(
+                select(Freelancer)
+                .options(joinedload(Freelancer.account))
+                .where(Freelancer.id == freelancer_id)
+            )
+            if freelancer is None:
+                return RedirectResponse("/admin/freelancers", status_code=303)
+            expected_phrase = f"PURGE {freelancer.freelancer_code}"
+            if confirm_phrase.strip() != expected_phrase:
+                set_flash(request, f"Type {expected_phrase} exactly.", "error")
+                return RedirectResponse(redirect_path, status_code=303)
+            if not verify_password(admin.password_hash, current_password):
+                set_flash(request, "Your Administrator password is incorrect.", "error")
+                return RedirectResponse(redirect_path, status_code=303)
 
             deletion = _freelancer_delete_summary(database, freelancer.id)
-            if deletion["blocked"]:
-                set_flash(
-                    request,
-                    "This member has operational history or project links and cannot be deleted. Disable the account instead.",
-                    "error",
-                )
-                return RedirectResponse(redirect_path, status_code=303)
-
-            if confirm_name.strip().casefold() != freelancer.full_name.strip().casefold():
-                set_flash(
-                    request,
-                    "Type the member's complete name exactly to confirm deletion.",
-                    "error",
-                )
-                return RedirectResponse(redirect_path, status_code=303)
-
             deleted_name = freelancer.full_name
             deleted_code = freelancer.freelancer_code
             target_id = freelancer.id
+            dependency_text = ", ".join(
+                f"{item['label']}={item['count']}" for item in deletion["items"]
+            ) or "no linked records"
+            removed = _purge_freelancer_records(database, freelancer.id)
+            database.delete(freelancer)
+            database.flush()
             write_audit(
                 database,
                 actor_type="HR_ADMIN",
                 actor_id=admin.id,
-                action="DELETE_UNUSED_TEST_MEMBER",
+                action="PURGE_FREELANCER_ACCOUNT",
                 request=request,
                 target_type="FREELANCER",
                 target_id=target_id,
-                details=f"Deleted unused member {deleted_name} ({deleted_code}).",
+                details=(
+                    f"Two-step purge of {deleted_name} ({deleted_code}); "
+                    f"dependencies reviewed: {dependency_text}; removed tables: {removed}."
+                ),
             )
-            # Remove the portal-native project-directory entry created for an
-            # unused account. Imported source-member rows are protected above.
-            for member in database.scalars(
-                select(ProjectMember).where(
-                    ProjectMember.freelancer_id == freelancer.id,
-                    ProjectMember.source_freelancer_id.is_(None),
-                )
-            ).all():
-                database.delete(member)
-
-            # The Freelancer.account relationship is configured with
-            # delete-orphan cascade, so deleting the member removes the login
-            # account in the same transaction without issuing duplicate deletes.
-            database.delete(freelancer)
             database.commit()
+            request.session.pop("freelancer_delete_intent", None)
 
         set_flash(
             request,
-            f"Unused member {deleted_name} was permanently deleted.",
+            f"{deleted_name} and linked records were permanently deleted.",
             "success",
         )
         return RedirectResponse("/admin/freelancers", status_code=303)

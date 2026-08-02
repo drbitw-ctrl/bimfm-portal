@@ -65,11 +65,8 @@
               {% if freelancer.account %}
               <a class="button small secondary" href="/admin/freelancers/{{ freelancer.id }}/reset-password">Reset password</a>
               {% endif %}
-              {% if not deletion.get('blocked') %}
-              <a class="button small danger-button" href="/admin/freelancers/{{ freelancer.id }}/delete">Delete member</a>
-              {% else %}
-              <span class="protected-record-note" title="This member has operational history or project links and must be disabled instead of deleted.">Protected record</span>
-              {% endif %}
+              <a class="button small danger-button" href="/admin/freelancers/{{ freelancer.id }}/delete">{{ t('Delete') if not deletion.get('blocked') else t('Review deletion') }}</a>
+              {% if deletion.get('blocked') %}<span class="protected-record-note" title="{{ t('Two-step verification is required because this account has linked records.') }}">{{ t('Protected record') }}</span>{% endif %}
             </div>
           </td>
         </tr>

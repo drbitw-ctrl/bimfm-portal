@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Send Task Reminder') }} · {{ app_name }}{% endblock %}
+{% block content %}
+<section class="compact-page-header">
+  <div><span class="eyebrow">{{ t('EMAIL-STYLE TASK NOTIFICATION') }}</span><h1>{{ t('Send Task Reminder') }}</h1><p>{{ t('Send an in-app reminder and, when SMTP is configured, an email copy to the assigned freelancer.') }}</p></div>
+  <a class="button secondary" href="/portal/tasks?view=active">{{ t('Back to Active Tasks') }}</a>
+</section>
+
+<div class="reminder-compose-layout">
+  <section class="panel reminder-task-summary">
+    <span class="eyebrow">{{ t('TASK') }}</span>
+    <h2>{{ task.title }}</h2>
+    <p>{{ project.name if project else '—' }}</p>
+    <dl>
+      <div><dt>{{ t('Status') }}</dt><dd>{{ t(task.status|replace('_', ' ')|title) }}</dd></div>
+      <div><dt>{{ t('Priority') }}</dt><dd>{{ t(task.priority|replace('_', ' ')|title) }}</dd></div>
+      <div><dt>{{ t('Deadline') }}</dt><dd>{{ task.due_date.isoformat() if task.due_date else t('No deadline') }}</dd></div>
+      <div><dt>{{ t('Progress') }}</dt><dd>{{ task.progress }}%</dd></div>
+    </dl>
+  </section>
+
+  <section class="panel email-compose-card">
+    <div class="email-compose-chrome">
+      <span>✉</span><strong>{{ t('New reminder') }}</strong><small>{{ t('In-app delivery is always available') }}</small>
+    </div>
+    {% if recipients %}
+    <form method="post" action="/portal/tasks/{{ task.id }}/reminder" class="form-grid">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <div class="full-width"><label>{{ t('To') }}</label><select name="freelancer_id" required>{% for row in recipients %}<option value="{{ row.id }}">{{ row.full_name }}{% if row.email %} · {{ row.email }}{% endif %}</option>{% endfor %}</select></div>
+      <div class="full-width"><label>{{ t('Subject') }}</label><input name="subject" maxlength="240" value="{{ t('Task reminder') }}: {{ task.title }}" required></div>
+      <div class="full-width"><label>{{ t('Message') }}</label><textarea name="message" rows="8" required placeholder="{{ t('Write a clear reminder about the task, deadline, or required action.') }}"></textarea></div>
+      <div class="full-width email-compose-actions"><span>{{ t('The reminder will appear in the freelancer’s portal inbox immediately.') }}</span><button class="button primary" type="submit">{{ t('Send Reminder') }}</button></div>
+    </form>
+    {% else %}<div class="empty-state"><p>{{ t('This task has no assigned freelancer who can receive a reminder.') }}</p></div>{% endif %}
+  </section>
+</div>
+{% endblock %}

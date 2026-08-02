@@ -36,6 +36,7 @@ class Permission(StrEnum):
     STAFF_MANAGE = "staff.manage"
     SETTINGS_MANAGE = "settings.manage"
     INTEGRATION_MANAGE = "integration.manage"
+    TASK_REMINDER_SEND = "task_reminder.send"
 
 
 _ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
@@ -50,6 +51,7 @@ _ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
         Permission.OVERTIME_VIEW_ALL,
         Permission.FINANCE_VIEW,
         Permission.PROJECT_VIEW,
+        Permission.TASK_REMINDER_SEND,
     }),
     Role.FINANCE: frozenset({
         Permission.DASHBOARD_VIEW,

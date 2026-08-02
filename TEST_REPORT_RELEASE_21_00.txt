@@ -1,0 +1,89 @@
+BIMFM Portal Version 21.00 Validation Report
+============================================
+
+Application version: 3.0.0-release21.00-work-order-operations
+Result: PASSED
+Integrated workflow assertions: 52
+Failures: 0
+Errors: 0
+
+Static and application validation
+---------------------------------
+- Python compilation passed across app and Alembic source.
+- All 43 Jinja templates parsed successfully.
+- JavaScript syntax passed for ui.js, i18n.js, and reporting.js.
+- Application import succeeded.
+- Application exposed 114 routes.
+- English and Traditional Chinese catalogs contained 1,688 matching keys each.
+- Required dynamic Traditional Chinese labels were verified, including Normal,
+  Urgent, Assigned, No active task, No active timer, Team Availability,
+  Work Orders, and Reminders.
+
+Schema migration validation
+---------------------------
+- A Version 20.23 database was upgraded from Alembic revision 20260802_0007.
+- Version 21.00 completed revision 20260802_0008.
+- task_work_sessions was created.
+- task_reminders was created.
+- uq_work_sessions_one_active was created.
+- No Version 21.00 work-order table existed before the 0008 upgrade.
+
+Integrated workflow validation
+------------------------------
+- Freelancer authentication.
+- Work Orders page rendering.
+- Quality Score absence from the freelancer work-order interface.
+- Manual freelancer time-entry rejection.
+- Confirmation that rejected manual entry creates no Daily Task record.
+- Work-order start operation.
+- Active work-session creation.
+- Portal task progress and status preservation when starting work.
+- Active timer presentation.
+- Work-order stop operation.
+- Server-calculated elapsed duration.
+- Linked Daily Task creation.
+- Administrator-controlled accomplishment and progress preservation.
+- Timer minutes included in Task Time Utilization.
+- Second work-order start after stopping.
+- Rejection of a second simultaneous timer.
+- One-active-timer database rule.
+- Administrator authentication.
+- Compact headers for Tasks, Team Availability, Active Tasks,
+  Recently Completed Tasks, and Projects.
+- Traditional Chinese compact-header titles for the same five pages.
+- Live-work JSON response.
+- Dashboard live-work presentation.
+- Traditional Chinese Urgent and Normal task priorities.
+- No English Urgent or Normal labels in the tested Chinese task table.
+- Team Availability naming and Traditional Chinese presentation.
+- Dynamic assignment and timer-state translation.
+- Traditional Chinese Dashboard cards.
+- Reminder compose page.
+- Reminder creation.
+- In-app reminder storage.
+- SMTP-not-configured fallback recording.
+- Freelancer email-style reminder inbox.
+- Supervisor authentication.
+- Supervisor live-work access.
+- Supervisor reminder permission.
+- Protected-account dependency review.
+- First deletion verification step.
+- Second deletion verification step.
+- Protected testing-account purge.
+- Removal of selected freelancer-owned Daily Task history.
+- Preservation of the shared project.
+- Preservation of the shared task.
+- Preservation of another freelancer's assignment.
+
+Email transport limitation
+--------------------------
+The in-app reminder workflow and SMTP delivery-state handling were validated.
+No external SMTP server or real recipient mailbox was used during automated
+validation. Actual email delivery must be tested after valid SMTP credentials
+are configured in Render Environment settings.
+
+Database safety note
+--------------------
+Protected-account purge is intentionally destructive and runs only after two
+verification steps. It should be used only for confirmed test accounts after a
+current production PostgreSQL backup has been verified.

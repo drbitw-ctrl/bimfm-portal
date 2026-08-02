@@ -15,6 +15,7 @@ from app.models.payroll import PayrollMonthSummary
 from app.models.audit import AuditLog
 from app.models.portal import PortalProject, PortalProjectMember, PortalTask, PortalTaskAssignment, PortalTaskUpdate
 from app.models.project_member import ProjectMember
+from app.models.work_order import TaskWorkSession, TaskReminder
 
 __all__ = [
     "utc_now",
@@ -52,4 +53,6 @@ __all__ = [
     "PortalTaskAssignment",
     "PortalTaskUpdate",
     "ProjectMember",
+    "TaskWorkSession",
+    "TaskReminder",
 ]

@@ -312,4 +312,91 @@
       submitButton.setAttribute('aria-busy', 'true');
     });
   });
+
+  const i18nCatalog = (window.BIMFM_I18N && window.BIMFM_I18N.catalog) || {};
+  const tr = (key) => i18nCatalog[key] || key;
+
+  function elapsedClock(startedAt) {
+    const start = new Date(startedAt);
+    if (Number.isNaN(start.getTime())) return '00:00:00';
+    const seconds = Math.max(0, Math.floor((Date.now() - start.getTime()) / 1000));
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remaining = seconds % 60;
+    return [hours, minutes, remaining].map((value) => String(value).padStart(2, '0')).join(':');
+  }
+
+  function updateLiveClocks(root = document) {
+    root.querySelectorAll('[data-live-elapsed]').forEach((node) => {
+      const startedAt = node.dataset.startedAt
+        || node.closest('[data-active-work-order]')?.dataset.startedAt;
+      if (startedAt) node.textContent = elapsedClock(startedAt);
+    });
+  }
+
+  updateLiveClocks();
+  window.setInterval(() => updateLiveClocks(), 1000);
+
+  const escapeHtml = (value) => String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+
+  function compactDiscipline(value) {
+    const text = String(value || '').trim();
+    const normalized = text.toLowerCase();
+    if (['architecture', 'architectural', 'ar'].includes(normalized)) return 'AR';
+    if (['structure', 'structural', 'st'].includes(normalized)) return 'ST';
+    return text;
+  }
+
+  function renderLiveWorkRows(board, rows) {
+    const grid = board.querySelector('[data-live-work-grid]');
+    if (!grid) return;
+    if (!rows.length) {
+      grid.innerHTML = `<div class="dashboard-empty compact" data-live-work-empty>${escapeHtml(tr('No freelancer has an active work timer right now.'))}</div>`;
+      return;
+    }
+    grid.innerHTML = rows.map((row) => {
+      const disciplineLabel = compactDiscipline(row.discipline);
+      const discipline = disciplineLabel ? ` · ${escapeHtml(disciplineLabel)}` : '';
+      const remind = row.task_id && board.dataset.canRemind === '1'
+        ? `<a class="button secondary small" href="/portal/tasks/${encodeURIComponent(row.task_id)}/reminder">✉ ${escapeHtml(tr('Send Reminder'))}</a>`
+        : '';
+      return `<article class="live-work-card priority-${escapeHtml(String(row.priority || 'normal').toLowerCase())}" data-session-id="${escapeHtml(row.session_id)}">
+        <div class="live-work-member"><span class="person-avatar">${escapeHtml(String(row.member_name || '?').slice(0, 1).toUpperCase())}</span><div><strong>${escapeHtml(row.member_name)}</strong><small>${escapeHtml(row.member_code)}</small></div><span class="live-badge">${escapeHtml(tr('LIVE'))}</span></div>
+        <h3>${escapeHtml(row.task_title)}</h3><p>${escapeHtml(row.project_name)}${discipline}</p>
+        <div class="live-work-meta"><span><small>${escapeHtml(tr('Started'))}</small><strong>${escapeHtml(new Date(row.started_at).toLocaleString())}</strong></span><span><small>${escapeHtml(tr('Elapsed'))}</small><strong data-live-elapsed data-started-at="${escapeHtml(row.started_at)}">${escapeHtml(elapsedClock(row.started_at))}</strong></span><span><small>${escapeHtml(tr('Progress'))}</small><strong>${escapeHtml(row.progress)}%</strong></span></div>
+        <div class="live-work-actions">${remind}<a class="text-link" href="/portal/tasks?view=active">${escapeHtml(tr('View task'))} →</a></div>
+      </article>`;
+    }).join('');
+    updateLiveClocks(grid);
+  }
+
+  async function refreshLiveWorkBoard(board) {
+    const endpoint = board.dataset.liveWorkEndpoint;
+    if (!endpoint || document.hidden) return;
+    try {
+      const response = await fetch(endpoint, { headers: { Accept: 'application/json' } });
+      if (!response.ok) return;
+      const payload = await response.json();
+      renderLiveWorkRows(board, Array.isArray(payload.rows) ? payload.rows : []);
+      const updated = board.querySelector('[data-live-work-updated]');
+      if (updated) updated.textContent = `${tr('Refreshes automatically')} · ${new Date().toLocaleTimeString()}`;
+      const pulse = board.querySelector('.live-work-summary .live-pulse');
+      if (pulse) {
+        const count = Number(payload.count || 0);
+        pulse.innerHTML = `<i></i>${count} ${escapeHtml(tr(count === 1 ? 'active timer' : 'active timers'))}`;
+      }
+    } catch (_) {
+      // Preserve the last known server-rendered state when connectivity is lost.
+    }
+  }
+
+  document.querySelectorAll('[data-live-work-board]').forEach((board) => {
+    window.setInterval(() => refreshLiveWorkBoard(board), 15000);
+  });
+
 }());
