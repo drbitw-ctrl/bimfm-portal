@@ -25,6 +25,7 @@ from app.models import (
     ProjectMember,
 )
 from app.performance_reporting import build_performance_dashboard, build_project_reports
+from app.calendar_board import build_reminder_calendar
 from app.my_work_service import build_role_my_work
 from app.task_time_reporting import build_task_time_utilization
 from app.work_order_service import create_task_reminder, live_work_rows
@@ -192,8 +193,8 @@ def create_portal_router(
             "Compare scheduled target hours with freelancer time logged against each project task.",
         ),
         "calendar": (
-            "Calendar",
-            "Upcoming project and task deadlines.",
+            "Reminder Calendar",
+            "Modern deadline and company-holiday reminder board.",
         ),
     }
 
@@ -1195,6 +1196,23 @@ def create_portal_router(
                 ),
             )
 
+        if module_name == "calendar":
+            calendar_board = build_reminder_calendar(
+                database,
+                month_key=month,
+            )
+            return templates.TemplateResponse(
+                request=request,
+                name="reminder_calendar.html",
+                context=template_context(
+                    request,
+                    account=account,
+                    page_title=page_title,
+                    page_description=description,
+                    calendar_board=calendar_board,
+                ),
+            )
+
         health = project_data_health(database)
         completed_task_count = int(
             database.scalar(
@@ -1403,40 +1421,6 @@ def create_portal_router(
                     "active_task_count": row["active_task_count"],
                     "overdue_task_count": row["overdue_task_count"],
                     "assignment_status": row["assignment_status"],
-                })
-        elif module_name == "calendar":
-            columns = [
-                {"key": "due_date", "label": "Due Date", "type": "date", "sort": "date"},
-                {"key": "project", "label": "Project", "type": "project", "sort": "text"},
-                {"key": "title", "label": "Task", "type": "text", "sort": "text"},
-                {"key": "status", "label": "Status", "type": "status", "sort": "status"},
-                {"key": "progress", "label": "Progress", "type": "progress", "sort": "number"},
-            ]
-            rows = []
-            for row in active_task_overview_rows(database, limit=300):
-                if row["due_date"] == "—":
-                    continue
-                status_value = str(row["status"]).upper()
-                delayed = False
-                try:
-                    delayed = date.fromisoformat(str(row["due_date"])) < date.today()
-                except ValueError:
-                    delayed = False
-                rows.append({
-                    "_task_state": "ongoing",
-                    "_row_highlight": (
-                        "task-row-delayed" if delayed
-                        else "task-row-attention" if status_value in {"IN_PROGRESS", "FOR_REVIEW"}
-                        else ""
-                    ),
-                    "due_date": row["due_date"],
-                    "project": {
-                        "primary": row["project_name"],
-                        "secondary": row.get("project_engineer", "") if row.get("project_engineer") != "—" else "",
-                    },
-                    "title": row["title"],
-                    "status": row["status"],
-                    "progress": int(row["progress"]),
                 })
 
         return templates.TemplateResponse(

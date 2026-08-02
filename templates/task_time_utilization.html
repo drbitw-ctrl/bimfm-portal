@@ -19,11 +19,33 @@
 
 <div class="stats-grid time-utilization-summary">
   <article class="stat-card"><span>{{ t('Projects tracked') }}</span><strong>{{ report.summary.project_count }}</strong><small>{{ report.summary.task_count }} {{ t('portal tasks') }}</small></article>
+  <article class="stat-card"><span>{{ t('Total time used') }}</span><strong>{{ duration_label(report.summary.actual_project_minutes) }}</strong><small>{{ t('Across all tracked projects') }}</small></article>
   <article class="stat-card"><span>{{ t('Target time') }}</span><strong>{{ duration_label(report.summary.target_minutes) if report.summary.target_minutes is not none else '—' }}</strong><small>{{ t('Scheduled workdays × 8 hours') }}</small></article>
-  <article class="stat-card"><span>{{ t('Actual project time') }}</span><strong>{{ duration_label(report.summary.actual_project_minutes) }}</strong><small>{{ t('Daily Task time plus completion-date estimates') }}{% if report.summary.estimated_actual_task_count %} · {{ report.summary.estimated_actual_task_count }} {{ t('estimated tasks') }}{% endif %}</small></article>
   <article class="stat-card"><span>{{ t('Time utilization') }}</span><strong>{{ '%.1f%%'|format(report.summary.utilization) if report.summary.utilization is not none else '—' }}</strong><small>{{ variance_text(report.summary.variance_minutes, report.summary.variance_absolute_minutes, report.summary.variance_direction) }}</small></article>
+  <article class="stat-card time-top-project"><span>{{ t('Most time used') }}</span><strong>{{ report.summary.top_project_name }}</strong><small>{{ duration_label(report.summary.top_project_actual_minutes) }}</small></article>
   <article class="stat-card"><span>{{ t('Unmatched time') }}</span><strong>{{ duration_label(report.summary.unmatched_minutes) }}</strong><small>{{ report.summary.unmatched_entries }} {{ t('Daily Task entries need project matching') }}</small></article>
 </div>
+
+{% if report.projects %}
+<section class="content-card project-time-overview">
+  <div class="section-heading">
+    <div><span class="eyebrow">{{ t('PROJECT TIME OVERVIEW') }}</span><h2>{{ t('Total time used by project') }}</h2><p>{{ t('Projects are ranked by actual time used so the largest work effort is visible immediately.') }}</p></div>
+    <strong class="project-time-total">{{ duration_label(report.summary.actual_project_minutes) }}</strong>
+  </div>
+  <div class="project-time-card-grid">
+    {% for project in report.projects %}
+    <a class="project-time-summary-card" href="#project-time-{{ project.id }}">
+      <div class="project-time-card-head"><span class="project-time-rank">#{{ project.actual_rank }}</span><span>{{ discipline_label(project.discipline) }}</span></div>
+      <h3>{{ project.name }}</h3>
+      <strong>{{ duration_label(project.actual_minutes) }}</strong>
+      <small>{{ '%.1f%%'|format(project.actual_share_percent) }} {{ t('of total recorded project time') }}</small>
+      <div class="project-time-share-track" aria-hidden="true"><i style="width: {{ project.actual_bar_percent }}%"></i></div>
+      <div class="project-time-card-meta"><span>{{ t('Target') }} · {{ duration_label(project.target_minutes) if project.target_minutes is not none else '—' }}</span><span>{{ project.active_task_count }} {{ t('active tasks') }}</span></div>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
 
 <section class="content-card time-method-card">
   <div>
@@ -44,7 +66,7 @@
 {% include "_task_status_legend.html" %}
 
 {% for project in report.projects %}
-<section class="content-card time-project-card">
+<section class="content-card time-project-card" id="project-time-{{ project.id }}">
   <div class="time-project-heading">
     <div>
       <span class="eyebrow">{{ discipline_label(project.discipline) }} · {{ project.code }}</span>

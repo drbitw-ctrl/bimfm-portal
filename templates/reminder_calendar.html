@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Reminder Calendar') }} · {{ app_name }}{% endblock %}
+{% block content %}
+<section class="compact-page-header calendar-page-header">
+  <div>
+    <span class="eyebrow">{{ t('DEADLINES AND HOLIDAYS') }}</span>
+    <h1>{{ t('Reminder Calendar') }}</h1>
+    <p>{{ t('Plan ahead with task deadlines and company holidays shown together on one calendar board.') }}</p>
+  </div>
+  <div class="hero-actions">
+    <a class="button secondary" href="/portal/tasks?view=active">{{ t('Active Tasks') }}</a>
+    {% if can(Permission.SETTINGS_MANAGE) %}<a class="button primary" href="/admin/hr/calendar?month={{ calendar_board.month_key }}">{{ t('Manage HR Calendar') }}</a>{% endif %}
+  </div>
+</section>
+{% set calendar_base_path = '/portal/calendar' %}
+{% include '_reminder_calendar_board.html' %}
+{% endblock %}

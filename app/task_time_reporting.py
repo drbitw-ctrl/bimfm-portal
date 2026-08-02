@@ -396,6 +396,25 @@ def build_task_time_utilization(
         if row["target_minutes"] is not None
     )
     total_actual_project_minutes = sum(int(row["actual_minutes"] or 0) for row in project_rows)
+    maximum_project_actual_minutes = max(
+        (int(row["actual_minutes"] or 0) for row in project_rows),
+        default=0,
+    )
+    for rank, row in enumerate(project_rows, start=1):
+        actual_minutes = int(row["actual_minutes"] or 0)
+        row["actual_rank"] = rank
+        row["actual_share_percent"] = (
+            round(actual_minutes / total_actual_project_minutes * 100, 1)
+            if total_actual_project_minutes > 0
+            else 0.0
+        )
+        row["actual_bar_percent"] = (
+            round(actual_minutes / maximum_project_actual_minutes * 100, 1)
+            if maximum_project_actual_minutes > 0
+            else 0.0
+        )
+
+    top_project = project_rows[0] if project_rows else None
     total_variance_minutes = (
         total_actual_project_minutes - total_target_minutes
         if total_target_minutes > 0
@@ -421,6 +440,8 @@ def build_task_time_utilization(
             "task_count": sum(row["task_count"] for row in project_rows),
             "target_minutes": total_target_minutes if total_target_minutes > 0 else None,
             "actual_project_minutes": total_actual_project_minutes,
+            "top_project_name": top_project["name"] if top_project else "—",
+            "top_project_actual_minutes": int(top_project["actual_minutes"] or 0) if top_project else 0,
             "variance_minutes": total_variance_minutes,
             "variance_absolute_minutes": abs(total_variance_minutes) if total_variance_minutes is not None else None,
             "variance_direction": ("over" if total_variance_minutes is not None and total_variance_minutes > 0 else ("under" if total_variance_minutes is not None and total_variance_minutes < 0 else "target" if total_variance_minutes == 0 else "none")),

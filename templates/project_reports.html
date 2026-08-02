@@ -94,7 +94,6 @@
   {% else %}<div class="empty-state"><p>No project activity is available for this period.</p></div>{% endif %}
 </section>
 
-<div class="report-method-note"><strong>Quality reporting:</strong> Scores use the management reporting scale. Original task ratings remain preserved in task records.</div>
 <script id="reportChartData" type="application/json">{{ report.trend|tojson }}</script>
 <script src="{{ url_for('static', path='/js/reporting.js') }}?v={{ app_version }}"></script>
 {% endblock %}

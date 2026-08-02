@@ -10,6 +10,7 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import joinedload
 
 from app.auth.permissions import Permission, has_permission, normalize_role
+from app.calendar_board import build_reminder_calendar
 from app.database import Base
 from app.models import (
     AttendanceCalculation,
@@ -1468,6 +1469,10 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                     freelancers=freelancers,
                     holidays=holidays,
                     leave_rows=leave_rows,
+                    calendar_board=build_reminder_calendar(
+                        database,
+                        month_key=selected_month,
+                    ),
                     month_locked=month_is_locked(database, selected_month),
                 ),
             )

@@ -27,24 +27,7 @@
   </div>
 </section>
 
-<section class="dashboard-panel live-work-panel" data-live-work-board data-live-work-endpoint="/portal/live-work.json" data-can-remind="{{ '1' if can(Permission.TASK_REMINDER_SEND) else '0' }}">
-  <div class="panel-heading-modern">
-    <div><span class="eyebrow">{{ t('LIVE WORK ORDERS') }}</span><h2>{{ t('Working now') }}</h2><p>{{ t('Real-time task timers started by freelancers today.') }}</p></div>
-    <div class="live-work-summary"><span class="live-pulse"><i></i>{{ live_work_rows|length }} {{ t('active timer') if live_work_rows|length == 1 else t('active timers') }}</span><small data-live-work-updated>{{ t('Refreshes automatically') }}</small></div>
-  </div>
-  <div class="live-work-grid" data-live-work-grid>
-    {% if live_work_rows %}
-      {% for row in live_work_rows %}
-      <article class="live-work-card priority-{{ row.priority|lower }}" data-session-id="{{ row.session_id }}">
-        <div class="live-work-member"><span class="person-avatar">{{ row.member_name[:1]|upper }}</span><div><strong>{{ row.member_name }}</strong><small>{{ row.member_code }}</small></div><span class="live-badge">{{ t('LIVE') }}</span></div>
-        <h3>{{ row.task_title }}</h3><p>{{ row.project_name }}{% if row.discipline %} · {{ discipline_label(row.discipline) }}{% endif %}</p>
-        <div class="live-work-meta"><span><small>{{ t('Started') }}</small><strong>{{ row.started_at }}</strong></span><span><small>{{ t('Elapsed') }}</small><strong data-live-elapsed data-started-at="{{ row.started_at_iso }}">{{ duration_label(row.elapsed_minutes) }}</strong></span><span><small>{{ t('Progress') }}</small><strong>{{ row.progress }}%</strong></span></div>
-        <div class="live-work-actions">{% if row.task_id and can(Permission.TASK_REMINDER_SEND) %}<a class="button secondary small" href="/portal/tasks/{{ row.task_id }}/reminder">✉ {{ t('Send Reminder') }}</a>{% endif %}<a class="text-link" href="/portal/tasks?view=active">{{ t('View task') }} →</a></div>
-      </article>
-      {% endfor %}
-    {% else %}<div class="dashboard-empty compact" data-live-work-empty>{{ t('No freelancer has an active work timer right now.') }}</div>{% endif %}
-  </div>
-</section>
+
 
 <section class="dashboard-panel team-command-panel">
   <div class="panel-heading-modern team-command-heading">
@@ -144,6 +127,25 @@
     </section>
   </div>
   {% else %}<div class="dashboard-empty">{{ t('No active team members are available yet.') }}</div>{% endif %}
+</section>
+
+<section class="dashboard-panel live-work-panel" data-live-work-board data-live-work-endpoint="/portal/live-work.json" data-can-remind="{{ '1' if can(Permission.TASK_REMINDER_SEND) else '0' }}">
+  <div class="panel-heading-modern">
+    <div><span class="eyebrow">{{ t('LIVE WORK ORDERS') }}</span><h2>{{ t('Working now') }}</h2><p>{{ t('Real-time task timers started by freelancers today.') }}</p></div>
+    <div class="live-work-summary"><span class="live-pulse"><i></i>{{ live_work_rows|length }} {{ t('active timer') if live_work_rows|length == 1 else t('active timers') }}</span><small data-live-work-updated>{{ t('Refreshes automatically') }}</small></div>
+  </div>
+  <div class="live-work-grid" data-live-work-grid>
+    {% if live_work_rows %}
+      {% for row in live_work_rows %}
+      <article class="live-work-card priority-{{ row.priority|lower }}" data-session-id="{{ row.session_id }}">
+        <div class="live-work-member"><span class="person-avatar">{{ row.member_name[:1]|upper }}</span><div><strong>{{ row.member_name }}</strong><small>{{ row.member_code }}</small></div><span class="live-badge">{{ t('LIVE') }}</span></div>
+        <h3>{{ row.task_title }}</h3><p>{{ row.project_name }}{% if row.discipline %} · {{ discipline_label(row.discipline) }}{% endif %}</p>
+        <div class="live-work-meta"><span><small>{{ t('Started') }}</small><strong>{{ row.started_at }}</strong></span><span><small>{{ t('Elapsed') }}</small><strong data-live-elapsed data-started-at="{{ row.started_at_iso }}">{{ duration_label(row.elapsed_minutes) }}</strong></span><span><small>{{ t('Progress') }}</small><strong>{{ row.progress }}%</strong></span></div>
+        <div class="live-work-actions">{% if row.task_id and can(Permission.TASK_REMINDER_SEND) %}<a class="button secondary small" href="/portal/tasks/{{ row.task_id }}/reminder">✉ {{ t('Send Reminder') }}</a>{% endif %}<a class="text-link" href="/portal/tasks?view=active">{{ t('View task') }} →</a></div>
+      </article>
+      {% endfor %}
+    {% else %}<div class="dashboard-empty compact" data-live-work-empty>{{ t('No freelancer has an active work timer right now.') }}</div>{% endif %}
+  </div>
 </section>
 
 <div class="dashboard-secondary-grid">

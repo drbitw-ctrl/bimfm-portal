@@ -1,0 +1,82 @@
+<section class="reminder-calendar-shell">
+  <div class="reminder-calendar-toolbar">
+    <div class="calendar-month-navigation">
+      <a class="calendar-nav-button" href="{{ calendar_base_path }}?month={{ calendar_board.previous_month }}" aria-label="{{ t('Previous month') }}">←</a>
+      <div>
+        <span class="eyebrow">{{ t('REMINDER CALENDAR') }}</span>
+        <h2>{{ calendar_board.month_label }}</h2>
+      </div>
+      <a class="calendar-nav-button" href="{{ calendar_base_path }}?month={{ calendar_board.next_month }}" aria-label="{{ t('Next month') }}">→</a>
+    </div>
+    <a class="button secondary calendar-today-button" href="{{ calendar_base_path }}?month={{ calendar_board.today_month }}">{{ t('Today') }}</a>
+  </div>
+
+  <div class="calendar-summary-grid">
+    <article><span>{{ t('Deadlines') }}</span><strong>{{ calendar_board.summary.deadline_count }}</strong><small>{{ t('Task due dates this month') }}</small></article>
+    <article><span>{{ t('Holidays') }}</span><strong>{{ calendar_board.summary.holiday_count }}</strong><small>{{ t('From the HR Calendar') }}</small></article>
+    <article class="danger"><span>{{ t('Overdue') }}</span><strong>{{ calendar_board.summary.overdue_count }}</strong><small>{{ t('Open deadlines already passed') }}</small></article>
+    <article><span>{{ t('Event days') }}</span><strong>{{ calendar_board.summary.event_days }}</strong><small>{{ t('Dates with reminders') }}</small></article>
+  </div>
+
+  <div class="calendar-color-legend" role="note" aria-label="{{ t('Calendar legend') }}">
+    <span><i class="calendar-dot deadline"></i>{{ t('Task deadline') }}</span>
+    <span><i class="calendar-dot review"></i>{{ t('For review') }}</span>
+    <span><i class="calendar-dot overdue"></i>{{ t('Overdue deadline') }}</span>
+    <span><i class="calendar-dot completed"></i>{{ t('Completed deadline') }}</span>
+    <span><i class="calendar-dot holiday"></i>{{ t('Company holiday') }}</span>
+  </div>
+
+  <div class="reminder-calendar-layout">
+    <div class="calendar-board-wrap">
+      <div class="calendar-weekday-row" aria-hidden="true">
+        {% for weekday in calendar_board.weekdays %}<span>{{ t(weekday) }}</span>{% endfor %}
+      </div>
+      <div class="calendar-board" role="grid" aria-label="{{ calendar_board.month_label }}">
+        {% for cell in calendar_board.cells %}
+        <article class="calendar-day-cell{% if not cell.in_month %} outside-month{% endif %}{% if cell.is_today %} today{% endif %}{% if cell.is_weekend %} weekend{% endif %}{% if cell.event_count %} has-events{% endif %}" role="gridcell" aria-label="{{ cell.date_key }} · {{ cell.event_count }} {{ t('events') }}">
+          <div class="calendar-day-head">
+            <time datetime="{{ cell.date_key }}">{{ cell.day_number }}</time>
+            {% if cell.is_today %}<span>{{ t('Today') }}</span>{% endif %}
+          </div>
+          {% if cell.states %}<div class="calendar-day-dots" aria-hidden="true">{% for state in cell.states %}<i class="calendar-dot {{ state }}"></i>{% endfor %}</div>{% endif %}
+          <div class="calendar-day-events">
+            {% for event in cell.events[:3] %}
+            <a class="calendar-event event-{{ event.state }}" href="{{ calendar_base_path ~ '?month=' ~ event.date.strftime('%Y-%m') if event.is_holiday else event.href }}" title="{{ event.title }} · {{ event.subtitle }}">
+              <span>{{ event.title }}</span>
+              <small>{{ event.subtitle }}</small>
+            </a>
+            {% endfor %}
+            {% if cell.event_count > 3 %}<span class="calendar-more-events">+{{ cell.event_count - 3 }} {{ t('more') }}</span>{% endif %}
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </div>
+
+    <aside class="calendar-agenda-panel">
+      <div class="calendar-agenda-heading">
+        <span class="eyebrow">{{ t('UPCOMING') }}</span>
+        <h3>{{ t('Reminder agenda') }}</h3>
+        <p>{{ t('Nearest deadlines and holidays at a glance.') }}</p>
+      </div>
+      {% if calendar_board.upcoming_events %}
+      <div class="calendar-agenda-list">
+        {% for event in calendar_board.upcoming_events %}
+        <a href="{{ calendar_base_path ~ '?month=' ~ event.date.strftime('%Y-%m') if event.is_holiday else event.href }}" class="calendar-agenda-item event-{{ event.state }}">
+          <time datetime="{{ event.date.isoformat() }}"><strong>{{ event.date.strftime('%d') }}</strong><span>{{ event.date.strftime('%b') }}</span></time>
+          <div><strong>{{ event.title }}</strong><small>{{ event.subtitle }}</small></div>
+          <i class="calendar-dot {{ event.state }}"></i>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}<div class="dashboard-empty compact">{{ t('No upcoming deadlines or holidays are recorded.') }}</div>{% endif %}
+
+      {% if calendar_board.overdue_events %}
+      <div class="calendar-overdue-summary">
+        <strong>{{ calendar_board.overdue_events|length }} {{ t('overdue reminders') }}</strong>
+        <a href="/portal/tasks?view=active">{{ t('Open active tasks') }} →</a>
+      </div>
+      {% endif %}
+    </aside>
+  </div>
+</section>

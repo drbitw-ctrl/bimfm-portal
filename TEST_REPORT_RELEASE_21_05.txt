@@ -1,0 +1,42 @@
+BIMFM Portal Release 21.05 Validation Report
+============================================
+
+Result: PASSED
+Failures: 0
+Errors: 0
+
+Validation summary
+------------------
+- Python compilation passed
+- Application import passed
+- JavaScript syntax passed for ui.js, i18n.js, and reporting.js
+- 48 Jinja templates parsed successfully
+- 1,812 English localization keys
+- 1,812 Traditional Chinese localization keys
+- English and Traditional Chinese catalog parity passed
+- 172 focused assertions passed
+
+Focused assertions covered
+--------------------------
+- Dashboard Team Availability appears before Live Work Orders
+- Visible Quality Score scale explanation removed
+- Quality Score as calculated wording present
+- Reminder Calendar contains 42 date cells
+- Previous and next month navigation values
+- Task deadlines displayed on correct dates
+- HR holidays displayed on correct dates
+- Overdue deadline state
+- Completed deadline state
+- Cancelled task exclusion
+- Project total actual-time aggregation
+- Top time-consuming project identification
+- Per-project share of recorded time
+- Per-project relative time-bar percentage
+- Reminder Calendar sidebar label
+- Release version marker
+
+Data safety
+-----------
+All calculation tests used an isolated in-memory SQLite database.
+Production data was not modified.
+No new Alembic migration was introduced.
