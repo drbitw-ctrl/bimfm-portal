@@ -118,6 +118,7 @@ def create_auth_router(templates: Jinja2Templates) -> APIRouter:
                 username=username,
                 display_name=display_name,
                 password_hash=hash_password(password),
+                must_change_password=False,
                 is_active=True,
             )
 
@@ -166,9 +167,12 @@ def create_auth_router(templates: Jinja2Templates) -> APIRouter:
                     status_code=303,
                 )
 
-            if get_current_admin(request, database):
+            current_admin = get_current_admin(request, database)
+            if current_admin:
                 return RedirectResponse(
-                    "/admin",
+                    "/admin/change-password"
+                    if current_admin.must_change_password
+                    else "/admin",
                     status_code=303,
                 )
 
@@ -264,9 +268,76 @@ def create_auth_router(templates: Jinja2Templates) -> APIRouter:
             csrf_token(request)
 
         return RedirectResponse(
-            "/admin",
+            "/admin/change-password" if admin.must_change_password else "/admin",
             status_code=303,
         )
+
+
+    @router.get("/admin/change-password", response_class=HTMLResponse)
+    def admin_change_password_page(request: Request):
+        with SessionLocal() as database:
+            admin = get_current_admin(request, database)
+            if admin is None:
+                return RedirectResponse("/admin/login", status_code=303)
+            return templates.TemplateResponse(
+                request=request,
+                name="change_password.html",
+                context=template_context(
+                    request,
+                    account=admin,
+                    password_action="/admin/change-password",
+                    account_name=admin.display_name,
+                    forced=bool(admin.must_change_password),
+                    staff_password_change=True,
+                ),
+            )
+
+
+    @router.post("/admin/change-password")
+    def admin_change_password(
+        request: Request,
+        csrf: str = Form(...),
+        current_password: str = Form(...),
+        new_password: str = Form(...),
+        confirm_password: str = Form(...),
+    ):
+        if not validate_csrf(request, csrf):
+            set_flash(request, "Invalid form token.", "error")
+            return RedirectResponse("/admin/change-password", status_code=303)
+
+        with SessionLocal() as database:
+            admin = get_current_admin(request, database)
+            if admin is None:
+                return RedirectResponse("/admin/login", status_code=303)
+            if not verify_password(admin.password_hash, current_password):
+                set_flash(request, "Current password is incorrect.", "error")
+                return RedirectResponse("/admin/change-password", status_code=303)
+            if len(new_password) < 10:
+                set_flash(request, "New password must contain at least 10 characters.", "error")
+                return RedirectResponse("/admin/change-password", status_code=303)
+            if new_password != confirm_password:
+                set_flash(request, "New password confirmation does not match.", "error")
+                return RedirectResponse("/admin/change-password", status_code=303)
+            if verify_password(admin.password_hash, new_password):
+                set_flash(request, "The new password must be different.", "error")
+                return RedirectResponse("/admin/change-password", status_code=303)
+
+            admin.password_hash = hash_password(new_password)
+            admin.must_change_password = False
+            clear_failed_login(admin)
+            write_audit(
+                database,
+                actor_type="HR_ADMIN",
+                actor_id=admin.id,
+                action="CHANGE_OWN_PASSWORD",
+                request=request,
+                target_type="HR_ADMIN",
+                target_id=admin.id,
+            )
+            database.commit()
+
+        set_flash(request, "Password changed successfully.", "success")
+        return RedirectResponse("/admin", status_code=303)
 
 
     @router.post("/admin/logout")
@@ -445,6 +516,10 @@ def create_auth_router(templates: Jinja2Templates) -> APIRouter:
                 context=template_context(
                     request,
                     account=account,
+                    password_action="/change-password",
+                    account_name=account.freelancer.full_name,
+                    forced=bool(account.must_change_password),
+                    staff_password_change=False,
                 ),
             )
 

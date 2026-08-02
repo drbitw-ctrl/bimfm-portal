@@ -4006,3 +4006,152 @@ html[data-theme="dark"] .time-under { color: #7fd7ad; }
   outline: 3px solid color-mix(in srgb, var(--accent, #2f80ed) 72%, transparent);
   outline-offset: 2px;
 }
+
+/* =========================================================
+   Release 21.02 — official branding and compact sidebar context
+   ========================================================= */
+.side-context-strip {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 8px;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 7px 14px;
+  padding: 10px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.context-mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  color: #9ed8f0;
+  background: linear-gradient(145deg, rgba(38, 174, 196, 0.24), rgba(76, 128, 158, 0.25));
+  font-size: 0.69rem;
+  box-shadow: inset 0 0 0 1px rgba(158, 216, 240, 0.12);
+}
+
+.side-context-strip > div {
+  min-width: 0;
+}
+
+.side-context-strip .workspace-kicker,
+.side-context-strip strong {
+  display: block;
+}
+
+.side-context-strip .workspace-kicker {
+  color: #78b9d8;
+  font-size: 0.56rem;
+  letter-spacing: 0.14em;
+}
+
+.side-context-strip strong {
+  margin-top: 3px;
+  overflow: hidden;
+  color: #f3f8fc;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.context-status {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4ed394;
+  box-shadow: 0 0 0 4px rgba(78, 211, 148, 0.10);
+}
+
+.brand-logo {
+  object-fit: contain;
+  padding: 2px;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.public-brand.company-lockup {
+  display: inline-flex;
+  width: min(360px, 48vw);
+  padding: 8px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
+}
+
+.public-brand.company-lockup img {
+  width: 100%;
+  height: 48px;
+  border-radius: 0;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.auth-company-lockup {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  width: min(330px, 100%);
+  min-height: 70px;
+  margin-bottom: 22px;
+  padding: 10px 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: var(--ui-shadow-xs);
+}
+
+.auth-company-lockup img {
+  display: block;
+  width: 100%;
+  max-height: 58px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.account-password-shortcut {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  text-decoration: none;
+}
+
+.password-card {
+  width: min(570px, 100%);
+}
+
+.account-reset-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface-soft);
+}
+
+.narrow-panel {
+  width: min(650px, 100%);
+}
+
+@media (max-width: 760px) {
+  .public-brand.company-lockup {
+    width: min(260px, 62vw);
+    padding: 6px 9px;
+  }
+
+  .public-brand.company-lockup img {
+    height: 38px;
+  }
+
+  .account-password-shortcut {
+    display: none;
+  }
+}

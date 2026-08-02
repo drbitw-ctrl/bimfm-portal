@@ -22,7 +22,7 @@
       <label>{{ t('Access role') }}</label>
       <select name="role" required>
         <option value="SUPERVISOR">{{ t('Supervisor — view all operational records, no editing') }}</option>
-        <option value="FINANCE">{{ t('Finance Head — read-only records and reports') }}</option>
+        <option value="FINANCE">{{ t('Finance Head — records, reports, and DTR generation') }}</option>
         <option value="ADMIN">{{ t('Administrator — full operational access') }}</option>
       </select>
       <label>{{ t('Temporary password') }}</label>
@@ -46,6 +46,7 @@
             <th>{{ t('Username') }}</th>
             <th>{{ t('Role') }}</th>
             <th>{{ t('Status') }}</th>
+            <th>{{ t('Password') }}</th>
             <th>{{ t('Actions') }}</th>
           </tr>
         </thead>
@@ -64,6 +65,7 @@
               {% endif %}
             </td>
             <td><span class="badge {{ 'good' if account.is_active else 'warning' }}">{{ t('Active') if account.is_active else t('Disabled') }}</span></td>
+            <td><span class="badge {{ 'warning' if account.must_change_password else 'good' }}">{{ t('Change required') if account.must_change_password else t('Personal password set') }}</span></td>
             <td>
               {% if account.id != admin.id %}
               <div class="action-row compact-actions">
@@ -71,10 +73,11 @@
                   <input type="hidden" name="csrf" value="{{ csrf_token }}">
                   <button class="button small secondary" type="submit">{{ t('Disable') if account.is_active else t('Enable') }}</button>
                 </form>
+                <a class="button small secondary" href="/admin/staff-accounts/{{ account.id }}/reset-password">{{ t('Reset Password') }}</a>
                 <a class="button small danger-button" href="/admin/staff-accounts/{{ account.id }}/delete">{{ t('Delete') }}</a>
               </div>
               {% else %}
-              <small>{{ t('Signed in') }}</small>
+              <small>{{ t('Signed in') }} · <a href="/admin/change-password">{{ t('Change Password') }}</a></small>
               {% endif %}
             </td>
           </tr>

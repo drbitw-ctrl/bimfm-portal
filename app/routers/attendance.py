@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from app.auth.permissions import Permission, has_permission, normalize_role
+
 
 def create_attendance_router(legacy_namespace: dict[str, object]) -> APIRouter:
     """Build the attendance router using the existing application dependencies."""
@@ -891,6 +893,9 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
             admin = get_current_admin(request, database)
             if admin is None:
                 return RedirectResponse("/admin/login", status_code=303)
+            if not has_permission(normalize_role(admin.role), Permission.DTR_GENERATE):
+                set_flash(request, "Permission required.", "error")
+                return RedirectResponse("/access-denied", status_code=303)
 
             if freelancer_id == 0:
                 freelancers = [

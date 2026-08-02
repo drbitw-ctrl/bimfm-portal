@@ -20,6 +20,9 @@ class HRAdminAccount(Base):
     display_name: Mapped[str] = mapped_column(String(200), nullable=False)
     role: Mapped[str] = mapped_column(String(30), nullable=False, default="ADMIN")
     password_hash: Mapped[str] = mapped_column(String(500), nullable=False)
+    must_change_password: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     failed_login_count: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0

@@ -457,7 +457,7 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
             if database.scalar(select(HRAdminAccount).where(func.lower(HRAdminAccount.username) == clean_username)):
                 set_flash(request, "That username already exists.", "error")
                 return RedirectResponse("/admin/staff-accounts", status_code=303)
-            account = HRAdminAccount(username=clean_username, display_name=clean_name, role=clean_role, password_hash=hash_password(password), is_active=True)
+            account = HRAdminAccount(username=clean_username, display_name=clean_name, role=clean_role, password_hash=hash_password(password), must_change_password=True, is_active=True)
             database.add(account)
             database.flush()
             write_audit(database, actor_type="HR_ADMIN", actor_id=admin.id, action="CREATE_STAFF_ACCOUNT", request=request, target_type="HR_ADMIN", target_id=account.id, details=f"Created {clean_role} account: {clean_username}")
@@ -486,6 +486,78 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                 database.commit()
                 set_flash(request, "Staff account status updated.", "success")
         return RedirectResponse("/admin/staff-accounts", status_code=303)
+
+    @router.get("/admin/staff-accounts/{account_id}/reset-password", response_class=HTMLResponse)
+    def reset_staff_password_page(request: Request, account_id: int):
+        with SessionLocal() as database:
+            admin = get_current_admin(request, database)
+            if admin is None:
+                return RedirectResponse("/admin/login", status_code=303)
+            if str(getattr(admin, "role", "ADMIN")).upper() != "ADMIN":
+                return RedirectResponse("/admin?access=readonly", status_code=303)
+            target = database.get(HRAdminAccount, account_id)
+            if target is None:
+                set_flash(request, "Account not found.", "error")
+                return RedirectResponse("/admin/staff-accounts", status_code=303)
+            return templates.TemplateResponse(
+                request=request,
+                name="admin_reset_staff_password.html",
+                context=template_context(request, admin=admin, target=target),
+            )
+
+    @router.post("/admin/staff-accounts/{account_id}/reset-password")
+    def reset_staff_password(
+        request: Request,
+        account_id: int,
+        csrf: str = Form(...),
+        temporary_password: str = Form(...),
+        confirm_password: str = Form(...),
+    ):
+        redirect_path = f"/admin/staff-accounts/{account_id}/reset-password"
+        if not validate_csrf(request, csrf):
+            set_flash(request, "Invalid form token.", "error")
+            return RedirectResponse(redirect_path, status_code=303)
+        if len(temporary_password) < 10:
+            set_flash(request, "Temporary password must contain at least 10 characters.", "error")
+            return RedirectResponse(redirect_path, status_code=303)
+        if temporary_password != confirm_password:
+            set_flash(request, "Password confirmation does not match.", "error")
+            return RedirectResponse(redirect_path, status_code=303)
+
+        with SessionLocal() as database:
+            admin = get_current_admin(request, database)
+            if admin is None:
+                return RedirectResponse("/admin/login", status_code=303)
+            if str(getattr(admin, "role", "ADMIN")).upper() != "ADMIN":
+                return RedirectResponse("/admin?access=readonly", status_code=303)
+            target = database.get(HRAdminAccount, account_id)
+            if target is None:
+                set_flash(request, "Account not found.", "error")
+                return RedirectResponse("/admin/staff-accounts", status_code=303)
+
+            target.password_hash = hash_password(temporary_password)
+            target.must_change_password = True
+            target.failed_login_count = 0
+            target.locked_until = None
+            write_audit(
+                database,
+                actor_type="HR_ADMIN",
+                actor_id=admin.id,
+                action="RESET_STAFF_PASSWORD",
+                request=request,
+                target_type="HR_ADMIN",
+                target_id=target.id,
+                details=f"Reset password for {target.username}; forced password change on next login.",
+            )
+            database.commit()
+
+        set_flash(
+            request,
+            "Temporary password saved. The account must change it at the next login.",
+            "success",
+        )
+        return RedirectResponse("/admin/staff-accounts", status_code=303)
+
 
     @router.get("/admin/staff-accounts/{account_id}/delete", response_class=HTMLResponse)
     def delete_staff_account_page(request: Request, account_id: int):

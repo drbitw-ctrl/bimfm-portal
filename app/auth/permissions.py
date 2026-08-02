@@ -31,6 +31,7 @@ class Permission(StrEnum):
     OVERTIME_APPROVE = "overtime.approve"
     FINANCE_VIEW = "finance.view"
     FINANCE_EXPORT = "finance.export"
+    DTR_GENERATE = "dtr.generate"
     PROJECT_VIEW = "project.view"
     PROJECT_EDIT = "project.edit"
     STAFF_MANAGE = "staff.manage"
@@ -44,6 +45,7 @@ _ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
     # Release 20.14: Supervisor is a true read-only management role. It can
     # inspect operational, project, attendance, request, DTR and finance data,
     # but it cannot create, approve, edit, delete, export or configure records.
+    # Finance remains narrowly scoped to reporting plus monthly DTR generation.
     Role.SUPERVISOR: frozenset({
         Permission.DASHBOARD_VIEW,
         Permission.ATTENDANCE_VIEW_ALL,
@@ -58,6 +60,7 @@ _ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
         Permission.ATTENDANCE_VIEW_ALL,
         Permission.FINANCE_VIEW,
         Permission.FINANCE_EXPORT,
+        Permission.DTR_GENERATE,
         Permission.PROJECT_VIEW,
     }),
     Role.EMPLOYEE: frozenset({

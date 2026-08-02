@@ -9,7 +9,7 @@
     </div>
     <div class="action-row">
         <a class="button primary" href="/admin/finance?month={{ selected_month }}">{{ t('Finance Center') }}</a>
-        <a class="button secondary" href="/admin/hr/calendar?month={{ selected_month }}">{{ t('HR Calendar') }}</a>
+        {% if can(Permission.SETTINGS_MANAGE) %}<a class="button secondary" href="/admin/hr/calendar?month={{ selected_month }}">{{ t('HR Calendar') }}</a>{% endif %}
         <a class="button secondary" href="/admin">{{ t('Dashboard') }}</a>
     </div>
 </div>
@@ -24,6 +24,7 @@
     </div>
 </section>
 
+{% if can(Permission.DTR_GENERATE) %}
 <section class="panel">
     <span class="eyebrow">GENERATE OR REFRESH</span>
     <h2>Build DTR Calendar Rows</h2>
@@ -47,6 +48,7 @@
         <div class="full-width"><button class="primary" type="submit">Generate / Refresh DTR</button></div>
     </form>
 </section>
+{% endif %}
 
 <section class="panel table-panel">
     <h2>Generated DTRs · {{ selected_month }}</h2>

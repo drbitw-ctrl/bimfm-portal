@@ -1,0 +1,47 @@
+BIMFM Portal Release 21.02 Validation Report
+============================================
+
+Result: PASSED
+Failures: 0
+Errors: 0
+
+Validated areas
+---------------
+- Python compilation across app and Alembic source
+- Application import and Version 21.02 marker
+- 118 application routes
+- 44 Jinja templates parsed successfully
+- JavaScript syntax: ui.js, i18n.js, reporting.js
+- 1,704 English localization keys
+- 1,704 Traditional Chinese localization keys
+- English/Traditional Chinese catalog parity
+- Every explicit Jinja/Python translation key exists
+- Fresh Alembic migration to 20260802_0009
+- Upgrade simulation from 20260802_0008 to 20260802_0009
+- Existing staff rows receive must_change_password = false
+- New Finance account first-login password enforcement
+- New Supervisor account first-login password enforcement
+- Freelancer first-login password enforcement
+- Staff self-service password change
+- Freelancer self-service password change
+- Finance Monthly DTR generation
+- Finance DTR generation form visibility
+- Supervisor DTR generation form hidden
+- Finance DTR review request rejected
+- Administrator creation of temporary staff account
+- New staff account marked for password change
+- Administrator reset of staff temporary password
+- Reset account marked for password change
+- Official company icon rendered in application shell
+- Official full company logo rendered on login pages
+- Official favicon present
+- Compact sidebar context strip rendered
+- No unrelated business-data migration
+
+Test environment
+----------------
+- Isolated SQLite databases
+- FastAPI TestClient
+- Fresh migration database
+- Simulated pre-21.02 revision database
+- Production PostgreSQL was not modified

@@ -192,6 +192,7 @@ def bootstrap_cloud_admin(database: Session) -> None:
             display_name=BOOTSTRAP_ADMIN_DISPLAY_NAME,
             role="ADMIN",
             password_hash=hash_password(BOOTSTRAP_ADMIN_PASSWORD),
+            must_change_password=False,
             is_active=True,
         )
     )

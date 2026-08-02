@@ -54,7 +54,10 @@ def _run_sqlite_schema_migrations() -> None:
         return
     with closing(sqlite3.connect(DATABASE_PATH, timeout=30)) as connection:
         migrations = {
-            "hr_admin_accounts": {"role": "TEXT NOT NULL DEFAULT 'ADMIN'"},
+            "hr_admin_accounts": {
+                "role": "TEXT NOT NULL DEFAULT 'ADMIN'",
+                "must_change_password": "BOOLEAN NOT NULL DEFAULT 0",
+            },
             "leave_records": {"duration_minutes": "INTEGER NOT NULL DEFAULT 480", "comp_leave_minutes_used": "INTEGER NOT NULL DEFAULT 0", "source_request_id": "INTEGER"},
             "monthly_dtr": {"approved_overtime_minutes": "INTEGER NOT NULL DEFAULT 0", "comp_leave_earned_minutes": "INTEGER NOT NULL DEFAULT 0", "comp_leave_used_minutes": "INTEGER NOT NULL DEFAULT 0", "comp_leave_opening_balance_minutes": "INTEGER NOT NULL DEFAULT 0", "comp_leave_closing_balance_minutes": "INTEGER NOT NULL DEFAULT 0", "daily_task_entries": "INTEGER NOT NULL DEFAULT 0", "daily_task_minutes": "INTEGER NOT NULL DEFAULT 0", "task_missing_days": "INTEGER NOT NULL DEFAULT 0", "task_variance_days": "INTEGER NOT NULL DEFAULT 0", "task_review_status": "TEXT NOT NULL DEFAULT 'UNREVIEWED'", "pending_overtime_claims": "INTEGER NOT NULL DEFAULT 0", "pending_leave_requests": "INTEGER NOT NULL DEFAULT 0"},
             "dtr_daily_lines": {"approved_overtime_minutes": "INTEGER NOT NULL DEFAULT 0", "comp_leave_earned_minutes": "INTEGER NOT NULL DEFAULT 0", "comp_leave_used_minutes": "INTEGER NOT NULL DEFAULT 0", "task_minutes": "INTEGER NOT NULL DEFAULT 0", "task_entry_count": "INTEGER NOT NULL DEFAULT 0", "task_summary": "TEXT", "task_variance_minutes": "INTEGER NOT NULL DEFAULT 0"},

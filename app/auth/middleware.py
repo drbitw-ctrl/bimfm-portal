@@ -15,6 +15,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.auth.dependencies import principal_from_request
 from app.auth.permissions import Permission, Role, has_permission
 from app.database import SessionLocal
+from app.models import FreelancerAccount, HRAdminAccount
 
 
 @dataclass(frozen=True)
@@ -34,18 +35,44 @@ ROUTE_POLICIES = (
     RoutePolicy("/admin/leave-requests", Permission.LEAVE_VIEW_ALL, Permission.LEAVE_APPROVE),
     RoutePolicy("/admin/overtime", Permission.OVERTIME_VIEW_ALL, Permission.OVERTIME_APPROVE),
     RoutePolicy("/admin/attendance", Permission.ATTENDANCE_VIEW_ALL, Permission.ATTENDANCE_EDIT),
+    RoutePolicy("/admin/dtr/generate", Permission.ATTENDANCE_VIEW_ALL, Permission.DTR_GENERATE),
     RoutePolicy("/admin/dtr", Permission.ATTENDANCE_VIEW_ALL, Permission.ATTENDANCE_EDIT),
     RoutePolicy("/admin/freelancers", Permission.STAFF_MANAGE, Permission.STAFF_MANAGE),
 )
 
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 READ_ONLY_STAFF_ROLES = {Role.SUPERVISOR, Role.FINANCE}
+FINANCE_WRITE_EXCEPTIONS = {"/admin/dtr/generate"}
+STAFF_SELF_SERVICE_WRITE_PATHS = {"/admin/change-password"}
+PASSWORD_CHANGE_ALLOWED_PATHS = {
+    "/admin/change-password", "/admin/logout", "/change-password", "/logout",
+    "/admin/login", "/login", "/setup", "/language",
+}
 
 
 class AuthorizationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
-        if path in {"/admin/login", "/admin/logout", "/login", "/setup", "/language"}:
+        if path.startswith("/static/"):
+            return await call_next(request)
+
+        # Force temporary-password replacement before any operational page is
+        # available. Existing production staff accounts migrate with the flag
+        # disabled; newly created or reset accounts are flagged explicitly.
+        if path not in PASSWORD_CHANGE_ALLOWED_PATHS:
+            with SessionLocal() as database:
+                staff_id = request.session.get("admin_id")
+                if staff_id:
+                    staff = database.get(HRAdminAccount, int(staff_id))
+                    if staff and staff.is_active and bool(staff.must_change_password):
+                        return RedirectResponse("/admin/change-password", status_code=303)
+                freelancer_account_id = request.session.get("freelancer_account_id")
+                if freelancer_account_id:
+                    account = database.get(FreelancerAccount, int(freelancer_account_id))
+                    if account and account.is_active and bool(account.must_change_password):
+                        return RedirectResponse("/change-password", status_code=303)
+
+        if path in {"/admin/login", "/admin/logout", "/login", "/setup", "/language", "/admin/change-password", "/change-password", "/logout"}:
             return await call_next(request)
 
         matched = next(
@@ -55,6 +82,7 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
         staff_write = (
             request.method not in SAFE_METHODS
             and path.startswith(("/admin", "/portal"))
+            and path not in STAFF_SELF_SERVICE_WRITE_PATHS
         )
         if matched is None and not staff_write:
             return await call_next(request)
@@ -65,18 +93,23 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
                 target = "/admin/login" if path.startswith(("/admin", "/portal")) else "/login"
                 return RedirectResponse(target, status_code=303)
 
-            # Defense in depth for every current and future staff route,
-            # including routes not yet listed in ROUTE_POLICIES.
+            # Supervisors remain fully read-only. Finance is read-only except for
+            # the explicit DTR generation operation requested for payroll work.
             if principal.role in READ_ONLY_STAFF_ROLES and staff_write:
-                request.session["flash"] = {
-                    "message": (
-                        "Supervisor access is read-only."
-                        if principal.role == Role.SUPERVISOR
-                        else "Finance access is read-only."
-                    ),
-                    "category": "error",
-                }
-                return RedirectResponse("/access-denied", status_code=303)
+                finance_exception = (
+                    principal.role == Role.FINANCE
+                    and path in FINANCE_WRITE_EXCEPTIONS
+                )
+                if not finance_exception:
+                    request.session["flash"] = {
+                        "message": (
+                            "Supervisor access is read-only."
+                            if principal.role == Role.SUPERVISOR
+                            else "Finance access is read-only except for DTR generation."
+                        ),
+                        "category": "error",
+                    }
+                    return RedirectResponse("/access-denied", status_code=303)
 
             if matched is not None:
                 required_permission = (
