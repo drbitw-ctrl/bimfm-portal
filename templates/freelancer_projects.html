@@ -66,7 +66,7 @@
     </div>
     <div class="progress-track"><div class="progress-fill" style="width: {{ row.progress }}%"></div></div>
     {% if row.next_task_id %}
-      <a class="button primary" href="/tasks?project_task_id={{ row.next_task_id }}">{{ t('Add to Daily Task Report') }}</a>
+      <a class="button primary" href="/tasks?project_task_id={{ row.next_task_id }}#work-order-task-{{ row.next_task_id }}">{{ t('Open Work Order') }}</a>
     {% else %}
       <span class="status-chip status-not-started">{{ t('No active task') }}</span>
     {% endif %}

@@ -1,0 +1,45 @@
+BIMFM Portal Release 21.01 Validation Report
+============================================
+
+Result: PASSED
+Failures: 0
+Errors: 0
+
+Root-cause validation
+---------------------
+- Removed PostgreSQL DATE-to-text comparison from Work Orders page loading
+- Today-session filtering now uses the freelancer timezone in Python
+- Bounded recent-session query prevents unbounded page reads
+
+Integrated workflow validation
+------------------------------
+- Freelancer login passed
+- Assigned-project deep link passed
+- Selected Work Order highlighting passed
+- Work Orders page returned HTTP 200
+- Start Work Order returned controlled redirect
+- Active timer remained visible after refresh
+- Duplicate Start request returned controlled redirect instead of HTTP 500
+- Stop and Record Time returned controlled redirect
+- TaskWorkSession changed to STOPPED
+- Linked DailyTask record was created
+- DailyTask retained the portal task link
+- Recorded time was at least one minute
+- Stop without an active session returned controlled redirect instead of HTTP 500
+
+Static validation
+-----------------
+- Python compilation passed
+- 43 Jinja templates parsed successfully
+- English and Traditional Chinese catalogs matched: 1,691 keys each
+- ui.js syntax passed
+- i18n.js syntax passed
+- reporting.js syntax passed
+- Release version marker passed
+- No new Alembic migration
+
+Test database
+-------------
+Integrated validation used an isolated SQLite database. Production PostgreSQL
+was not modified. The corrected code path removes the PostgreSQL-specific typed
+comparison that caused the reported failure.

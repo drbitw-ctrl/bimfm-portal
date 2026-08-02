@@ -1686,5 +1686,8 @@
   "− Effective Deduction": "− Effective Deduction",
   "Manual time entry is disabled. Start and stop an assigned Work Order instead.": "Manual time entry is disabled. Start and stop an assigned Work Order instead.",
   "Timed work records are system-generated and cannot be edited by freelancers.": "Timed work records are system-generated and cannot be edited by freelancers.",
-  "Timed work records cannot be deleted by freelancers. Contact an Administrator for corrections.": "Timed work records cannot be deleted by freelancers. Contact an Administrator for corrections."
+  "Timed work records cannot be deleted by freelancers. Contact an Administrator for corrections.": "Timed work records cannot be deleted by freelancers. Contact an Administrator for corrections.",
+  "Open Work Order": "Open Work Order",
+  "A work timer is already active. Refresh the page and stop it before starting another task.": "A work timer is already active. Refresh the page and stop it before starting another task.",
+  "The recorded work session could not be saved. Refresh the page and try stopping the timer again.": "The recorded work session could not be saved. Refresh the page and try stopping the timer again."
 }

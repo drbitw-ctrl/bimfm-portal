@@ -3999,3 +3999,10 @@ html[data-theme="dark"] .time-under { color: #7fd7ad; }
   .email-reminder-footer { align-items: flex-start; flex-direction: column; }
   .inline-month-control { align-items: stretch; flex-direction: column; }
 }
+
+
+/* Release 21.01 — selected work-order deep link */
+.work-order-task-card.is-selected {
+  outline: 3px solid color-mix(in srgb, var(--accent, #2f80ed) 72%, transparent);
+  outline-offset: 2px;
+}

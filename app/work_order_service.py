@@ -172,31 +172,22 @@ def freelancer_work_order_view(database: Session, freelancer: Freelancer) -> dic
     )
     active = active_work_session(database, freelancer.id)
     today = _local_date(utc_now(), freelancer.timezone_name)
-    today_sessions = list(
+    # Filter in Python using the freelancer's configured timezone. This avoids
+    # PostgreSQL's DATE(timestamptz) comparison/casting differences and also
+    # prevents a UTC database session from assigning near-midnight work to the
+    # wrong local day. The bounded candidate query keeps the page efficient.
+    candidates = list(
         database.scalars(
             select(TaskWorkSession)
-            .where(
-                TaskWorkSession.freelancer_id == freelancer.id,
-                func.date(TaskWorkSession.started_at) == today.isoformat(),
-            )
+            .where(TaskWorkSession.freelancer_id == freelancer.id)
             .order_by(TaskWorkSession.started_at.desc(), TaskWorkSession.id.desc())
+            .limit(250)
         ).all()
     )
-    # SQLite and PostgreSQL handle DATE(timezone column) differently. If the
-    # database-side filter returns nothing, use a timezone-aware Python filter.
-    if not today_sessions:
-        candidates = list(
-            database.scalars(
-                select(TaskWorkSession)
-                .where(TaskWorkSession.freelancer_id == freelancer.id)
-                .order_by(TaskWorkSession.started_at.desc(), TaskWorkSession.id.desc())
-                .limit(100)
-            ).all()
-        )
-        today_sessions = [
-            row for row in candidates
-            if _local_date(row.started_at, freelancer.timezone_name) == today
-        ]
+    today_sessions = [
+        row for row in candidates
+        if _local_date(row.started_at, freelancer.timezone_name) == today
+    ]
 
     total_minutes = sum(int(row.duration_minutes or 0) for row in today_sessions if row.status == STOPPED_SESSION_STATUS)
     active_started_iso = _aware(active.started_at).isoformat() if active else ""

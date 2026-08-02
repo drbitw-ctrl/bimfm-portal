@@ -1686,5 +1686,8 @@
   "− Effective Deduction": "− 實際扣除",
   "Manual time entry is disabled. Start and stop an assigned Work Order instead.": "已停用手動填寫工時。請改為啟動及停止已指派的工作單。",
   "Timed work records are system-generated and cannot be edited by freelancers.": "計時工作紀錄由系統自動產生，自由工作者無法編輯。",
-  "Timed work records cannot be deleted by freelancers. Contact an Administrator for corrections.": "自由工作者無法刪除計時工作紀錄；如需更正，請聯絡系統管理員。"
+  "Timed work records cannot be deleted by freelancers. Contact an Administrator for corrections.": "自由工作者無法刪除計時工作紀錄；如需更正，請聯絡系統管理員。",
+  "Open Work Order": "開啟工作單",
+  "A work timer is already active. Refresh the page and stop it before starting another task.": "已有工作計時器正在執行。請重新整理頁面，並先停止目前的計時器再開始其他任務。",
+  "The recorded work session could not be saved. Refresh the page and try stopping the timer again.": "無法儲存工作時段。請重新整理頁面後，再次嘗試停止計時器。"
 }

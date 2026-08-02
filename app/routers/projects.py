@@ -170,7 +170,16 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
                     task_id=task_id,
                 )
             except ValueError as exc:
+                database.rollback()
                 set_flash(request, str(exc), "error")
+                return RedirectResponse("/tasks", status_code=303)
+            except IntegrityError:
+                database.rollback()
+                set_flash(
+                    request,
+                    "A work timer is already active. Refresh the page and stop it before starting another task.",
+                    "error",
+                )
                 return RedirectResponse("/tasks", status_code=303)
             write_audit(
                 database,
@@ -206,7 +215,16 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
                     notes=notes,
                 )
             except ValueError as exc:
+                database.rollback()
                 set_flash(request, str(exc), "error")
+                return RedirectResponse("/tasks", status_code=303)
+            except IntegrityError:
+                database.rollback()
+                set_flash(
+                    request,
+                    "The recorded work session could not be saved. Refresh the page and try stopping the timer again.",
+                    "error",
+                )
                 return RedirectResponse("/tasks", status_code=303)
             month_key = daily_task.task_date.strftime("%Y-%m")
             invalidate_task_review(database, account.freelancer_id, month_key)

@@ -54,7 +54,7 @@
   {% if work_orders.assigned_tasks %}
   <div class="work-order-task-grid">
     {% for task in work_orders.assigned_tasks %}
-    <article class="work-order-task-card priority-{{ task.priority|lower }}{% if work_orders.active_session and work_orders.active_session.portal_task_id == task.id %} is-running{% endif %}">
+    <article id="work-order-task-{{ task.id }}" class="work-order-task-card priority-{{ task.priority|lower }}{% if work_orders.active_session and work_orders.active_session.portal_task_id == task.id %} is-running{% endif %}{% if selected_project_task and selected_project_task.id == task.id %} is-selected{% endif %}">
       <div class="work-order-task-head">
         <span class="priority-chip priority-{{ task.priority|lower }}">{{ t(task.priority|replace('_', ' ')|title) }}</span>
         <span class="status-chip status-{{ task.project_status|lower|replace('_','-') }}">{{ t(task.project_status|replace('_',' ')|title) }}</span>
