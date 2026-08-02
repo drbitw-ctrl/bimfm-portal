@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 APP_NAME = "BIMFM Portal"
-APP_VERSION = "2.3.17-release20.22-task-time-utilization"
+APP_VERSION = "2.3.18-release20.23-localization-privacy-admin-time-fallback"
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"

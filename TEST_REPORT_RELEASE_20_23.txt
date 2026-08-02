@@ -1,0 +1,33 @@
+BIMFM Portal Release 20.23 Validation Report
+============================================
+
+Result: PASSED
+Checks: 781
+Failures: 0
+Errors: 0
+
+Validated areas
+---------------
+- English and Traditional Chinese catalog parity
+- Expanded localization catalog coverage
+- Every explicit Jinja translation key exists in both catalogs
+- 41 Jinja templates parsed successfully
+- Python source syntax across the application
+- JavaScript syntax for i18n.js, ui.js, and reporting.js
+- No Quality Score field or heading in freelancer-facing templates
+- Unused test staff account recognized as deletable
+- Referenced staff account recognized as protected
+- Staff-account database reference counts reported
+- Completion-date time fallback activated when no Daily Task entry exists
+- Fallback labelled as completion_date_estimate
+- Start-to-Completion scheduled-hour calculation
+- Start-to-Deadline target-hour calculation
+- Daily Task minutes take priority over fallback estimates
+- Linked Daily Task entry count retained
+- Estimated-task count included in report summary
+- Application import succeeded
+- Release version marker present
+- No new Alembic migration
+
+Database validation used an isolated in-memory SQLite database. Production
+PostgreSQL data was not modified.

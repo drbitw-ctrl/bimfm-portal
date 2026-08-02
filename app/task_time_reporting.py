@@ -3,9 +3,11 @@
 Target time is a management planning estimate calculated from scheduled
 workdays between a task's start date and deadline, inclusive. Each counted
 workday contributes a fixed eight hours (480 minutes). Active company holidays
-are excluded. Actual time comes from freelancer Daily Task records linked to
-the portal task. Unlinked daily work is retained at project level so management
-can still see the full amount of effort logged against a project.
+are excluded. Actual time comes from freelancer Daily Task records linked to the portal task.
+When a completed task has no Daily Task time yet, the report uses an explicitly
+labelled estimate from Start Date through Completion Date at eight scheduled
+hours per workday. Unlinked daily work is retained at project level so
+management can still see the full amount of effort logged against a project.
 """
 from __future__ import annotations
 
@@ -229,7 +231,25 @@ def build_task_time_utilization(
             if workdays is not None
             else None
         )
-        actual_minutes = linked_minutes_by_task.get(int(task.id), 0)
+        linked_entries = linked_entries_by_task.get(int(task.id), 0)
+        logged_minutes = linked_minutes_by_task.get(int(task.id), 0)
+        completion_date = task.completed_at.date() if task.completed_at is not None else None
+        estimated_workdays = None
+        is_estimated_actual = False
+        if linked_entries == 0 and task.start_date is not None and completion_date is not None:
+            estimated_workdays = _scheduled_workdays(
+                task.start_date,
+                completion_date,
+                workweek=workweek,
+                holidays=holidays,
+            )
+            if estimated_workdays is not None:
+                actual_minutes = estimated_workdays * STANDARD_TASK_DAY_MINUTES
+                is_estimated_actual = True
+            else:
+                actual_minutes = 0
+        else:
+            actual_minutes = logged_minutes
         variance_minutes = (
             actual_minutes - target_minutes
             if target_minutes is not None
@@ -261,8 +281,20 @@ def build_task_time_utilization(
             "variance_direction": ("over" if variance_minutes is not None and variance_minutes > 0 else ("under" if variance_minutes is not None and variance_minutes < 0 else "target" if variance_minutes == 0 else "none")),
             "variance_label": _variance_label(variance_minutes),
             "utilization": utilization,
-            "linked_entries": linked_entries_by_task.get(int(task.id), 0),
-            "contributors": _contributors_label(linked_member_minutes.get(int(task.id), {})),
+            "linked_entries": linked_entries,
+            "logged_minutes": logged_minutes,
+            "is_estimated_actual": is_estimated_actual,
+            "actual_time_source": (
+                "completion_date_estimate" if is_estimated_actual
+                else ("daily_task_entries" if linked_entries > 0 else "no_time_data")
+            ),
+            "estimated_workdays": estimated_workdays,
+            "completion_date": completion_date.isoformat() if completion_date else "—",
+            "contributors": (
+                _contributors_label(linked_member_minutes.get(int(task.id), {}))
+                if linked_entries > 0
+                else "—"
+            ),
             "is_unlinked": False,
         })
 
@@ -305,6 +337,11 @@ def build_task_time_utilization(
                 "variance_label": "No task target",
                 "utilization": None,
                 "linked_entries": unlinked_project_entries.get(current_project_id, 0),
+                "logged_minutes": unlinked_minutes,
+                "is_estimated_actual": False,
+                "actual_time_source": "unlinked_daily_task_entries",
+                "estimated_workdays": None,
+                "completion_date": "—",
                 "contributors": _contributors_label(unlinked_project_members.get(current_project_id, {})),
                 "is_unlinked": True,
             })
@@ -339,6 +376,9 @@ def build_task_time_utilization(
             "variance_label": _variance_label(variance_minutes),
             "utilization": utilization,
             "unlinked_minutes": unlinked_minutes,
+            "estimated_actual_task_count": sum(
+                1 for row in task_rows if row.get("is_estimated_actual")
+            ),
             "rows": task_rows,
         })
 
@@ -388,6 +428,9 @@ def build_task_time_utilization(
             "utilization": overall_utilization,
             "unmatched_minutes": unmatched_minutes,
             "unmatched_entries": unmatched_entries,
+            "estimated_actual_task_count": sum(
+                row.get("estimated_actual_task_count", 0) for row in project_rows
+            ),
         },
         "method": {
             "minutes_per_day": STANDARD_TASK_DAY_MINUTES,

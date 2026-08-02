@@ -23,7 +23,6 @@
           <th data-sort-type="text">{{ t('Task') }}</th>
           <th data-sort-type="text">{{ t('Discipline') }}</th>
           <th data-sort-type="priority">{{ t('Priority') }}</th>
-          <th data-sort-type="number">{{ t('Quality') }}</th>
           <th data-sort-type="date">{{ t('Deadline') }}</th>
           <th data-sort-type="date">{{ t('Completed') }}</th>
         </tr>
@@ -35,7 +34,6 @@
           <td>{{ row.title }}</td>
           <td>{{ discipline_label(row.discipline) }}</td>
           <td>{{ t(row.priority) }}</td>
-          <td data-sort-value="{{ row.quality_score if row.quality_score is not none else -1 }}">{{ (row.quality_score|string ~ '%') if row.quality_score is not none else t('Not Rated') }}</td>
           <td data-sort-value="{{ row.deadline.isoformat() if row.deadline else '' }}">{{ row.deadline.isoformat() if row.deadline else '—' }}</td>
           <td data-sort-value="{{ row.completed_date.isoformat() if row.completed_date else '' }}">{{ row.completed_date.isoformat() if row.completed_date else '—' }}</td>
         </tr>

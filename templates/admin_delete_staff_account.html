@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Delete Staff Account') }} · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <span class="eyebrow">{{ t('TEST ACCOUNT CLEANUP') }}</span>
+    <h1>{{ t('Delete Staff Account') }}</h1>
+    <p class="muted">{{ t('Permanently remove an unused staff or test administrator account.') }}</p>
+  </div>
+  <a class="button secondary" href="/admin/staff-accounts">{{ t('Back to Staff Access') }}</a>
+</div>
+
+<section class="panel narrow-panel">
+  <div class="identity-summary">
+    <div>
+      <span>{{ t('Display name') }}</span>
+      <strong data-i18n-skip>{{ target.display_name }}</strong>
+    </div>
+    <div>
+      <span>{{ t('Username') }}</span>
+      <strong data-i18n-skip>{{ target.username }}</strong>
+    </div>
+    <div>
+      <span>{{ t('Role') }}</span>
+      <strong>{{ t('Finance Head') if target.role == 'FINANCE' else (t('Supervisor') if target.role == 'SUPERVISOR' else t('Administrator')) }}</strong>
+    </div>
+    <div>
+      <span>{{ t('Status') }}</span>
+      <strong>{{ t('Active') if target.is_active else t('Disabled') }}</strong>
+    </div>
+  </div>
+
+  {% if not can_delete %}
+  <div class="flash error"><strong>{{ t(block_reason) }}</strong></div>
+  {% if dependency_summary.items %}
+  <div class="protected-records">
+    <h3>{{ t('Operational references') }}</h3>
+    <p class="muted">{{ t('Only unused test accounts can be permanently deleted.') }}</p>
+    <ul>
+      {% for item in dependency_summary.items %}<li><code>{{ item.label }}</code>: {{ item.count }} {{ t('Referenced records') }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  <div class="action-row"><a class="button secondary" href="/admin/staff-accounts">{{ t('Return to Staff Access') }}</a></div>
+  {% else %}
+  <div class="danger-callout">
+    <strong>{{ t('Permanent action') }}:</strong>
+    {{ t('This removes the staff login account and cannot be undone through the portal.') }}
+  </div>
+  <form method="post" action="/admin/staff-accounts/{{ target.id }}/delete">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <label for="confirm_username">{{ t('Type the complete username to confirm') }}</label>
+    <input id="confirm_username" name="confirm_username" autocomplete="off" required placeholder="{{ target.username }}">
+    <div class="action-row">
+      <button class="button danger-button" type="submit">{{ t('Permanently delete account') }}</button>
+      <a class="button secondary" href="/admin/staff-accounts">{{ t('Cancel') }}</a>
+    </div>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

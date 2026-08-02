@@ -63,7 +63,6 @@ class CompletedPortalTask:
     title: str
     discipline: Optional[str]
     priority: str
-    quality_score: Optional[int]
     deadline: Optional[date]
     completed_date: Optional[date]
     progress: int
@@ -537,7 +536,6 @@ def completed_freelancer_portal_tasks(
                 title=_clean_task_description(task.description, task.title),
                 discipline=task.discipline or project.discipline,
                 priority=task.priority,
-                quality_score=task.quality_score,
                 deadline=task.due_date,
                 completed_date=(task.completed_at.date() if task.completed_at else None),
                 progress=max(0, min(100, int(task.progress or 0))),

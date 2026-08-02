@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
 
 from app.auth.permissions import Permission, has_permission, normalize_role
+from app.database import Base
 from app.models import (
     AttendanceCalculation,
     AttendanceCorrection,
@@ -104,6 +105,37 @@ def _freelancer_delete_summary(database, freelancer_id: int) -> dict[str, object
         "total": total,
         "items": counts,
     }
+
+
+def _staff_account_delete_summary(database, account_id: int) -> dict[str, object]:
+    """Return references that make a staff account operationally protected.
+
+    Staff accounts are linked to approvals, corrections, DTRs, policies, and
+    project records. Only unused testing accounts can be permanently deleted;
+    referenced accounts must be disabled so historical attribution is retained.
+    """
+    items: list[dict[str, object]] = []
+    total = 0
+    for table in Base.metadata.sorted_tables:
+        if table.name == HRAdminAccount.__tablename__:
+            continue
+        for column in table.columns:
+            if not any(
+                foreign_key.target_fullname == "hr_admin_accounts.id"
+                for foreign_key in column.foreign_keys
+            ):
+                continue
+            count = int(
+                database.scalar(
+                    select(func.count()).select_from(table).where(column == account_id)
+                )
+                or 0
+            )
+            if count:
+                label = f"{table.name}.{column.name}"
+                items.append({"label": label, "count": count})
+                total += count
+    return {"blocked": total > 0, "total": total, "items": items}
 
 
 def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIRouter:
@@ -405,6 +437,128 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                 write_audit(database, actor_type="HR_ADMIN", actor_id=admin.id, action="TOGGLE_STAFF_ACCOUNT", request=request, target_type="HR_ADMIN", target_id=target.id, details=f"Active={target.is_active}")
                 database.commit()
                 set_flash(request, "Staff account status updated.", "success")
+        return RedirectResponse("/admin/staff-accounts", status_code=303)
+
+    @router.get("/admin/staff-accounts/{account_id}/delete", response_class=HTMLResponse)
+    def delete_staff_account_page(request: Request, account_id: int):
+        with SessionLocal() as database:
+            admin = get_current_admin(request, database)
+            if admin is None:
+                return RedirectResponse("/admin/login", status_code=303)
+            if str(getattr(admin, "role", "ADMIN")).upper() != "ADMIN":
+                return RedirectResponse("/admin?access=readonly", status_code=303)
+            target = database.get(HRAdminAccount, account_id)
+            if target is None:
+                set_flash(request, "Account not found.", "error")
+                return RedirectResponse("/admin/staff-accounts", status_code=303)
+
+            active_admins_after_delete = int(
+                database.scalar(
+                    select(func.count(HRAdminAccount.id)).where(
+                        HRAdminAccount.role == "ADMIN",
+                        HRAdminAccount.is_active.is_(True),
+                        HRAdminAccount.id != target.id,
+                    )
+                )
+                or 0
+            )
+            dependency_summary = _staff_account_delete_summary(database, target.id)
+            can_delete = target.id != admin.id and not (
+                str(target.role or "").upper() == "ADMIN"
+                and active_admins_after_delete < 1
+            ) and not dependency_summary["blocked"]
+            block_reason = ""
+            if target.id == admin.id:
+                block_reason = "You cannot delete your own signed-in account."
+            elif str(target.role or "").upper() == "ADMIN" and active_admins_after_delete < 1:
+                block_reason = "At least one active Administrator account must remain."
+            elif dependency_summary["blocked"]:
+                block_reason = "This staff account has operational history and must be disabled instead of deleted."
+
+            return templates.TemplateResponse(
+                request=request,
+                name="admin_delete_staff_account.html",
+                context=template_context(
+                    request,
+                    admin=admin,
+                    target=target,
+                    can_delete=can_delete,
+                    block_reason=block_reason,
+                    dependency_summary=dependency_summary,
+                ),
+            )
+
+    @router.post("/admin/staff-accounts/{account_id}/delete")
+    def delete_staff_account(
+        request: Request,
+        account_id: int,
+        csrf: str = Form(...),
+        confirm_username: str = Form(...),
+    ):
+        if not validate_csrf(request, csrf):
+            set_flash(request, "Invalid form token.", "error")
+            return RedirectResponse(
+                f"/admin/staff-accounts/{account_id}/delete",
+                status_code=303,
+            )
+        with SessionLocal() as database:
+            admin = get_current_admin(request, database)
+            if admin is None:
+                return RedirectResponse("/admin/login", status_code=303)
+            if str(getattr(admin, "role", "ADMIN")).upper() != "ADMIN":
+                return RedirectResponse("/admin?access=readonly", status_code=303)
+            target = database.get(HRAdminAccount, account_id)
+            if target is None:
+                set_flash(request, "Account not found.", "error")
+                return RedirectResponse("/admin/staff-accounts", status_code=303)
+            if target.id == admin.id:
+                set_flash(request, "You cannot delete your own signed-in account.", "error")
+                return RedirectResponse("/admin/staff-accounts", status_code=303)
+
+            active_admins_after_delete = int(
+                database.scalar(
+                    select(func.count(HRAdminAccount.id)).where(
+                        HRAdminAccount.role == "ADMIN",
+                        HRAdminAccount.is_active.is_(True),
+                        HRAdminAccount.id != target.id,
+                    )
+                )
+                or 0
+            )
+            if str(target.role or "").upper() == "ADMIN" and active_admins_after_delete < 1:
+                set_flash(request, "At least one active Administrator account must remain.", "error")
+                return RedirectResponse("/admin/staff-accounts", status_code=303)
+            dependency_summary = _staff_account_delete_summary(database, target.id)
+            if dependency_summary["blocked"]:
+                set_flash(
+                    request,
+                    "This staff account has operational history and must be disabled instead of deleted.",
+                    "error",
+                )
+                return RedirectResponse("/admin/staff-accounts", status_code=303)
+            if confirm_username.strip().casefold() != target.username.casefold():
+                set_flash(request, "The confirmation username does not match.", "error")
+                return RedirectResponse(
+                    f"/admin/staff-accounts/{account_id}/delete",
+                    status_code=303,
+                )
+
+            target_username = target.username
+            target_role = target.role
+            write_audit(
+                database,
+                actor_type="HR_ADMIN",
+                actor_id=admin.id,
+                action="DELETE_STAFF_ACCOUNT",
+                request=request,
+                target_type="HR_ADMIN",
+                target_id=target.id,
+                details=f"Deleted {target_role} account: {target_username}",
+            )
+            database.delete(target)
+            database.commit()
+
+        set_flash(request, "Staff account permanently deleted.", "success")
         return RedirectResponse("/admin/staff-accounts", status_code=303)
 
     @router.get("/admin/freelancers", response_class=HTMLResponse)
