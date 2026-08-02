@@ -2583,7 +2583,7 @@ html[data-theme="dark"] .mapping-table .unmapped-row {
   }
 }
 
-/* Release 20.17: keep the Tasks register readable without changing its visual language. */
+/* Release 21.04 Revision 2: stable task columns and separated Progress / Quality controls. */
 .task-register-table-wrap {
   max-width: 100%;
   overflow-x: auto;
@@ -2594,34 +2594,28 @@ html[data-theme="dark"] .mapping-table .unmapped-row {
 
 .task-register-table {
   width: 100%;
-  min-width: 1300px;
+  min-width: 1420px;
   table-layout: fixed;
 }
 
-.task-register-table th:nth-child(1),
-.task-register-table td:nth-child(1) { width: 145px; }
-.task-register-table th:nth-child(2),
-.task-register-table td:nth-child(2) { width: 150px; }
-.task-register-table th:nth-child(3),
-.task-register-table td:nth-child(3) { width: 110px; }
-.task-register-table th:nth-child(4),
-.task-register-table td:nth-child(4) { width: 135px; }
-.task-register-table th:nth-child(5),
-.task-register-table td:nth-child(5) { width: 72px; }
-.task-register-table th:nth-child(6),
-.task-register-table td:nth-child(6) { width: 82px; }
-.task-register-table th:nth-child(7),
-.task-register-table td:nth-child(7) { width: 118px; }
-.task-register-table th:nth-child(8),
-.task-register-table td:nth-child(8) { width: 118px; }
-.task-register-table th:nth-child(9),
-.task-register-table td:nth-child(9) { width: 92px; }
-.task-register-table th:nth-child(10),
-.task-register-table td:nth-child(10) { width: 92px; }
-.task-register-table th:nth-child(11),
-.task-register-table td:nth-child(11) { width: 122px; }
-.task-register-table th:nth-child(12),
-.task-register-table td:nth-child(12) { width: 64px; }
+.task-register-table th,
+.task-register-table td {
+  box-sizing: border-box;
+}
+
+/* Semantic widths stay correct whether the optional Action column is present or not. */
+.task-register-table .task-col-project { width: 150px; }
+.task-register-table .task-col-title { width: 175px; }
+.task-register-table .task-col-assignees { width: 128px; }
+.task-register-table .task-col-status { width: 145px; }
+.task-register-table .task-col-priority { width: 82px; }
+.task-register-table .task-col-discipline { width: 78px; }
+.task-register-table .task-col-progress { width: 138px; }
+.task-register-table .task-col-quality { width: 108px; }
+.task-register-table .task-col-start-date { width: 98px; }
+.task-register-table .task-col-due-date { width: 98px; }
+.task-register-table .task-col-completion-date { width: 128px; }
+.task-register-table .task-col-action { width: 92px; }
 
 .task-register-table .task-quick-status-editor,
 .task-register-table .task-quick-status-control,
@@ -2630,6 +2624,11 @@ html[data-theme="dark"] .mapping-table .unmapped-row {
 .task-register-table .task-quick-date-control,
 .task-register-table .table-identity-cell {
   min-width: 0;
+}
+
+.task-register-table .task-col-progress,
+.task-register-table .task-col-quality {
+  overflow: hidden;
 }
 
 .task-register-table th:first-child,
@@ -2690,6 +2689,53 @@ html[data-theme="dark"] .mapping-table .unmapped-row {
   text-align: center;
 }
 
+/* Progress is stacked vertically so its percentage and bar never enter Quality. */
+.task-register-table .task-progress-editor,
+.task-register-table .table-progress-cell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.task-register-table .task-progress-editor .task-percentage-select,
+.task-register-table .task-quality-editor .task-percentage-select {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.task-register-table .task-progress-editor .mini-progress,
+.task-register-table .table-progress-cell .mini-progress {
+  width: 100%;
+  max-width: 100%;
+  height: 6px;
+  margin: 0;
+}
+
+.task-register-table .table-progress-cell strong {
+  display: block;
+  width: 100%;
+  text-align: left;
+  line-height: 1.1;
+}
+
+.task-register-table .task-quality-editor {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.task-register-table .task-col-quality .metric-pill,
+.task-register-table .task-col-quality .muted-cell {
+  display: inline-flex;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
 @media (max-width: 760px) {
   .task-register-table {
     width: 100%;
@@ -2712,49 +2758,6 @@ html[data-theme="dark"] .mapping-table .unmapped-row {
   .task-register-table tbody tr:hover td:last-child {
     background: transparent;
   }
-}
-
-
-/* Release 20.18: Quality keeps inline percentage editing without a progress bar. */
-.task-quality-editor {
-  gap: 0;
-}
-
-.task-quality-editor .task-percentage-editor-row {
-  margin: 0;
-}
-
-/* Release 20.19: compact task percentages and availability-first dashboard. */
-.task-register-table .task-progress-editor {
-  width: 82px;
-  max-width: 100%;
-  min-width: 0;
-  gap: 4px;
-}
-
-.task-register-table .task-progress-editor .task-percentage-select {
-  width: 82px;
-  max-width: 100%;
-  min-width: 0;
-}
-
-.task-register-table .task-progress-editor .mini-progress {
-  width: 70px;
-  max-width: calc(100% - 8px);
-  height: 5px;
-  margin-left: 4px;
-}
-
-.task-register-table .task-quality-editor {
-  width: 92px;
-  max-width: 100%;
-  min-width: 0;
-}
-
-.task-register-table .task-quality-editor .task-percentage-select {
-  width: 92px;
-  max-width: 100%;
-  min-width: 0;
 }
 
 .dashboard-command-hero {

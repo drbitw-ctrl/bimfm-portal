@@ -29,7 +29,7 @@
 <div class="stats-grid reporting-summary-grid">
   <article class="stat-card"><span>Delivered tasks</span><strong>{{ report.summary.delivered_tasks }}</strong><small>Completed in {{ report.period_label }}</small></article>
   <article class="stat-card"><span>On-time delivery</span><strong>{{ '%.1f%%'|format(report.summary.on_time_rate) if report.summary.on_time_rate is not none else '—' }}</strong><small>{{ report.summary.measured_tasks }} measurable deliveries</small></article>
-  <article class="stat-card"><span>Calibrated quality</span><strong>{{ '%.1f%%'|format(report.summary.quality_average) if report.summary.quality_average is not none else '—' }}</strong><small>{{ report.summary.rated_tasks }} rated deliveries</small></article>
+  <article class="stat-card"><span>Quality Score</span><strong>{{ '%.1f%%'|format(report.summary.quality_average) if report.summary.quality_average is not none else '—' }}</strong><small>{{ report.summary.rated_tasks }} rated deliveries</small></article>
   <article class="stat-card"><span>Logged work</span><strong>{{ '%.1f h'|format(report.summary.logged_hours) }}</strong><small>Daily task reports in period</small></article>
   <article class="stat-card"><span>Active tasks now</span><strong>{{ report.summary.active_tasks }}</strong><small>Current team workload</small></article>
   <article class="stat-card"><span>Overdue now</span><strong>{{ report.summary.overdue_tasks }}</strong><small>Open tasks past deadline</small></article>
@@ -37,7 +37,7 @@
 
 <section class="report-chart-grid">
   <article class="content-card report-chart-card"><div class="report-chart-heading"><div><span class="eyebrow">OUTPUT TREND</span><h2>Delivered Tasks</h2></div><strong>{{ report.summary.delivered_tasks }}</strong></div><div class="report-chart" data-report-chart="delivered" aria-label="Delivered tasks trend"></div></article>
-  <article class="content-card report-chart-card"><div class="report-chart-heading"><div><span class="eyebrow">QUALITY TREND</span><h2>Calibrated Quality</h2></div><strong>{{ '%.1f%%'|format(report.summary.quality_average) if report.summary.quality_average is not none else '—' }}</strong></div><div class="report-chart" data-report-chart="quality" aria-label="Calibrated quality trend"></div></article>
+  <article class="content-card report-chart-card"><div class="report-chart-heading"><div><span class="eyebrow">QUALITY TREND</span><h2>Quality Score</h2></div><strong>{{ '%.1f%%'|format(report.summary.quality_average) if report.summary.quality_average is not none else '—' }}</strong></div><div class="report-chart" data-report-chart="quality" aria-label="Quality Score trend"></div></article>
   <article class="content-card report-chart-card"><div class="report-chart-heading"><div><span class="eyebrow">DELIVERY TREND</span><h2>Early or On-Time</h2></div><strong>{{ '%.1f%%'|format(report.summary.on_time_rate) if report.summary.on_time_rate is not none else '—' }}</strong></div><div class="report-chart" data-report-chart="on_time" aria-label="On-time delivery trend"></div></article>
   <article class="content-card report-chart-card"><div class="report-chart-heading"><div><span class="eyebrow">EFFORT TREND</span><h2>Logged Hours</h2></div><strong>{{ '%.1f h'|format(report.summary.logged_hours) }}</strong></div><div class="report-chart" data-report-chart="hours" aria-label="Logged hours trend"></div></article>
 </section>
@@ -94,7 +94,7 @@
   {% else %}<div class="empty-state"><p>No project activity is available for this period.</p></div>{% endif %}
 </section>
 
-<div class="report-method-note"><strong>Quality presentation:</strong> {{ report.quality_formula }}. Raw Quality Scores remain unchanged in the task records.</div>
+<div class="report-method-note"><strong>Quality reporting:</strong> Scores use the management reporting scale. Original task ratings remain preserved in task records.</div>
 <script id="reportChartData" type="application/json">{{ report.trend|tojson }}</script>
 <script src="{{ url_for('static', path='/js/reporting.js') }}?v={{ app_version }}"></script>
 {% endblock %}

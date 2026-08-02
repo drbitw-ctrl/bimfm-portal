@@ -97,14 +97,14 @@
   <div class="modern-table-wrap smart-table-wrap{% if module_name == 'tasks' %} task-register-table-wrap{% endif %}">
     <table class="modern-table smart-table{% if module_name == 'tasks' %} task-register-table{% endif %}" id="portalDataTable" data-card-table{% if module_name in ['tasks', 'my-work', 'calendar'] %} data-sortable-task-table{% endif %}{% if module_name == 'tasks' and can_edit_tasks %} data-task-quick-edit-table{% endif %}>
       <thead>
-        <tr>{% for column in columns %}<th{% if column.get('sort') %} data-sort-type="{{ column.sort }}"{% endif %}>{{ t(column.label) }}</th>{% endfor %}</tr>
+        <tr>{% for column in columns %}<th class="task-col-{{ column.key|replace('_', '-') }}"{% if column.get('sort') %} data-sort-type="{{ column.sort }}"{% endif %}>{{ t(column.label) }}</th>{% endfor %}</tr>
       </thead>
       <tbody>
       {% for row in rows %}
         <tr{% if row.get('_row_highlight') %} class="{{ row['_row_highlight'] }}"{% endif %}{% if row.get('_task_state') %} data-task-state="{{ row['_task_state'] }}"{% endif %}{% if row.get('_due_date_value') is defined %} data-task-due-date="{{ row['_due_date_value'] }}"{% endif %}{% if row.get('_filters') %}{% for key, value in row['_filters'].items() %} data-filter-{{ key }}="{{ value }}"{% endfor %}{% endif %}>
         {% for column in columns %}
           {% set value = row[column.key] %}
-          <td data-label="{{ t(column.label) }}" data-column-key="{{ column.key }}">
+          <td class="task-col-{{ column.key|replace('_', '-') }}" data-label="{{ t(column.label) }}" data-column-key="{{ column.key }}">
             {% if column.type == 'quick_status' %}
               <div class="task-quick-status-editor">
                 <select class="task-quick-control task-quick-status-control"

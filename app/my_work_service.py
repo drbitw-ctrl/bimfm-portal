@@ -20,6 +20,7 @@ from app.models import (
     AttendanceCorrection,
     DailyAttendance,
     Freelancer,
+    FreelancerAccount,
     LeaveRequest,
     MonthlyDTR,
     OvertimeClaim,
@@ -255,11 +256,24 @@ def finance_work_overview(database: Session) -> dict[str, Any]:
     month_start = today.replace(day=1)
     month_end = date(today.year, today.month, monthrange(today.year, today.month)[1]) + timedelta(days=1)
 
+    # Finance attendance must represent real, enabled freelancer accounts only.
+    # Legacy project-import placeholders are stored in ``freelancers`` for
+    # historical foreign-key compatibility, but they do not have login accounts
+    # and must never be counted as attendance members. Disabled test/former
+    # accounts are excluded by both profile and account status.
     freelancers = list(database.scalars(
         select(Freelancer)
-        .where(Freelancer.is_active.is_(True))
-        .order_by(Freelancer.full_name)
+        .join(
+            FreelancerAccount,
+            FreelancerAccount.freelancer_id == Freelancer.id,
+        )
+        .where(
+            Freelancer.is_active.is_(True),
+            FreelancerAccount.is_active.is_(True),
+        )
+        .order_by(Freelancer.full_name, Freelancer.id)
     ).all())
+    eligible_freelancer_ids = tuple(int(row.id) for row in freelancers)
     attendance_by_member = {
         int(row.freelancer_id): row
         for row in database.scalars(
@@ -296,6 +310,9 @@ def finance_work_overview(database: Session) -> dict[str, Any]:
 
     monthly_records = list(database.scalars(
         select(DailyAttendance).where(
+            DailyAttendance.freelancer_id.in_(eligible_freelancer_ids)
+            if eligible_freelancer_ids
+            else DailyAttendance.id.is_(None),
             DailyAttendance.attendance_date >= month_start,
             DailyAttendance.attendance_date < month_end,
         )
@@ -310,7 +327,12 @@ def finance_work_overview(database: Session) -> dict[str, Any]:
     )
 
     dtrs = list(database.scalars(
-        select(MonthlyDTR).where(MonthlyDTR.month_key == month_key)
+        select(MonthlyDTR).where(
+            MonthlyDTR.freelancer_id.in_(eligible_freelancer_ids)
+            if eligible_freelancer_ids
+            else MonthlyDTR.id.is_(None),
+            MonthlyDTR.month_key == month_key,
+        )
     ).all())
     dtr_status_counts = {
         status: sum(str(row.status).upper() == status for row in dtrs)

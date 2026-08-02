@@ -1,0 +1,33 @@
+BIMFM Portal Release 21.04 Revision 2 Validation Report
+=======================================================
+
+Result: PASSED
+Failures: 0
+Errors: 0
+
+Validated areas
+---------------
+- Python application compilation
+- Application import and isolated SQLite initialization
+- 46 Jinja templates parsed
+- JavaScript syntax: ui.js
+- JavaScript syntax: i18n.js
+- JavaScript syntax: reporting.js
+- English and Traditional Chinese catalog parity
+- 1,775 localization keys in each catalog
+- Semantic Tasks-table column classes
+- Dedicated 138px Progress column
+- Dedicated 108px Quality column
+- Progress value/control stacked above its bar
+- Progress bar constrained to the Progress cell
+- Quality control constrained to the Quality cell
+- Layout remains independent of optional Action column
+- No visible `Calibrated` wording in current Performance or Project Reports templates
+- Transparent management reporting-scale note retained
+- Original quality formula unchanged
+- Six enabled real freelancer accounts included in Finance population
+- Seven active legacy placeholders excluded
+- Disabled freelancer account excluded
+- No new Alembic migration
+
+Production PostgreSQL was not modified during validation.

@@ -15,7 +15,7 @@
 <section class="content-card leaderboard-control-card">
   <div class="leaderboard-mode-switch" role="tablist" aria-label="Leaderboard category">
     <button type="button" class="leaderboard-mode active" data-leaderboard-tab="quality" role="tab" aria-selected="true">
-      <span>01</span><strong>Quality Score</strong><small>Calibrated management score</small>
+      <span>01</span><strong>Quality Score</strong><small>Management quality ranking</small>
     </button>
     <button type="button" class="leaderboard-mode" data-leaderboard-tab="tasks" role="tab" aria-selected="false">
       <span>02</span><strong>Total Tasks</strong><small>Assigned and delivered work</small>
@@ -32,7 +32,7 @@
 
 <section class="leaderboard-panel active" data-leaderboard-panel="quality">
   <div class="stats-grid performance-summary-grid">
-    <article class="stat-card"><span>Quality leader</span><strong>{{ performance.quality_summary.leader }}</strong><small>Highest calibrated average</small></article>
+    <article class="stat-card"><span>Quality leader</span><strong>{{ performance.quality_summary.leader }}</strong><small>Highest management average</small></article>
     <article class="stat-card"><span>Team average</span><strong>{{ '%.1f%%'|format(performance.quality_summary.team_average) if performance.quality_summary.team_average is not none else '—' }}</strong><small>Across rated portal tasks</small></article>
     <article class="stat-card"><span>Rated tasks</span><strong>{{ performance.quality_summary.rated_tasks }}</strong><small>Valid whole-number Quality Scores</small></article>
     <article class="stat-card"><span>Rating coverage</span><strong>{{ '%.1f%%'|format(performance.quality_summary.coverage) }}</strong><small>Rated tasks ÷ all tasks</small></article>
@@ -50,7 +50,7 @@
   </div>
 
   <section class="content-card data-register-card leaderboard-table-card">
-    <div class="section-heading"><div><span class="eyebrow">QUALITY RANKING</span><h2>Calibrated Quality Score</h2><p>{{ performance.quality_formula }}. Stored raw scores remain unchanged.</p></div></div>
+    <div class="section-heading"><div><span class="eyebrow">QUALITY RANKING</span><h2>Quality Score</h2><p>Scores use the management reporting scale. Original task ratings remain preserved.</p></div></div>
     <div class="modern-table-wrap">
       <table class="modern-table smart-table leaderboard-table" data-sortable-table data-leaderboard-table data-card-table>
         <thead><tr>

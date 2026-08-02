@@ -1767,5 +1767,11 @@
   "— Keep unmapped —": "— 保持未對應 —",
   "“Days Physically Worked” and “Payable Workday Equivalents” are separate from monthly salary calendar coverage.": "「實際工作日數」與「可計薪工作日當量」和月薪日曆涵蓋範圍分開計算。",
   "− Comp Leave Applied": "− 已套用補休",
-  "− Effective Deduction": "− 實際扣除"
+  "− Effective Deduction": "− 實際扣除",
+  "Management quality ranking": "管理品質排名",
+  "Highest management average": "最高管理平均分數",
+  "Scores use the management reporting scale. Original task ratings remain preserved.": "分數採用管理報表評分尺度，原始任務評分仍予保留。",
+  "Quality Score trend": "品質分數趨勢",
+  "Quality reporting:": "品質報表：",
+  "Scores use the management reporting scale. Original task ratings remain preserved in task records.": "分數採用管理報表評分尺度，原始任務評分仍保留於任務紀錄中。"
 }

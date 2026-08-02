@@ -1767,5 +1767,11 @@
   "— Keep unmapped —": "— Keep unmapped —",
   "“Days Physically Worked” and “Payable Workday Equivalents” are separate from monthly salary calendar coverage.": "“Days Physically Worked” and “Payable Workday Equivalents” are separate from monthly salary calendar coverage.",
   "− Comp Leave Applied": "− Comp Leave Applied",
-  "− Effective Deduction": "− Effective Deduction"
+  "− Effective Deduction": "− Effective Deduction",
+  "Management quality ranking": "Management quality ranking",
+  "Highest management average": "Highest management average",
+  "Scores use the management reporting scale. Original task ratings remain preserved.": "Scores use the management reporting scale. Original task ratings remain preserved.",
+  "Quality Score trend": "Quality Score trend",
+  "Quality reporting:": "Quality reporting:",
+  "Scores use the management reporting scale. Original task ratings remain preserved in task records.": "Scores use the management reporting scale. Original task ratings remain preserved in task records."
 }

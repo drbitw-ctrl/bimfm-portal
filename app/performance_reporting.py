@@ -1,7 +1,7 @@
 """Performance leaderboard and project-report analytics.
 
 Release 20.20 keeps source task and quality values unchanged.  Quality scores
-are calibrated only for management presentation using the conservative formula
+use a management reporting scale for presentation while preserving original task ratings
 from the user's previous desktop dashboard.
 """
 from __future__ import annotations
@@ -431,7 +431,7 @@ def build_performance_dashboard(database: Session) -> dict[str, Any]:
         "quality_summary": quality_summary,
         "task_summary": task_summary,
         "delivery_summary": delivery_summary,
-        "quality_formula": "calibrated score = raw score × 0.70 + 22 (maximum 92)",
+        "quality_formula": "management reporting score = original task rating × 0.70 + 22 (maximum 92)",
         "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
     }
 
@@ -805,6 +805,6 @@ def build_project_reports(
             {"label": row["name"], "value": row["delivered_tasks"]}
             for row in project_rows if row["delivered_tasks"] > 0
         ][:10],
-        "quality_formula": "calibrated score = raw score × 0.70 + 22 (maximum 92)",
+        "quality_formula": "management reporting score = original task rating × 0.70 + 22 (maximum 92)",
         "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
     }
