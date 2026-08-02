@@ -1,9 +1,11 @@
-"""PostgreSQL-native project-member directory and mapping routes.
+"""Portal-native project-member directory and mapping routes.
 
-The original member list and HR freelancer accounts both live in PostgreSQL.
-Mapping links those identities without restoring projects.db synchronization.
+Project members and HR freelancer accounts are managed inside the portal.
+Mapping links those identities without exposing storage implementation details.
 """
 from __future__ import annotations
+
+from datetime import date
 
 from fastapi import APIRouter
 
@@ -19,9 +21,9 @@ def configure_integration_routes(legacy_namespace: dict[str, object]) -> APIRout
         raise HTTPException(
             status_code=410,
             detail=(
-                "projects.db synchronization is retired. Project members, "
-                "projects, tasks, assignments, and HR mappings are stored "
-                "directly in PostgreSQL."
+                "Legacy project synchronization is retired. Project members, "
+                "projects, tasks, assignments, and account mappings are managed "
+                "directly in the portal."
             ),
         )
 
@@ -31,14 +33,14 @@ def configure_integration_routes(legacy_namespace: dict[str, object]) -> APIRout
         with SessionLocal() as database:
             health = project_data_health(database)
             return {
-                "mode": "postgresql_native",
+                "mode": "portal_native",
                 "synchronization_required": False,
                 "project_members": health.project_member_count,
                 "mapped_project_members": health.mapped_project_member_count,
                 "unmapped_project_members": health.unmapped_project_member_count,
                 "message": (
                     "Project-member identities and their HR mappings are "
-                    "stored directly in PostgreSQL."
+                    "stored directly in the portal database."
                 ),
             }
 
@@ -57,6 +59,21 @@ def configure_integration_routes(legacy_namespace: dict[str, object]) -> APIRout
                 return RedirectResponse("/admin/login", status_code=303)
 
             health = project_data_health(database)
+            task_rows = active_task_overview_rows(database, limit=200)
+            for row in task_rows:
+                status = str(row.get("status") or "").upper()
+                due_text = str(row.get("due_date") or "")
+                delayed = False
+                if due_text and due_text != "—":
+                    try:
+                        delayed = date.fromisoformat(due_text) < date.today()
+                    except ValueError:
+                        delayed = False
+                row["row_highlight"] = (
+                    "task-row-delayed" if delayed
+                    else "task-row-attention" if status in {"IN_PROGRESS", "FOR_REVIEW"}
+                    else ""
+                )
             return templates.TemplateResponse(
                 request=request,
                 name="admin_project_team.html",
@@ -68,7 +85,7 @@ def configure_integration_routes(legacy_namespace: dict[str, object]) -> APIRout
                     freelancer_choices=hr_freelancer_choices(database),
                     member_rows=team_assignment_rows(database),
                     project_rows=project_overview_rows(database, limit=100),
-                    task_rows=active_task_overview_rows(database, limit=200),
+                    task_rows=task_rows,
                 ),
             )
 

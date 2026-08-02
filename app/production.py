@@ -61,9 +61,9 @@ def validate_environment(*, production: bool, session_secret: str, sync_token: s
     del sync_token
     checks = [
         EnvironmentCheck("session_secret", len(session_secret) >= 32 and "CHANGE-THIS" not in session_secret, "BIMFM_SESSION_SECRET must be a non-default value of at least 32 characters."),
-        EnvironmentCheck("postgresql_native_projects", True, "Project data is read directly from PostgreSQL-native portal tables."),
+        EnvironmentCheck("postgresql_native_projects", True, "Project data is read directly from portal-managed records."),
         EnvironmentCheck("secure_cookie", cookie_https_only or not production, "BIMFM_COOKIE_HTTPS_ONLY must be true in production."),
-        EnvironmentCheck("production_database", not production or not database_url.startswith("sqlite"), "Use PostgreSQL instead of SQLite in production."),
+        EnvironmentCheck("production_database", not production or not database_url.startswith("sqlite"), "Use a production-grade database instead of SQLite in production."),
     ]
     failures = [check.message for check in checks if not check.ok]
     if production and failures:

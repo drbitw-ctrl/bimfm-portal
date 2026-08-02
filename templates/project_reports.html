@@ -94,7 +94,7 @@
   {% else %}<div class="empty-state"><p>No project activity is available for this period.</p></div>{% endif %}
 </section>
 
-<div class="report-method-note"><strong>Quality presentation:</strong> {{ report.quality_formula }}. Raw Quality Scores remain unchanged in PostgreSQL.</div>
+<div class="report-method-note"><strong>Quality presentation:</strong> {{ report.quality_formula }}. Raw Quality Scores remain unchanged in the task records.</div>
 <script id="reportChartData" type="application/json">{{ report.trend|tojson }}</script>
 <script src="{{ url_for('static', path='/js/reporting.js') }}?v={{ app_version }}"></script>
 {% endblock %}

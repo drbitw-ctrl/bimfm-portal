@@ -34,6 +34,8 @@
     </div>
   </div>
 
+  {% if module_name in ['tasks', 'calendar'] %}{% include "_task_status_legend.html" %}{% elif module_name == 'team-workload' %}<div class="availability-table-legend" role="note"><span><i class="legend-swatch availability-available"></i>{{ t('Available') }}</span><span><i class="legend-swatch availability-working"></i>{{ t('Working Now') }}</span><span><i class="legend-swatch availability-assigned"></i>{{ t('Assigned') }}</span><span><i class="legend-swatch availability-overdue"></i>{{ t('Overdue') }}</span></div>{% endif %}
+
   {% if rows %}
   <div class="table-toolbar {% if module_name == 'tasks' %}task-register-toolbar{% endif %}"
        data-table-toolbar
@@ -199,7 +201,7 @@
   {% else %}
   <div class="empty-state">
     <h3>{{ t('No records are available for this view.') }}</h3>
-    <p>{{ t('Check the PostgreSQL project migration and project assignments.') }}</p>
+    <p>{{ t('Check the project records and current task assignments.') }}</p>
     {% if can_create_task %}<a class="button primary" href="/portal/tasks/new">{{ t('Create the first task') }}</a>{% endif %}
   </div>
   {% endif %}
@@ -242,9 +244,10 @@
 
   function applyRowHighlight(row) {
     if (!row) return;
-    row.classList.remove('task-row-attention', 'task-row-delayed');
+    row.classList.remove('task-row-attention', 'task-row-delayed', 'task-row-completed');
     const status = String(row.querySelector('[data-task-quick-field="status"]')?.value || '').toUpperCase();
-    if (['COMPLETED', 'CANCELLED'].includes(status)) return;
+    if (status === 'COMPLETED') { row.classList.add('task-row-completed'); return; }
+    if (status === 'CANCELLED') return;
     const dueText = String(row.dataset.taskDueDate || '');
     const today = new Date();
     today.setHours(0, 0, 0, 0);

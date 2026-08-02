@@ -41,6 +41,8 @@
   </form>
 </section>
 
+{% include "_task_status_legend.html" %}
+
 {% for project in report.projects %}
 <section class="content-card time-project-card">
   <div class="time-project-heading">
@@ -76,7 +78,7 @@
         <th data-sort-type="number">{{ t('Utilization') }}</th>
       </tr></thead>
       <tbody>{% for row in project.rows %}
-        <tr data-task-state="{{ 'closed' if row.is_closed else 'ongoing' }}" class="{% if row.is_delayed %}task-row-delayed{% endif %}">
+        <tr data-task-state="{{ 'closed' if row.is_closed else 'ongoing' }}" class="{% if row.status == 'COMPLETED' %}task-row-completed{% elif row.is_delayed %}task-row-delayed{% elif row.status in ['IN_PROGRESS', 'FOR_REVIEW'] %}task-row-attention{% endif %}">
           <td data-sort-value="{{ row.title }}"><strong>{{ t(row.title) if row.is_unlinked else row.title }}</strong><small class="time-contributors">{{ row.contributors }}</small></td>
           <td data-sort-value="{{ row.assignees }}">{{ row.assignees }}</td>
           <td data-sort-value="{{ row.status }}"><span class="status-chip status-{{ row.status|lower|replace('_','-') }}">{{ t(row.status|replace('_',' ')|title) }}</span></td>

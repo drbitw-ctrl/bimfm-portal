@@ -51,7 +51,7 @@
     <div>
       <span class="eyebrow">{{ t('LIVE TEAM AVAILABILITY') }}</span>
       <h2>{{ t('Availability and current assignments') }}</h2>
-      <p>{{ member_workload_count }} {{ t('active members') }} · {{ t('updated from the PostgreSQL task register') }}</p>
+      <p>{{ member_workload_count }} {{ t('active members') }} · {{ t('updated from the task register') }}</p>
     </div>
     <div class="team-command-legend" aria-label="{{ t('Availability legend') }}">
       <span class="availability-legend available"><i></i>{{ t('Available') }}</span>
@@ -184,7 +184,7 @@
 
     <section class="dashboard-panel sync-card">
       <div class="panel-heading-modern compact"><div><span class="eyebrow">{{ t('ASSIGNMENT HEALTH') }}</span><h2>{{ t('Records needing attention') }}</h2></div><span class="live-dot"></span></div>
-      <div class="sync-metric"><span>{{ t('Projects in PostgreSQL') }}</span><strong>{{ project_count }}</strong></div>
+      <div class="sync-metric"><span>{{ t('Projects in the portal') }}</span><strong>{{ project_count }}</strong></div>
       <div class="sync-metric"><span>{{ t('Members without project assignments') }}</span><strong>{{ unassigned_project_members }}</strong></div>
       <div class="sync-metric"><span>{{ t('Open tasks without assignees') }}</span><strong>{{ active_tasks_without_assignees }}</strong></div>
       <div class="sync-metric"><span>{{ t('Members with overdue work') }}</span><strong>{{ team_with_overdue_count }}</strong></div>

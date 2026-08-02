@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}{{ t('My Work') }} · {{ app_name }}{% endblock %}
+{% block content %}
+{% set role = my_work.role %}
+<section class="role-work-header">
+  <div>
+    <span class="eyebrow">{{ t('ROLE WORKSPACE') }}</span>
+    <h1>{{ t('My Work') }}</h1>
+    {% if role == 'ADMIN' %}
+      <p>{{ t('Administrator priorities: active work, team availability, and pending requests requiring action.') }}</p>
+    {% elif role == 'SUPERVISOR' %}
+      <p>{{ t('Supervisor overview: active tasks and team availability in one read-only workspace.') }}</p>
+    {% else %}
+      <p>{{ t('Finance overview: daily attendance, monthly records, DTR preparation, and Finance shortcuts.') }}</p>
+    {% endif %}
+  </div>
+  <span class="role-work-badge role-{{ role|lower }}">
+    {{ t('Administrator') if role == 'ADMIN' else (t('Supervisor') if role == 'SUPERVISOR' else t('Finance Head')) }}
+  </span>
+</section>
+
+{% if role in ['ADMIN', 'SUPERVISOR'] %}
+<section class="operations-stat-strip role-work-stats">
+  <article class="operations-stat-chip"><span>{{ t('Active Tasks') }}</span><strong>{{ my_work.task_summary.active }}</strong><small>{{ t('Open work requiring action') }}</small></article>
+  <article class="operations-stat-chip danger"><span>{{ t('Delayed Tasks') }}</span><strong>{{ my_work.task_summary.delayed }}</strong><small>{{ t('Past deadline and still open') }}</small></article>
+  <article class="operations-stat-chip success"><span>{{ t('Available Members') }}</span><strong>{{ my_work.team_summary.available }}</strong><small>{{ t('Ready for assignment') }}</small></article>
+  <article class="operations-stat-chip info"><span>{{ t('Working Now') }}</span><strong>{{ my_work.team_summary.working }}</strong><small>{{ t('Active Work Order timers') }}</small></article>
+  {% if role == 'ADMIN' %}<article class="operations-stat-chip warning"><span>{{ t('Pending Requests') }}</span><strong>{{ my_work.requests.total_count }}</strong><small>{{ t('Leave, overtime, and attendance issues') }}</small></article>{% endif %}
+</section>
+
+<section class="content-card role-work-panel">
+  <div class="section-heading">
+    <div><span class="eyebrow">{{ t('CURRENT OPERATIONS') }}</span><h2>{{ t('Active Tasks') }}</h2><p>{{ t('Ongoing project work is shown first and can be sorted by any table heading.') }}</p></div>
+    <a class="button secondary" href="/portal/tasks?view=active">{{ t('Open Active Tasks') }}</a>
+  </div>
+  {% include "_task_status_legend.html" %}
+  {% if my_work.task_rows %}
+  <div class="table-toolbar" data-table-toolbar data-table-target="#myWorkTaskTable" data-record-singular="task" data-record-plural="tasks">
+    <label class="table-search"><span class="sr-only">{{ t('Search records') }}</span><input type="search" data-table-search placeholder="{{ t('Search active tasks') }}"></label>
+    <span class="table-result-count" data-result-count></span>
+  </div>
+  <div class="modern-table-wrap smart-table-wrap">
+    <table class="modern-table smart-table role-task-table" id="myWorkTaskTable" data-card-table data-sortable-task-table>
+      <thead><tr>
+        <th data-sort-type="text">{{ t('Project') }}</th><th data-sort-type="text">{{ t('Task') }}</th><th data-sort-type="text">{{ t('Assigned Member') }}</th><th data-sort-type="status">{{ t('Status') }}</th><th data-sort-type="priority">{{ t('Priority') }}</th><th data-sort-type="text">{{ t('Discipline') }}</th><th data-sort-type="number">{{ t('Progress') }}</th><th data-sort-type="date">{{ t('Deadline') }}</th>
+      </tr></thead>
+      <tbody>{% for row in my_work.task_rows %}
+        <tr class="{{ row.row_class }}" data-task-state="{{ row.task_state }}">
+          <td data-label="{{ t('Project') }}"><strong>{{ row.project }}</strong></td>
+          <td data-label="{{ t('Task') }}">{{ row.task }}</td>
+          <td data-label="{{ t('Assigned Member') }}">{{ t(row.member) }}</td>
+          <td data-label="{{ t('Status') }}"><span class="status-chip status-{{ row.status|lower|replace('_','-') }}">{{ t(row.status|replace('_',' ')|title) }}</span></td>
+          <td data-label="{{ t('Priority') }}"><span class="priority-chip priority-{{ row.priority|lower }}">{{ t(row.priority|replace('_',' ')|title) }}</span></td>
+          <td data-label="{{ t('Discipline') }}">{{ discipline_label(row.discipline) }}</td>
+          <td data-label="{{ t('Progress') }}"><div class="table-progress-cell"><strong>{{ row.progress }}%</strong><span class="mini-progress"><i style="width:{{ row.progress }}%"></i></span></div></td>
+          <td data-label="{{ t('Deadline') }}"><span class="date-cell">{{ row.deadline }}</span></td>
+        </tr>
+      {% endfor %}</tbody>
+    </table>
+  </div>
+  {% else %}<div class="empty-state"><h3>{{ t('No active tasks') }}</h3><p>{{ t('There is no open project work requiring action.') }}</p></div>{% endif %}
+</section>
+
+<section class="content-card role-work-panel">
+  <div class="section-heading">
+    <div><span class="eyebrow">{{ t('TEAM CAPACITY') }}</span><h2>{{ t('Team Availability') }}</h2><p>{{ t('Availability, live work, assigned workload, and overdue responsibility at one glance.') }}</p></div>
+    <a class="button secondary" href="/portal/team-workload">{{ t('Open Team Availability') }}</a>
+  </div>
+  <div class="availability-table-legend" role="note">
+    <span><i class="legend-swatch availability-available"></i>{{ t('Available') }}</span>
+    <span><i class="legend-swatch availability-working"></i>{{ t('Working Now') }}</span>
+    <span><i class="legend-swatch availability-assigned"></i>{{ t('Assigned') }}</span>
+    <span><i class="legend-swatch availability-overdue"></i>{{ t('Overdue') }}</span>
+  </div>
+  <div class="modern-table-wrap smart-table-wrap">
+    <table class="modern-table smart-table availability-overview-table" data-card-table>
+      <thead><tr><th>{{ t('Member') }}</th><th>{{ t('Availability') }}</th><th>{{ t('Working Now') }}</th><th>{{ t('Current Project') }}</th><th>{{ t('Elapsed') }}</th><th>{{ t('Active Tasks') }}</th><th>{{ t('Overdue') }}</th></tr></thead>
+      <tbody>{% for row in my_work.team_rows %}<tr class="{{ row.row_class }}">
+        <td data-label="{{ t('Member') }}"><div class="person-cell"><span class="person-avatar">{{ row.name[:1]|upper }}</span><div><strong>{{ row.name }}</strong><small>{{ row.code }}</small></div></div></td>
+        <td data-label="{{ t('Availability') }}"><span class="status-chip availability-status-{{ row.state }}">{{ t(row.availability) }}</span></td>
+        <td data-label="{{ t('Working Now') }}">{{ t(row.working_task) }}</td>
+        <td data-label="{{ t('Current Project') }}">{{ row.working_project }}</td>
+        <td data-label="{{ t('Elapsed') }}">{% if row.elapsed_minutes is not none %}{{ row.elapsed_minutes }} {{ t('min') }}{% else %}—{% endif %}</td>
+        <td data-label="{{ t('Active Tasks') }}"><strong>{{ row.active_tasks }}</strong></td>
+        <td data-label="{{ t('Overdue') }}"><strong>{{ row.overdue_tasks }}</strong></td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+</section>
+
+{% if role == 'ADMIN' %}
+<section class="content-card role-work-panel request-command-center">
+  <div class="section-heading"><div><span class="eyebrow">{{ t('ACTION CENTER') }}</span><h2>{{ t('Pending Freelancer Requests') }}</h2><p>{{ t('Review leave, overtime, and attendance issues reported or detected in the current records.') }}</p></div></div>
+  <div class="request-summary-grid">
+    <a class="request-summary-card leave" href="/admin/leave-requests"><span>{{ t('Leave Requests') }}</span><strong>{{ my_work.requests.leave_count }}</strong><small>{{ t('Waiting for review') }}</small></a>
+    <a class="request-summary-card overtime" href="/admin/overtime"><span>{{ t('Overtime Claims') }}</span><strong>{{ my_work.requests.overtime_count }}</strong><small>{{ t('Planning or final approval') }}</small></a>
+    <a class="request-summary-card attendance" href="/admin/attendance/today"><span>{{ t('Attendance Issues') }}</span><strong>{{ my_work.requests.attendance_issue_count }}</strong><small>{{ t('Missed punches or invalid records') }}</small></a>
+  </div>
+  <div class="request-list-grid">
+    <section><div class="mini-section-heading"><h3>{{ t('Leave Requests') }}</h3><a href="/admin/leave-requests">{{ t('View all') }} →</a></div>{% if my_work.requests.leave_rows %}<div class="compact-request-list">{% for item in my_work.requests.leave_rows %}<a href="{{ item.href }}"><strong>{{ item.member }}</strong><span>{{ item.date }} · {{ t(item.type|replace('_',' ')|title) }}</span><small>{{ item.reason }}</small></a>{% endfor %}</div>{% else %}<p class="muted">{{ t('No pending leave requests.') }}</p>{% endif %}</section>
+    <section><div class="mini-section-heading"><h3>{{ t('Overtime Claims') }}</h3><a href="/admin/overtime">{{ t('View all') }} →</a></div>{% if my_work.requests.overtime_rows %}<div class="compact-request-list">{% for item in my_work.requests.overtime_rows %}<a href="{{ item.href }}"><strong>{{ item.member }}</strong><span>{{ item.date }} · {{ t(item.type|replace('_',' ')|title) }}</span><small>{{ item.reason }}</small></a>{% endfor %}</div>{% else %}<p class="muted">{{ t('No pending overtime requests.') }}</p>{% endif %}</section>
+    <section><div class="mini-section-heading"><h3>{{ t('Attendance Issues') }}</h3><a href="/admin/attendance/today">{{ t('View all') }} →</a></div>{% if my_work.requests.attendance_issue_rows %}<div class="compact-request-list">{% for item in my_work.requests.attendance_issue_rows %}<a href="{{ item.href }}"><strong>{{ item.member }}</strong><span>{{ item.date }} · {{ t(item.issue) }}</span><small>{{ t('Open correction review') }}</small></a>{% endfor %}</div>{% else %}<p class="muted">{{ t('No pending attendance issues.') }}</p>{% endif %}</section>
+  </div>
+</section>
+{% endif %}
+
+{% else %}
+{% set finance = my_work.finance %}
+<section class="operations-stat-strip role-work-stats finance-work-stats">
+  <article class="operations-stat-chip success"><span>{{ t('Attendance Recorded Today') }}</span><strong>{{ finance.daily_summary.recorded }}/{{ finance.daily_summary.total }}</strong><small>{{ t('Complete or currently working') }}</small></article>
+  <article class="operations-stat-chip info"><span>{{ t('Currently Working') }}</span><strong>{{ finance.daily_summary.working }}</strong><small>{{ t('Open attendance sessions') }}</small></article>
+  <article class="operations-stat-chip danger"><span>{{ t('Attendance Issues') }}</span><strong>{{ finance.daily_summary.issues }}</strong><small>{{ t('Missing or invalid records') }}</small></article>
+  <article class="operations-stat-chip"><span>{{ t('DTR Generated') }}</span><strong>{{ finance.dtr_summary.generated }}</strong><small>{{ finance.month_key }}</small></article>
+  <article class="operations-stat-chip warning"><span>{{ t('DTR Not Generated') }}</span><strong>{{ finance.dtr_summary.missing }}</strong><small>{{ t('Active freelancers') }}</small></article>
+</section>
+
+<section class="finance-work-launches">
+  <a href="/admin/attendance/today"><span>01</span><strong>{{ t('Today’s Attendance') }}</strong><small>{{ t('Open daily attendance records') }}</small></a>
+  <a href="/admin/attendance/monthly?month={{ finance.month_key }}"><span>02</span><strong>{{ t('Monthly Attendance') }}</strong><small>{{ t('Review monthly attendance totals') }}</small></a>
+  <a href="/admin/dtr?month={{ finance.month_key }}"><span>03</span><strong>{{ t('Monthly DTR') }}</strong><small>{{ t('Generate and export DTR records') }}</small></a>
+  <a class="primary-launch" href="/admin/finance?month={{ finance.month_key }}"><span>04</span><strong>{{ t('Finance Center') }}</strong><small>{{ t('Open payroll and Finance review') }}</small></a>
+</section>
+
+<section class="content-card role-work-panel">
+  <div class="section-heading"><div><span class="eyebrow">{{ t('ATTENDANCE TODAY') }}</span><h2>{{ t('Daily Attendance Overview') }}</h2><p>{{ t('Current attendance status for every active freelancer.') }}</p></div><a class="button secondary" href="/admin/attendance/today">{{ t('Open Full Records') }}</a></div>
+  <div class="attendance-table-legend"><span><i class="legend-swatch attendance-complete"></i>{{ t('Complete') }}</span><span><i class="legend-swatch attendance-working"></i>{{ t('Currently Working') }}</span><span><i class="legend-swatch attendance-missing"></i>{{ t('No Record') }}</span><span><i class="legend-swatch attendance-issue"></i>{{ t('Invalid Record') }}</span></div>
+  <div class="modern-table-wrap smart-table-wrap"><table class="modern-table smart-table" data-card-table><thead><tr><th>{{ t('Freelancer') }}</th><th>{{ t('Status') }}</th><th>{{ t('Time In') }}</th><th>{{ t('Time Out') }}</th><th>{{ t('Rendered') }}</th><th>{{ t('Late') }}</th><th></th></tr></thead><tbody>{% for row in finance.daily_rows %}<tr class="{{ row.row_class }}"><td data-label="{{ t('Freelancer') }}"><strong>{{ row.name }}</strong><small>{{ row.code }}</small></td><td data-label="{{ t('Status') }}"><span class="status-chip status-{{ row.status|lower|replace(' ','-') }}">{{ t(row.status) }}</span></td><td data-label="{{ t('Time In') }}">{{ row.time_in }}</td><td data-label="{{ t('Time Out') }}">{{ row.time_out }}</td><td data-label="{{ t('Rendered') }}">{{ duration_label(row.rendered_minutes) }}</td><td data-label="{{ t('Late') }}">{{ duration_label(row.late_minutes) }}</td><td><a class="row-arrow" href="{{ row.href }}">→</a></td></tr>{% endfor %}</tbody></table></div>
+</section>
+
+<div class="finance-work-grid">
+  <section class="content-card role-work-panel">
+    <div class="section-heading"><div><span class="eyebrow">{{ t('MONTHLY RECORDS') }}</span><h2>{{ t('Attendance Summary') }} · {{ finance.month_key }}</h2></div></div>
+    <div class="finance-metric-grid">
+      <div><span>{{ t('Attendance Records') }}</span><strong>{{ finance.monthly_summary.records }}</strong></div>
+      <div><span>{{ t('Complete Records') }}</span><strong>{{ finance.monthly_summary.complete }}</strong></div>
+      <div><span>{{ t('Incomplete Records') }}</span><strong>{{ finance.monthly_summary.incomplete }}</strong></div>
+      <div><span>{{ t('Rendered Time') }}</span><strong>{{ duration_label(finance.monthly_summary.rendered_minutes) }}</strong></div>
+      <div><span>{{ t('Late Time') }}</span><strong>{{ duration_label(finance.monthly_summary.late_minutes) }}</strong></div>
+      <div><span>{{ t('Undertime') }}</span><strong>{{ duration_label(finance.monthly_summary.undertime_minutes) }}</strong></div>
+      <div><span>{{ t('Overtime') }}</span><strong>{{ duration_label(finance.monthly_summary.overtime_minutes) }}</strong></div>
+    </div>
+  </section>
+  <section class="content-card role-work-panel">
+    <div class="section-heading"><div><span class="eyebrow">{{ t('DTR PREPARATION') }}</span><h2>{{ t('Monthly DTR Status') }} · {{ finance.month_key }}</h2></div><a class="button secondary" href="/admin/dtr?month={{ finance.month_key }}">{{ t('Open Monthly DTR') }}</a></div>
+    <div class="finance-metric-grid">
+      <div><span>{{ t('Generated') }}</span><strong>{{ finance.dtr_summary.generated }}</strong></div>
+      <div><span>{{ t('Draft') }}</span><strong>{{ finance.dtr_summary.draft }}</strong></div>
+      <div><span>{{ t('Reviewed') }}</span><strong>{{ finance.dtr_summary.reviewed }}</strong></div>
+      <div><span>{{ t('Finalized') }}</span><strong>{{ finance.dtr_summary.finalized }}</strong></div>
+      <div><span>{{ t('Not Generated') }}</span><strong>{{ finance.dtr_summary.missing }}</strong></div>
+    </div>
+    <form method="post" action="/admin/dtr/generate" class="finance-inline-dtr-form">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="month_key" value="{{ finance.month_key }}"><input type="hidden" name="freelancer_id" value="0"><input type="hidden" name="reason" value="Finance My Work monthly DTR generation">
+      <button class="button primary" type="submit">{{ t('Generate / Refresh All DTRs') }}</button>
+    </form>
+  </section>
+</div>
+{% endif %}
+{% endblock %}

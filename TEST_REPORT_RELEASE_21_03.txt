@@ -1,0 +1,40 @@
+BIMFM Portal Release 21.03 Validation Report
+============================================
+
+Result: PASSED
+Failures: 0
+Errors: 0
+
+Static and structural validation
+--------------------------------
+- Python compilation passed for app and Alembic source
+- JavaScript syntax passed for ui.js, i18n.js, and reporting.js
+- 46 Jinja templates parsed successfully
+- 1,769 English localization keys loaded
+- 1,769 Traditional Chinese localization keys loaded
+- English and Traditional Chinese key parity passed
+- Every explicit Jinja translation key exists in both catalogs
+- Visible template scan found no database-engine or retired-file wording
+- English and Traditional Chinese rendered catalog values contain no such wording
+- Alembic head remains 20260802_0009
+
+Integrated role workflow validation
+-----------------------------------
+- Administrator My Work rendered active tasks and Team Availability
+- Administrator My Work rendered pending leave and overtime records
+- Administrator My Work detected a missing-time-out attendance exception
+- Supervisor My Work rendered active tasks and Team Availability without the Administrator request center
+- Finance My Work rendered daily attendance, monthly summary, DTR summary, and Finance Center shortcut
+- Finance generated/refreshed DTRs from My Work using its authorized operation
+- Traditional Chinese Administrator My Work rendered translated headings and labels
+
+Task presentation validation
+----------------------------
+- Delayed open task rendered pale-red row class
+- In Progress and For Review tasks rendered pale-yellow row class
+- Completed task rendered pale-green row class
+- Shared task legend rendered on task registers
+- Team Availability legend rendered with green, blue, yellow, and red meanings
+- Tasks, Active Tasks, Recently Completed Tasks, Calendar, Project Team, and Task Time Utilization rendered successfully
+
+Database validation used an isolated SQLite database. Production data was not modified.

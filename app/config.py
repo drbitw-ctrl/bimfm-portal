@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 APP_NAME = "BIMFM Portal"
-APP_VERSION = "3.0.2-release21.02-finance-dtr-password-branding"
+APP_VERSION = "3.0.3-release21.03-role-based-my-work"
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"

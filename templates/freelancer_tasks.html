@@ -114,6 +114,7 @@
   </div>
   {% if month_locked %}<div class="flash error">{{ t('This month is locked. Task changes are disabled.') }}</div>{% endif %}
   {% if rows %}
+  {% include "_task_status_legend.html" %}
   <div class="table-toolbar" data-table-toolbar data-table-target="#dailyTaskTable" data-record-singular="entry" data-record-plural="entries">
     <label class="table-search"><span class="sr-only">{{ t('Search work records') }}</span><input type="search" data-table-search placeholder="{{ t('Search project, task, status, or note') }}"></label>
     <span class="table-result-count" data-result-count></span>
@@ -123,7 +124,8 @@
       <thead><tr><th data-sort-type="date">{{ t('Date') }}</th><th data-sort-type="text">{{ t('Project') }}</th><th data-sort-type="text">{{ t('Discipline') }}</th><th data-sort-type="text">{{ t('Task') }}</th><th data-sort-type="status">{{ t('Status') }}</th><th data-sort-type="number">{{ t('Actual Time') }}</th><th data-sort-type="text">{{ t('Notes') }}</th></tr></thead>
       <tbody>
       {% for row in rows %}
-        <tr data-task-state="{{ 'closed' if row.task_status in ['COMPLETED', 'CANCELLED'] else 'ongoing' }}">
+        {% set task_state = row.task_status|upper %}
+        <tr class="{{ 'task-row-completed' if task_state == 'COMPLETED' else ('task-row-attention' if task_state in ['IN_PROGRESS','FOR_REVIEW'] else '') }}" data-task-state="{{ 'closed' if task_state in ['COMPLETED', 'CANCELLED'] else 'ongoing' }}">
           <td>{{ row.task_date }}</td><td>{{ row.project_name or row.project_code }}</td><td>{{ discipline_label(row.discipline) }}</td><td>{{ row.task_description }}</td>
           <td><span class="status-chip status-{{ row.task_status|lower|replace('_','-') }}">{{ t(row.task_status|replace('_',' ')|title) }}</span></td>
           <td data-sort-value="{{ row.minutes_spent }}"><strong>{{ duration_label(row.minutes_spent) }}</strong></td><td>{{ row.notes or '—' }}</td>

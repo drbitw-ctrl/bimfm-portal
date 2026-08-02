@@ -1,4 +1,4 @@
-"""PostgreSQL-native project and daily-task routes."""
+"""Portal-native project and daily-task routes."""
 from __future__ import annotations
 
 import hashlib

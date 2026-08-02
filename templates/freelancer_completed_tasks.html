@@ -14,6 +14,7 @@
 </div>
 
 <section class="panel table-panel">
+  {% include "_task_status_legend.html" %}
   {% if rows %}
   <div class="modern-table-wrap">
     <table class="modern-table smart-table" data-card-table data-sortable-table>
@@ -29,7 +30,7 @@
       </thead>
       <tbody>
       {% for row in rows %}
-        <tr>
+        <tr class="task-row-completed" data-task-state="closed">
           <td><strong>{{ row.project_name }}</strong></td>
           <td>{{ row.title }}</td>
           <td>{{ discipline_label(row.discipline) }}</td>

@@ -1,4 +1,4 @@
-"""PostgreSQL-native BIMFM Portal project and task-management routes."""
+"""BIMFM Portal project and task-management routes."""
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -25,6 +25,7 @@ from app.models import (
     ProjectMember,
 )
 from app.performance_reporting import build_performance_dashboard, build_project_reports
+from app.my_work_service import build_role_my_work
 from app.task_time_reporting import build_task_time_utilization
 from app.work_order_service import create_task_reminder, live_work_rows
 from app.portal_project_service import (
@@ -107,7 +108,7 @@ def _internal_project_code(name: str) -> str:
 
 
 def _project_member_assignment_id(member: ProjectMember) -> Optional[int]:
-    """Return the PostgreSQL identity used by project/task assignment tables."""
+    """Return the member identity used by project/task assignment tables."""
     if member.source_freelancer_id is not None:
         return int(member.source_freelancer_id)
     if member.freelancer_id is not None:
@@ -164,7 +165,7 @@ def create_portal_router(
     definitions = {
         "my-work": (
             "My Work",
-            "Current operational tasks from the shared PostgreSQL project database.",
+            "Role-specific operational priorities, records, and shortcuts.",
         ),
         "projects": (
             "Projects",
@@ -467,7 +468,7 @@ def create_portal_router(
         assignment_id = _project_member_assignment_id(member)
         if assignment_id is None:
             raise ValueError(
-                "The selected project member has no PostgreSQL assignment identity."
+                "The selected project member has no project assignment identity."
             )
 
         existing_membership = database.scalar(
@@ -1126,6 +1127,20 @@ def create_portal_router(
             ("BIMFM Portal", "Unified operations module."),
         )
 
+        if module_name == "my-work":
+            my_work = build_role_my_work(database, role=str(account.role or ""))
+            return templates.TemplateResponse(
+                request=request,
+                name="staff_my_work.html",
+                context=template_context(
+                    request,
+                    account=account,
+                    page_title=page_title,
+                    page_description=description,
+                    my_work=my_work,
+                ),
+            )
+
         if module_name == "performance":
             performance = build_performance_dashboard(database)
             return templates.TemplateResponse(
@@ -1199,16 +1214,16 @@ def create_portal_router(
         )
 
         cards = [
-            {"label": "Projects", "value": health.project_count, "note": "PostgreSQL project records"},
+            {"label": "Projects", "value": health.project_count, "note": "Project records"},
             {"label": "Active tasks", "value": health.active_task_count, "note": "Open operational work"},
             {"label": "Completed tasks", "value": completed_task_count, "note": "Portal task history"},
-            {"label": "Members without projects", "value": health.unassigned_member_count, "note": "Visible in Team Workload"},
+            {"label": "Members without projects", "value": health.unassigned_member_count, "note": "Visible in Team Availability"},
         ]
 
         columns: list[dict[str, str]] = []
         rows: list[dict[str, Any]] = []
-        section_title = "PostgreSQL-native records"
-        section_note = "This module reads the migrated project tables directly. No projects.db synchronization is required."
+        section_title = "Operational records"
+        section_note = "Current operational records, assignments, and delivery status."
         task_filters: dict[str, list[dict[str, str]]] | None = None
         can_edit_tasks = has_permission(normalize_role(account.role), Permission.PROJECT_EDIT)
         can_remind_tasks = has_permission(normalize_role(account.role), Permission.TASK_REMINDER_SEND)
@@ -1251,9 +1266,9 @@ def create_portal_router(
                 description = "All project tasks, including active, review, completed, on-hold, and unassigned records."
                 section_title = "Complete Task Register"
             section_note = (
-                "Search and filter the complete PostgreSQL task register. Status, Progress, Quality, and Completed can be updated directly; use Edit for all other fields."
+                "Search and filter the complete task register. Status, Progress, Quality, and Completed can be updated directly; use Edit for all other fields."
                 if can_edit_tasks
-                else "Search and filter the complete PostgreSQL task register."
+                else "Search and filter the complete task register."
             )
             columns = [
                 {"key": "project", "label": "Project", "type": "project", "sort": "text"},
@@ -1281,7 +1296,9 @@ def create_portal_router(
                     except ValueError:
                         is_delayed = False
                 row_highlight = (
-                    "task-row-delayed"
+                    "task-row-completed"
+                    if status_value == "COMPLETED"
+                    else "task-row-delayed"
                     if is_delayed
                     else "task-row-attention"
                     if status_value in {"IN_PROGRESS", "FOR_REVIEW"}
@@ -1348,32 +1365,6 @@ def create_portal_router(
                     for value in sorted({str(row["discipline"]) for row in source_rows if row["discipline"] != "—"})
                 ],
             }
-        elif module_name == "my-work":
-            columns = [
-                {"key": "project", "label": "Project", "type": "project", "sort": "text"},
-                {"key": "title", "label": "Task", "type": "text", "sort": "text"},
-                {"key": "assignees", "label": "Assignees", "type": "translatable_text", "sort": "text"},
-                {"key": "status", "label": "Status", "type": "status", "sort": "status"},
-                {"key": "priority", "label": "Priority", "type": "priority", "sort": "priority"},
-                {"key": "progress", "label": "Progress", "type": "progress", "sort": "number"},
-                {"key": "due_date", "label": "Due", "type": "date", "sort": "date"},
-            ]
-            rows = [
-                {
-                    "_task_state": "ongoing",
-                    "project": {
-                        "primary": row["project_name"],
-                        "secondary": row.get("project_engineer", "") if row.get("project_engineer") != "—" else "",
-                    },
-                    "title": row["title"],
-                    "assignees": row["assignees"],
-                    "status": row["status"],
-                    "priority": row["priority"],
-                    "progress": int(row["progress"]),
-                    "due_date": row["due_date"],
-                }
-                for row in active_task_overview_rows(database, limit=300)
-            ]
         elif module_name == "team-workload":
             live_by_member = {
                 int(row["freelancer_id"]): row for row in live_work_rows(database)
@@ -1396,7 +1387,14 @@ def create_portal_router(
                     else "Busy" if int(row["active_task_count"]) > 0
                     else "Available"
                 )
+                availability_class = (
+                    "availability-row-overdue" if int(row["overdue_task_count"]) > 0
+                    else "availability-row-working" if live
+                    else "availability-row-assigned" if int(row["active_task_count"]) > 0
+                    else "availability-row-available"
+                )
                 rows.append({
+                    "_row_highlight": availability_class,
                     "member": {"primary": row["name"], "secondary": row.get("member_code", "")},
                     "availability": availability,
                     "working_task": live["task_title"] if live else "No active timer",
@@ -1414,9 +1412,23 @@ def create_portal_router(
                 {"key": "status", "label": "Status", "type": "status", "sort": "status"},
                 {"key": "progress", "label": "Progress", "type": "progress", "sort": "number"},
             ]
-            rows = [
-                {
+            rows = []
+            for row in active_task_overview_rows(database, limit=300):
+                if row["due_date"] == "—":
+                    continue
+                status_value = str(row["status"]).upper()
+                delayed = False
+                try:
+                    delayed = date.fromisoformat(str(row["due_date"])) < date.today()
+                except ValueError:
+                    delayed = False
+                rows.append({
                     "_task_state": "ongoing",
+                    "_row_highlight": (
+                        "task-row-delayed" if delayed
+                        else "task-row-attention" if status_value in {"IN_PROGRESS", "FOR_REVIEW"}
+                        else ""
+                    ),
                     "due_date": row["due_date"],
                     "project": {
                         "primary": row["project_name"],
@@ -1425,10 +1437,7 @@ def create_portal_router(
                     "title": row["title"],
                     "status": row["status"],
                     "progress": int(row["progress"]),
-                }
-                for row in active_task_overview_rows(database, limit=300)
-                if row["due_date"] != "—"
-            ]
+                })
 
         return templates.TemplateResponse(
             request=request,
