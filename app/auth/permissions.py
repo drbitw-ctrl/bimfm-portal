@@ -38,14 +38,16 @@ class Permission(StrEnum):
     SETTINGS_MANAGE = "settings.manage"
     INTEGRATION_MANAGE = "integration.manage"
     TASK_REMINDER_SEND = "task_reminder.send"
+    REPORT_EXPORT = "report.export"
 
 
 _ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
     Role.ADMIN: frozenset(Permission),
     # Release 20.14: Supervisor is a true read-only management role. It can
     # inspect operational, project, attendance, request, DTR and finance data,
-    # but it cannot create, approve, edit, delete, export or configure records.
-    # Finance remains narrowly scoped to reporting plus monthly DTR generation.
+    # but it cannot create, approve, edit, delete or configure records. It may
+    # download read-only operational Excel reports. Finance remains narrowly
+    # scoped to reporting plus monthly DTR generation.
     Role.SUPERVISOR: frozenset({
         Permission.DASHBOARD_VIEW,
         Permission.ATTENDANCE_VIEW_ALL,
@@ -54,6 +56,7 @@ _ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
         Permission.FINANCE_VIEW,
         Permission.PROJECT_VIEW,
         Permission.TASK_REMINDER_SEND,
+        Permission.REPORT_EXPORT,
     }),
     Role.FINANCE: frozenset({
         Permission.DASHBOARD_VIEW,
@@ -62,6 +65,7 @@ _ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
         Permission.FINANCE_EXPORT,
         Permission.DTR_GENERATE,
         Permission.PROJECT_VIEW,
+        Permission.REPORT_EXPORT,
     }),
     Role.EMPLOYEE: frozenset({
         Permission.DASHBOARD_VIEW,

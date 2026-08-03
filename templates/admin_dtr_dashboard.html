@@ -8,7 +8,8 @@
         <p class="muted">Generate one calendar-day DTR for each freelancer.</p>
     </div>
     <div class="action-row">
-        <a class="button primary" href="/admin/finance?month={{ selected_month }}">{{ t('Finance Center') }}</a>
+        {% if can(Permission.REPORT_EXPORT) %}<a class="button primary" href="/portal/exports/dtr.xlsx?month={{ selected_month }}">⇩ {{ t('Export DTR Excel') }}</a>{% endif %}
+        <a class="button secondary" href="/admin/finance?month={{ selected_month }}">{{ t('Finance Center') }}</a>
         {% if can(Permission.SETTINGS_MANAGE) %}<a class="button secondary" href="/admin/hr/calendar?month={{ selected_month }}">{{ t('HR Calendar') }}</a>{% endif %}
         <a class="button secondary" href="/admin">{{ t('Dashboard') }}</a>
     </div>

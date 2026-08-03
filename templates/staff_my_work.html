@@ -25,6 +25,7 @@
   <article class="operations-stat-chip danger"><span>{{ t('Delayed Tasks') }}</span><strong>{{ my_work.task_summary.delayed }}</strong><small>{{ t('Past deadline and still open') }}</small></article>
   <article class="operations-stat-chip success"><span>{{ t('Available Members') }}</span><strong>{{ my_work.team_summary.available }}</strong><small>{{ t('Ready for assignment') }}</small></article>
   <article class="operations-stat-chip info"><span>{{ t('Working Now') }}</span><strong>{{ my_work.team_summary.working }}</strong><small>{{ t('Active Work Order timers') }}</small></article>
+  <article class="operations-stat-chip unassigned"><span>{{ t('Unassigned Tasks') }}</span><strong>{{ my_work.task_summary.unassigned }}</strong><small>{{ t('Tasks requiring assignment') }}</small></article>
   {% if role == 'ADMIN' %}<article class="operations-stat-chip warning"><span>{{ t('Pending Requests') }}</span><strong>{{ my_work.requests.total_count }}</strong><small>{{ t('Leave, overtime, and attendance issues') }}</small></article>{% endif %}
 </section>
 
@@ -74,9 +75,10 @@
   </div>
   <div class="modern-table-wrap smart-table-wrap">
     <table class="modern-table smart-table availability-overview-table" data-card-table>
-      <thead><tr><th>{{ t('Member') }}</th><th>{{ t('Availability') }}</th><th>{{ t('Working Now') }}</th><th>{{ t('Current Project') }}</th><th>{{ t('Elapsed') }}</th><th>{{ t('Active Tasks') }}</th><th>{{ t('Overdue') }}</th></tr></thead>
+      <thead><tr><th>{{ t('Member') }}</th><th>{{ t('Join Date') }}</th><th>{{ t('Availability') }}</th><th>{{ t('Working Now') }}</th><th>{{ t('Current Project') }}</th><th>{{ t('Elapsed') }}</th><th>{{ t('Active Tasks') }}</th><th>{{ t('Overdue') }}</th></tr></thead>
       <tbody>{% for row in my_work.team_rows %}<tr class="{{ row.row_class }}">
         <td data-label="{{ t('Member') }}"><div class="person-cell"><span class="person-avatar">{{ row.name[:1]|upper }}</span><div><strong>{{ row.name }}</strong><small>{{ row.code }}</small></div></div></td>
+        <td data-label="{{ t('Join Date') }}"><span class="date-cell">{{ row.join_date }}</span></td>
         <td data-label="{{ t('Availability') }}"><span class="status-chip availability-status-{{ row.state }}">{{ t(row.availability) }}</span></td>
         <td data-label="{{ t('Working Now') }}">{{ t(row.working_task) }}</td>
         <td data-label="{{ t('Current Project') }}">{{ row.working_project }}</td>
@@ -86,6 +88,15 @@
       </tr>{% endfor %}</tbody>
     </table>
   </div>
+</section>
+
+<section class="content-card role-work-panel unassigned-task-panel">
+  <div class="section-heading"><div><span class="eyebrow">{{ t('ASSIGNMENT CONTROL') }}</span><h2>{{ t('Unassigned Tasks') }}</h2><p>{{ t('Open tasks that still require a responsible freelancer.') }}</p></div><a class="button secondary" href="/portal/tasks?view=unassigned">{{ t('Open Unassigned Tasks') }}</a></div>
+  {% if my_work.unassigned_task_rows %}
+  <div class="modern-table-wrap"><table class="modern-table smart-table" data-card-table><thead><tr><th>{{ t('Project') }}</th><th>{{ t('Task') }}</th><th>{{ t('Priority') }}</th><th>{{ t('Discipline') }}</th><th>{{ t('Progress') }}</th><th>{{ t('Start Date') }}</th><th>{{ t('Deadline') }}</th><th></th></tr></thead><tbody>
+  {% for row in my_work.unassigned_task_rows %}<tr class="{{ row.row_class }}"><td data-label="{{ t('Project') }}"><strong>{{ row.project }}</strong></td><td data-label="{{ t('Task') }}">{{ row.task }}</td><td data-label="{{ t('Priority') }}"><span class="priority-chip priority-{{ row.priority|lower }}">{{ t(row.priority|replace('_',' ')|title) }}</span></td><td data-label="{{ t('Discipline') }}">{{ discipline_label(row.discipline) }}</td><td data-label="{{ t('Progress') }}"><strong>{{ row.progress }}%</strong></td><td data-label="{{ t('Start Date') }}">{{ row.start_date }}</td><td data-label="{{ t('Deadline') }}">{{ row.deadline }}</td><td>{% if role == 'ADMIN' %}<a class="button small primary" href="{{ row.href }}">{{ t('Assign Task') }}</a>{% else %}<a class="row-arrow" href="/portal/tasks?view=unassigned">→</a>{% endif %}</td></tr>{% endfor %}
+  </tbody></table></div>
+  {% else %}<div class="all-clear unassigned-clear"><span>✓</span><div><strong>{{ t('All active tasks are assigned') }}</strong><small>{{ t('No open task currently requires assignment.') }}</small></div></div>{% endif %}
 </section>
 
 {% if role == 'ADMIN' %}

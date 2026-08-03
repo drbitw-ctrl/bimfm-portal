@@ -10,6 +10,7 @@
         </p>
     </div>
     <div class="action-row">
+        {% if can(Permission.REPORT_EXPORT) %}<a class="button primary" href="/portal/exports/attendance.xlsx?month={{ selected_month }}">⇩ {{ t('Export Excel') }}</a>{% endif %}
         <a class="button secondary" href="/admin/attendance/today">
             Today's Attendance
         </a>

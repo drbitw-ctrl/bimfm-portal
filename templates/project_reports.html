@@ -7,7 +7,7 @@
     <h1>Member &amp; Project Reports</h1>
     <p>Quality, delivery, output, active workload, and logged effort for {{ report.period_label }}.</p>
   </div>
-  <div class="hero-actions"><div class="hero-badge">Updated {{ report.updated_at }}</div></div>
+  <div class="hero-actions">{% if can(Permission.REPORT_EXPORT) %}<a class="button secondary" href="/portal/exports/monthly-reports.xlsx?month={{ selected_month or request.query_params.get('month', '') }}">⇩ {{ t('Export Excel') }}</a>{% endif %}<div class="hero-badge">Updated {{ report.updated_at }}</div></div>
 </section>
 
 <section class="content-card report-period-card">

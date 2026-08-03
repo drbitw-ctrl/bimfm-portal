@@ -7,7 +7,7 @@ from datetime import date, datetime, time as clock_time, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.permissions import Permission, has_permission, normalize_role
 from app.database import get_db
+from app.excel_exports import build_export_workbook
 from app.models import (
     HRAdminAccount,
     Freelancer,
@@ -35,6 +36,7 @@ from app.portal_project_service import (
     project_overview_rows,
     task_overview_rows,
     team_assignment_rows,
+    unassigned_task_overview_rows,
 )
 from app.web_helpers import set_flash, validate_csrf, write_audit
 
@@ -1110,6 +1112,102 @@ def create_portal_router(
         set_flash(request, delivery, "success")
         return RedirectResponse("/portal/tasks?view=active", status_code=303)
 
+    def _export_month(value: str) -> str:
+        text = str(value or "").strip()
+        try:
+            return datetime.strptime(text, "%Y-%m").strftime("%Y-%m")
+        except ValueError:
+            return date.today().strftime("%Y-%m")
+
+    def _export_allowed(account) -> bool:
+        return bool(account and has_permission(normalize_role(account.role), Permission.REPORT_EXPORT))
+
+    def _xlsx_response(content: bytes, filename: str) -> StreamingResponse:
+        return StreamingResponse(
+            iter([content]),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    @router.get("/portal/exports", response_class=HTMLResponse)
+    def export_center(
+        request: Request,
+        month: str = "",
+        database: Session = Depends(get_db),
+    ):
+        account = get_current_admin(request, database)
+        if not account:
+            return RedirectResponse("/admin/login", status_code=303)
+        if not _export_allowed(account):
+            set_flash(request, "Your account cannot export reports.", "error")
+            return RedirectResponse("/admin?access=readonly", status_code=303)
+        selected_month = _export_month(month)
+        return templates.TemplateResponse(
+            request=request,
+            name="export_center.html",
+            context=template_context(
+                request,
+                account=account,
+                selected_month=selected_month,
+                page_title="Excel Export Center",
+                page_description="Download DTR, attendance, tasks, and management reports in Excel format.",
+            ),
+        )
+
+    @router.get("/portal/exports/tasks.xlsx")
+    def export_all_tasks(request: Request, database: Session = Depends(get_db)):
+        account = get_current_admin(request, database)
+        if not _export_allowed(account):
+            return RedirectResponse("/admin/login", status_code=303)
+        content = build_export_workbook(database, month_key=date.today().strftime("%Y-%m"), include_tasks=True)
+        write_audit(database, actor_type="HR_ADMIN", actor_id=account.id, action="EXPORT_ALL_TASKS_XLSX", request=request, target_type="REPORT", details="Exported complete task register.")
+        database.commit()
+        return _xlsx_response(content, f"BIMFM_All_Tasks_{date.today().isoformat()}.xlsx")
+
+    @router.get("/portal/exports/monthly-reports.xlsx")
+    def export_monthly_reports(request: Request, month: str = "", database: Session = Depends(get_db)):
+        account = get_current_admin(request, database)
+        if not _export_allowed(account):
+            return RedirectResponse("/admin/login", status_code=303)
+        selected_month = _export_month(month)
+        content = build_export_workbook(database, month_key=selected_month, include_reports=True)
+        write_audit(database, actor_type="HR_ADMIN", actor_id=account.id, action="EXPORT_MONTHLY_REPORTS_XLSX", request=request, target_type="REPORT", details=f"Exported management reports for {selected_month}.")
+        database.commit()
+        return _xlsx_response(content, f"BIMFM_Monthly_Reports_{selected_month}.xlsx")
+
+    @router.get("/portal/exports/attendance.xlsx")
+    def export_monthly_attendance(request: Request, month: str = "", database: Session = Depends(get_db)):
+        account = get_current_admin(request, database)
+        if not _export_allowed(account):
+            return RedirectResponse("/admin/login", status_code=303)
+        selected_month = _export_month(month)
+        content = build_export_workbook(database, month_key=selected_month, include_attendance=True)
+        write_audit(database, actor_type="HR_ADMIN", actor_id=account.id, action="EXPORT_MONTHLY_ATTENDANCE_XLSX", request=request, target_type="REPORT", details=f"Exported attendance for {selected_month}.")
+        database.commit()
+        return _xlsx_response(content, f"BIMFM_Attendance_{selected_month}.xlsx")
+
+    @router.get("/portal/exports/dtr.xlsx")
+    def export_monthly_dtr_register(request: Request, month: str = "", database: Session = Depends(get_db)):
+        account = get_current_admin(request, database)
+        if not _export_allowed(account):
+            return RedirectResponse("/admin/login", status_code=303)
+        selected_month = _export_month(month)
+        content = build_export_workbook(database, month_key=selected_month, include_dtr=True)
+        write_audit(database, actor_type="HR_ADMIN", actor_id=account.id, action="EXPORT_DTR_REGISTER_XLSX", request=request, target_type="REPORT", details=f"Exported DTR register for {selected_month}.")
+        database.commit()
+        return _xlsx_response(content, f"BIMFM_DTR_Register_{selected_month}.xlsx")
+
+    @router.get("/portal/exports/all.xlsx")
+    def export_complete_package(request: Request, month: str = "", database: Session = Depends(get_db)):
+        account = get_current_admin(request, database)
+        if not _export_allowed(account):
+            return RedirectResponse("/admin/login", status_code=303)
+        selected_month = _export_month(month)
+        content = build_export_workbook(database, month_key=selected_month, include_all=True)
+        write_audit(database, actor_type="HR_ADMIN", actor_id=account.id, action="EXPORT_COMPLETE_REPORT_PACKAGE_XLSX", request=request, target_type="REPORT", details=f"Exported complete Excel package for {selected_month}.")
+        database.commit()
+        return _xlsx_response(content, f"BIMFM_Complete_Report_Package_{selected_month}.xlsx")
+
     @router.get("/portal/{module_name}", response_class=HTMLResponse)
     def portal_module(
         request: Request,
@@ -1269,7 +1367,7 @@ def create_portal_router(
                 for row in project_overview_rows(database, limit=500)
             ]
         elif module_name == "tasks":
-            normalized_view = view if view in {"active", "completed"} else "all"
+            normalized_view = view if view in {"active", "completed", "unassigned"} else "all"
             source_rows = task_overview_rows(database, status_mode=normalized_view, limit=1000)
             if normalized_view == "active":
                 page_title = "Active Tasks"
@@ -1279,6 +1377,10 @@ def create_portal_router(
                 page_title = "Recently Completed Tasks"
                 description = "Completed task history ordered by the latest update."
                 section_title = "Completed Task Register"
+            elif normalized_view == "unassigned":
+                page_title = "Unassigned Tasks"
+                description = "Open tasks that still require a member assignment."
+                section_title = "Unassigned Task Register"
             else:
                 page_title = "Tasks"
                 description = "All project tasks, including active, review, completed, on-hold, and unassigned records."
@@ -1390,6 +1492,7 @@ def create_portal_router(
             columns = [
                 {"key": "member", "label": "Member", "type": "person"},
                 {"key": "availability", "label": "Availability", "type": "status"},
+                {"key": "join_date", "label": "Join Date", "type": "date"},
                 {"key": "working_task", "label": "Working Now", "type": "translatable_text"},
                 {"key": "working_project", "label": "Current Project", "type": "text"},
                 {"key": "elapsed", "label": "Elapsed", "type": "elapsed_minutes"},
@@ -1401,8 +1504,9 @@ def create_portal_router(
             for row in team_assignment_rows(database):
                 live = live_by_member.get(int(row["freelancer_id"]))
                 availability = (
-                    "Working Now" if live
-                    else "Busy" if int(row["active_task_count"]) > 0
+                    "Overdue" if int(row["overdue_task_count"]) > 0
+                    else "Working Now" if live
+                    else "Assigned" if int(row["active_task_count"]) > 0
                     else "Available"
                 )
                 availability_class = (
@@ -1415,6 +1519,7 @@ def create_portal_router(
                     "_row_highlight": availability_class,
                     "member": {"primary": row["name"], "secondary": row.get("member_code", "")},
                     "availability": availability,
+                    "join_date": row.get("join_date", "—"),
                     "working_task": live["task_title"] if live else "No active timer",
                     "working_project": live["project_name"] if live else "—",
                     "elapsed": int(live["elapsed_minutes"]) if live else None,
@@ -1437,7 +1542,7 @@ def create_portal_router(
                 section_note=section_note,
                 account=account,
                 module_name=module_name,
-                task_view=view if view in {"active", "completed"} else "all",
+                task_view=view if view in {"active", "completed", "unassigned"} else "all",
                 task_filters=task_filters,
                 can_create_task=can_edit_tasks,
                 can_edit_tasks=can_edit_tasks,

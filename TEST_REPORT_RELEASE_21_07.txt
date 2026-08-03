@@ -1,0 +1,61 @@
+BIMFM PORTAL RELEASE 21.07 — VALIDATION REPORT
+================================================
+Version: 3.0.7-release21.07-exports-join-dates-unassigned
+Date: 2026-08-03
+Result: PASSED
+Failures: 0
+Errors: 0
+
+STATIC VALIDATION
+-----------------
+Python application and Alembic compilation: PASS
+JavaScript syntax: PASS (3 files)
+Jinja template parsing: PASS (49 templates)
+Application import: PASS
+Application routes: PASS (125 routes)
+English localization keys: PASS (1,877)
+Traditional Chinese localization keys: PASS (1,877)
+Localization catalog parity: PASS
+Alembic head: PASS (20260803_0010)
+
+DATABASE MIGRATION
+------------------
+Fresh database migration to head: PASS
+Upgrade from 20260802_0009 to 20260803_0010: PASS
+Seven confirmed Join Dates backfilled: PASS
+Raymond Navarro freelancer profile deactivated: PASS
+Raymond Navarro login account deactivated: PASS
+No task, attendance, DTR, payroll, or Work Order rewrite: PASS
+
+EXCEL EXPORTS
+-------------
+All Tasks workbook generation: PASS
+Monthly Reports workbook generation: PASS
+Monthly Attendance workbook generation: PASS
+DTR Register workbook generation: PASS
+Complete Excel package generation: PASS
+Complete package worksheet count: PASS (13 sheets)
+Workbook integrity with populated test data: PASS
+Workbook integrity with empty database: PASS
+Administrator complete-package route: PASS
+Supervisor read-only task export route: PASS
+Finance DTR export route: PASS
+Export audit workflow: PASS
+
+DASHBOARD AND MY WORK
+---------------------
+Availability legend rendered: PASS
+Overdue state assigned red with highest precedence: PASS
+Active Work Order state assigned blue: PASS
+Assigned/no-timer state assigned yellow: PASS
+Available state assigned green: PASS
+Unassigned Tasks Dashboard metric and details: PASS
+Administrator My Work unassigned metric and details: PASS
+Supervisor My Work unassigned metric and details: PASS
+Join Date shown in Team Availability/My Work: PASS
+Work Status arrow corrected to /correct route: PASS
+
+TEST ENVIRONMENT
+----------------
+Validation used isolated SQLite databases and FastAPI TestClient sessions.
+Production PostgreSQL was not accessed or modified.

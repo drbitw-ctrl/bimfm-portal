@@ -1,132 +1,109 @@
 {% extends "base.html" %}
 {% block title %}{{ t('Team Command Center') }} · {{ app_name }}{% endblock %}
 {% block content %}
+{% macro availability_cards(rows, state, empty_message) -%}
+  {% if rows %}
+  <div class="availability-state-grid">
+    {% for row in rows %}
+    <article class="member-availability-card state-{{ state }}{% if state == 'overdue' %} has-overdue{% endif %}">
+      <div class="member-card-head">
+        <span class="person-avatar member-command-avatar">{{ row.name[:1]|upper }}</span>
+        <div class="member-card-identity">
+          <strong>{{ row.name }}</strong>
+          <small>{{ row.code }}{% if row.join_date and row.join_date != '—' %} · {{ t('Joined') }} {{ row.join_date }}{% endif %}</small>
+        </div>
+        <span class="availability-badge {{ state }}"><i></i>{{ t('Available') if state == 'available' else (t('Working Now') if state == 'working' else (t('Assigned') if state == 'assigned' else t('Overdue'))) }}</span>
+      </div>
+      {% if state == 'available' %}
+      <div class="member-ready-state"><strong>{{ t('Ready for assignment') }}</strong><span>{{ row.project_count }} {{ t('projects') }} · {{ row.completed_task_count }} {{ t('completed tasks') }}</span></div>
+      {% else %}
+      <div class="member-current-tasks">
+        {% for task in row.current_tasks %}
+        <div class="member-current-task{% if task.is_overdue %} overdue{% endif %}">
+          <div class="member-task-copy"><strong>{{ task.title }}</strong><small>{{ task.project_name }}{% if task.discipline %} · {{ discipline_label(task.discipline) }}{% endif %}</small></div>
+          <div class="member-task-meta"><span class="member-task-progress">{{ task.progress }}%</span><small{% if task.is_overdue %} class="overdue-text"{% endif %}>{{ t('Overdue') if task.is_overdue else t('Due') }} · {{ task.due_label }}</small></div>
+          <span class="member-task-bar" aria-hidden="true"><i style="width: {{ task.progress }}%"></i></span>
+        </div>
+        {% endfor %}
+        {% if row.remaining_task_count %}<a class="member-more-tasks" href="/portal/tasks?view=active">+{{ row.remaining_task_count }} {{ t('more active tasks') }}</a>{% endif %}
+      </div>
+      {% endif %}
+      <div class="member-card-footer">
+        <span class="attendance-mini status-{{ row.attendance_status|lower|replace(' ', '-') }}">{{ t(row.attendance_status) }}</span>
+        {% if row.time_in and row.time_in not in ['—', 'Not recorded'] %}<span>{{ t('Time in') }} {{ row.time_in }}</span>{% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}<div class="dashboard-empty compact">{{ t(empty_message) }}</div>{% endif %}
+{%- endmacro %}
+
 <section class="dashboard-hero dashboard-command-hero">
   <div>
-    <span class="eyebrow hero-eyebrow">
-      {{ t('FINANCE WORKSPACE') if current_staff_role == 'FINANCE' else (t('READ-ONLY TEAM OPERATIONS') if current_staff_role == 'SUPERVISOR' else t('TEAM OPERATIONS')) }}
-    </span>
+    <span class="eyebrow hero-eyebrow">{{ t('FINANCE WORKSPACE') if current_staff_role == 'FINANCE' else (t('READ-ONLY TEAM OPERATIONS') if current_staff_role == 'SUPERVISOR' else t('TEAM OPERATIONS')) }}</span>
     <h1>{{ t('Team Command Center') }}</h1>
-    <p>{{ t('See who is ready for work, who is busy, and the current tasks assigned to every active member without opening another page.') }}</p>
+    <p>{{ t('See current team capacity, active work, overdue responsibility, and tasks that still require assignment.') }}</p>
     <div class="hero-actions">
       {% if can(Permission.PROJECT_EDIT) %}<a class="button light-button" href="/portal/tasks/new">＋ {{ t('New Task') }}</a>{% endif %}
       <a class="button glass-button" href="/portal/tasks?view=active">{{ t('Open active tasks') }}</a>
-      <a class="button glass-button" href="/portal/team-workload">{{ t('Team Availability') }}</a>
+      <a class="button glass-button" href="/portal/tasks?view=unassigned">{{ t('Unassigned Tasks') }}</a>
+      {% if can(Permission.REPORT_EXPORT) %}<a class="button glass-button" href="/portal/exports">⇩ {{ t('Export Excel') }}</a>{% endif %}
     </div>
   </div>
-  <div class="command-snapshot" aria-label="{{ t('Current team workload summary') }}">
-    <div class="command-snapshot-item available">
-      <span>{{ t('Available') }}</span><strong>{{ team_available_count }}</strong><small>{{ t('ready for assignment') }}</small>
-    </div>
-    <div class="command-snapshot-item busy">
-      <span>{{ t('Busy') }}</span><strong>{{ team_assigned_count }}</strong><small>{{ t('with active tasks') }}</small>
-    </div>
-    <div class="command-snapshot-item risk">
-      <span>{{ t('Overdue') }}</span><strong>{{ team_with_overdue_count }}</strong><small>{{ t('members need attention') }}</small>
-    </div>
+  <div class="command-snapshot command-snapshot-five" aria-label="{{ t('Current team workload summary') }}">
+    <div class="command-snapshot-item available"><span>{{ t('Available') }}</span><strong>{{ team_available_count }}</strong><small>{{ t('ready for assignment') }}</small></div>
+    <div class="command-snapshot-item working"><span>{{ t('Working Now') }}</span><strong>{{ team_working_count }}</strong><small>{{ t('active Work Orders') }}</small></div>
+    <div class="command-snapshot-item assigned"><span>{{ t('Assigned') }}</span><strong>{{ team_assigned_count }}</strong><small>{{ t('without active timer') }}</small></div>
+    <div class="command-snapshot-item risk"><span>{{ t('Overdue') }}</span><strong>{{ team_with_overdue_count }}</strong><small>{{ t('members need attention') }}</small></div>
+    <div class="command-snapshot-item unassigned"><span>{{ t('Unassigned Tasks') }}</span><strong>{{ active_tasks_without_assignees }}</strong><small>{{ t('tasks require assignment') }}</small></div>
   </div>
 </section>
 
-
-
 <section class="dashboard-panel team-command-panel">
   <div class="panel-heading-modern team-command-heading">
-    <div>
-      <span class="eyebrow">{{ t('LIVE TEAM AVAILABILITY') }}</span>
-      <h2>{{ t('Availability and current assignments') }}</h2>
-      <p>{{ member_workload_count }} {{ t('active members') }} · {{ t('updated from the task register') }}</p>
-    </div>
+    <div><span class="eyebrow">{{ t('LIVE TEAM AVAILABILITY') }}</span><h2>{{ t('Availability and current assignments') }}</h2><p>{{ member_workload_count }} {{ t('active members') }} · {{ t('updated from the task register') }}</p></div>
     <div class="team-command-legend" aria-label="{{ t('Availability legend') }}">
       <span class="availability-legend available"><i></i>{{ t('Available') }}</span>
-      <span class="availability-legend busy"><i></i>{{ t('Busy') }}</span>
-      <span class="availability-legend overdue"><i></i>{{ t('Overdue work') }}</span>
+      <span class="availability-legend working"><i></i>{{ t('Working Now') }}</span>
+      <span class="availability-legend assigned"><i></i>{{ t('Assigned') }}</span>
+      <span class="availability-legend overdue"><i></i>{{ t('Overdue') }}</span>
     </div>
   </div>
-
-  <div class="team-command-stats">
-    <a href="/portal/team-workload" class="team-command-stat available">
-      <span>{{ t('Available now') }}</span><strong>{{ team_available_count }}</strong><small>{{ t('No active task') }}</small>
-    </a>
-    <a href="/portal/team-workload" class="team-command-stat busy">
-      <span>{{ t('Busy now') }}</span><strong>{{ team_assigned_count }}</strong><small>{{ t('At least one active task') }}</small>
-    </a>
-    <a href="/portal/tasks?view=active" class="team-command-stat tasks">
-      <span>{{ t('Active tasks') }}</span><strong>{{ active_task_count }}</strong><small>{{ active_tasks_without_assignees }} {{ t('without assignee') }}</small>
-    </a>
-    <a href="/portal/tasks?view=active" class="team-command-stat risk">
-      <span>{{ t('Overdue tasks') }}</span><strong>{{ overdue_task_count }}</strong><small>{{ team_with_overdue_count }} {{ t('affected members') }}</small>
-    </a>
+  <div class="team-command-stats team-command-stats-five">
+    <a href="/portal/team-workload" class="team-command-stat available"><span>{{ t('Available now') }}</span><strong>{{ team_available_count }}</strong><small>{{ t('Ready for assignment') }}</small></a>
+    <a href="/portal/team-workload" class="team-command-stat working"><span>{{ t('Working now') }}</span><strong>{{ team_working_count }}</strong><small>{{ t('Active Work Order timer') }}</small></a>
+    <a href="/portal/team-workload" class="team-command-stat assigned"><span>{{ t('Assigned') }}</span><strong>{{ team_assigned_count }}</strong><small>{{ t('No active timer') }}</small></a>
+    <a href="/portal/tasks?view=active" class="team-command-stat risk"><span>{{ t('Overdue') }}</span><strong>{{ team_with_overdue_count }}</strong><small>{{ t('Affected members') }}</small></a>
+    <a href="/portal/tasks?view=unassigned" class="team-command-stat unassigned"><span>{{ t('Unassigned Tasks') }}</span><strong>{{ active_tasks_without_assignees }}</strong><small>{{ t('Requires assignment') }}</small></a>
   </div>
-
   {% if member_workload_count %}
-  <div class="availability-board">
-    <section class="availability-group available-group">
-      <div class="availability-group-heading">
-        <div><span class="availability-dot available"></span><h3>{{ t('Available now') }}</h3></div>
-        <span class="availability-count">{{ available_member_rows|length }}</span>
-      </div>
-      {% if available_member_rows %}
-      <div class="available-member-grid">
-        {% for row in available_member_rows %}
-        <article class="member-availability-card available state-available">
-          <div class="member-card-head">
-            <span class="person-avatar member-command-avatar">{{ row.name[:1]|upper }}</span>
-            <div class="member-card-identity"><strong>{{ row.name }}</strong><small>{{ row.code }}</small></div>
-            <span class="availability-badge available"><i></i>{{ t('Available') }}</span>
-          </div>
-          <div class="member-ready-state">
-            <strong>{{ t('Ready for assignment') }}</strong>
-            <span>{{ row.project_count }} {{ t('projects') }} · {{ row.completed_task_count }} {{ t('completed tasks') }}</span>
-          </div>
-          <div class="member-card-footer">
-            <span class="attendance-mini status-{{ row.attendance_status|lower|replace(' ', '-') }}">{{ t(row.attendance_status) }}</span>
-            {% if row.time_in and row.time_in not in ['—', 'Not recorded'] %}<span>{{ t('Time in') }} {{ row.time_in }}</span>{% endif %}
-          </div>
-        </article>
-        {% endfor %}
-      </div>
-      {% else %}<div class="dashboard-empty compact">{{ t('Everyone currently has active work.') }}</div>{% endif %}
-    </section>
-
-    <section class="availability-group busy-group">
-      <div class="availability-group-heading">
-        <div><span class="availability-dot busy"></span><h3>{{ t('Busy · current assignments') }}</h3></div>
-        <span class="availability-count">{{ busy_member_rows|length }}</span>
-      </div>
-      {% if busy_member_rows %}
-      <div class="busy-member-grid">
-        {% for row in busy_member_rows %}
-        <article class="member-availability-card busy state-{{ row.work_state }}{% if row.overdue_task_count %} has-overdue{% endif %}">
-          <div class="member-card-head">
-            <span class="person-avatar member-command-avatar">{{ row.name[:1]|upper }}</span>
-            <div class="member-card-identity"><strong>{{ row.name }}</strong><small>{{ row.active_task_count }} {{ t('active tasks') }}</small></div>
-            {% if row.overdue_task_count %}<span class="availability-badge overdue">{{ row.overdue_task_count }} {{ t('Overdue') }}</span>
-            {% elif row.live_work %}<span class="availability-badge working"><i></i>{{ t('Working Now') }}</span>
-            {% else %}<span class="availability-badge assigned"><i></i>{{ t('Assigned') }}</span>{% endif %}
-          </div>
-
-          <div class="member-current-tasks">
-            {% for task in row.current_tasks %}
-            <div class="member-current-task{% if task.is_overdue %} overdue{% endif %}">
-              <div class="member-task-copy"><strong>{{ task.title }}</strong><small>{{ task.project_name }}{% if task.discipline %} · {{ discipline_label(task.discipline) }}{% endif %}</small></div>
-              <div class="member-task-meta"><span class="member-task-progress">{{ task.progress }}%</span><small{% if task.is_overdue %} class="overdue-text"{% endif %}>{{ t('Overdue') if task.is_overdue else t('Due') }} · {{ task.due_label }}</small></div>
-              <span class="member-task-bar" aria-hidden="true"><i style="width: {{ task.progress }}%"></i></span>
-            </div>
-            {% endfor %}
-            {% if row.remaining_task_count %}<a class="member-more-tasks" href="/portal/tasks?view=active">+{{ row.remaining_task_count }} {{ t('more active tasks') }}</a>{% endif %}
-          </div>
-
-          <div class="member-card-footer">
-            <span class="attendance-mini status-{{ row.attendance_status|lower|replace(' ', '-') }}">{{ t(row.attendance_status) }}</span>
-            {% if row.time_in and row.time_in not in ['—', 'Not recorded'] %}<span>{{ t('Time in') }} {{ row.time_in }}</span>{% endif %}
-          </div>
-        </article>
-        {% endfor %}
-      </div>
-      {% else %}<div class="dashboard-empty compact">{{ t('No active assignments are currently recorded.') }}</div>{% endif %}
-    </section>
+  <div class="availability-board availability-board-four">
+    <section class="availability-group available-group"><div class="availability-group-heading"><div><span class="availability-dot available"></span><h3>{{ t('Available now') }}</h3></div><span class="availability-count">{{ available_member_rows|length }}</span></div>{{ availability_cards(available_member_rows, 'available', 'No members are currently available.') }}</section>
+    <section class="availability-group working-group"><div class="availability-group-heading"><div><span class="availability-dot working"></span><h3>{{ t('Working Now') }}</h3></div><span class="availability-count">{{ working_member_rows|length }}</span></div>{{ availability_cards(working_member_rows, 'working', 'No active Work Order timers.') }}</section>
+    <section class="availability-group assigned-group"><div class="availability-group-heading"><div><span class="availability-dot assigned"></span><h3>{{ t('Assigned — no active timer') }}</h3></div><span class="availability-count">{{ assigned_member_rows|length }}</span></div>{{ availability_cards(assigned_member_rows, 'assigned', 'No assigned members are waiting to start.') }}</section>
+    <section class="availability-group overdue-group"><div class="availability-group-heading"><div><span class="availability-dot overdue"></span><h3>{{ t('Overdue responsibility') }}</h3></div><span class="availability-count">{{ overdue_member_rows|length }}</span></div>{{ availability_cards(overdue_member_rows, 'overdue', 'No members currently have overdue work.') }}</section>
   </div>
   {% else %}<div class="dashboard-empty">{{ t('No active team members are available yet.') }}</div>{% endif %}
+</section>
+
+<section class="dashboard-panel unassigned-task-panel">
+  <div class="panel-heading-modern">
+    <div><span class="eyebrow">{{ t('ASSIGNMENT CONTROL') }}</span><h2>{{ t('Unassigned Tasks') }}</h2><p>{{ t('Open tasks that do not yet have a responsible freelancer.') }}</p></div>
+    <a class="button secondary" href="/portal/tasks?view=unassigned">{{ t('View all unassigned tasks') }}</a>
+  </div>
+  {% if unassigned_task_rows %}
+  <div class="unassigned-task-summary"><strong>{{ active_tasks_without_assignees }}</strong><span>{{ t('tasks currently require assignment') }}</span></div>
+  <div class="modern-table-wrap"><table class="modern-table smart-table unassigned-task-table" data-card-table><thead><tr><th>{{ t('Project') }}</th><th>{{ t('Task') }}</th><th>{{ t('Priority') }}</th><th>{{ t('Status') }}</th><th>{{ t('Start Date') }}</th><th>{{ t('Deadline') }}</th><th></th></tr></thead><tbody>
+  {% for row in unassigned_task_rows[:12] %}<tr>
+    <td data-label="{{ t('Project') }}"><strong>{{ row.project_name }}</strong><small>{{ row.project_engineer }}</small></td>
+    <td data-label="{{ t('Task') }}">{{ row.title }}{% if row.discipline and row.discipline != '—' %}<small>{{ discipline_label(row.discipline) }}</small>{% endif %}</td>
+    <td data-label="{{ t('Priority') }}"><span class="priority-chip priority-{{ row.priority|lower }}">{{ t(row.priority|replace('_',' ')|title) }}</span></td>
+    <td data-label="{{ t('Status') }}"><span class="status-chip status-{{ row.status|lower|replace('_','-') }}">{{ t(row.status|replace('_',' ')|title) }}</span></td>
+    <td data-label="{{ t('Start Date') }}">{{ row.start_date }}</td><td data-label="{{ t('Deadline') }}">{{ row.due_date }}</td>
+    <td>{% if can(Permission.PROJECT_EDIT) %}<a class="button small primary" href="/portal/tasks/{{ row.id }}/edit">{{ t('Assign Task') }}</a>{% else %}<a class="row-arrow" href="/portal/tasks?view=unassigned">→</a>{% endif %}</td>
+  </tr>{% endfor %}
+  </tbody></table></div>
+  {% else %}<div class="all-clear unassigned-clear"><span>✓</span><div><strong>{{ t('All active tasks are assigned') }}</strong><small>{{ t('No open task currently requires assignment.') }}</small></div></div>{% endif %}
 </section>
 
 <section class="dashboard-panel live-work-panel" data-live-work-board data-live-work-endpoint="/portal/live-work.json" data-can-remind="{{ '1' if can(Permission.TASK_REMINDER_SEND) else '0' }}">
@@ -165,7 +142,7 @@
             <td><span class="status-chip status-{{ row.status|lower|replace(' ', '-') }}">{{ t(row.status) }}</span></td>
             <td><strong class="table-value">{{ row.time_in }}</strong></td>
             <td><span class="task-count">{{ row.active_tasks }}</span></td>
-            <td><a class="row-arrow" href="/admin/attendance/{{ row.freelancer_id }}/{{ row.date }}">→</a></td>
+            <td><a class="row-arrow" href="/admin/attendance/{{ row.freelancer_id }}/{{ row.date }}/correct">→</a></td>
           </tr>
         {% endfor %}
         </tbody>

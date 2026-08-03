@@ -926,7 +926,9 @@ def team_assignment_rows(database: Session) -> list[dict[str, object]]:
             {
                 "freelancer_id": freelancer.id,
                 "code": freelancer.freelancer_code,
+                "member_code": freelancer.freelancer_code,
                 "name": freelancer.full_name,
+                "join_date": freelancer.join_date.isoformat() if freelancer.join_date else "—",
                 "project_count": projects,
                 "active_task_count": active_tasks,
                 "completed_task_count": len(
@@ -1077,7 +1079,7 @@ def task_overview_rows(
 ) -> list[dict[str, object]]:
     """Return task-register rows with resolved member names.
 
-    ``status_mode`` accepts ``all``, ``active``, or ``completed``. Project
+    ``status_mode`` accepts ``all``, ``active``, ``completed``, or ``unassigned``. Project
     members are presented by their directory names only; internal placeholder
     identities and mapping labels are never exposed in the task register.
     """
@@ -1100,6 +1102,20 @@ def task_overview_rows(
             PortalTask.updated_at.desc(),
             PortalProject.name,
             PortalTask.id.desc(),
+        )
+    elif normalized_mode == "unassigned":
+        statement = statement.where(
+            PortalTask.status.notin_(CLOSED_TASK_STATUSES),
+            ~select(PortalTaskAssignment.id)
+            .where(PortalTaskAssignment.task_id == PortalTask.id)
+            .exists(),
+        )
+        statement = statement.order_by(
+            PortalTask.due_date.is_(None),
+            PortalTask.due_date,
+            PortalTask.priority.desc(),
+            PortalProject.name,
+            PortalTask.id,
         )
     else:
         statement = statement.order_by(
@@ -1188,3 +1204,8 @@ def task_overview_rows(
 def active_task_overview_rows(database: Session, *, limit: int = 200) -> list[dict[str, object]]:
     """Backward-compatible active-task wrapper."""
     return task_overview_rows(database, status_mode="active", limit=limit)
+
+
+def unassigned_task_overview_rows(database: Session, *, limit: int = 200) -> list[dict[str, object]]:
+    """Return open tasks that have no assignee records."""
+    return task_overview_rows(database, status_mode="unassigned", limit=limit)

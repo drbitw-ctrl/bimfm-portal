@@ -29,6 +29,7 @@ from app.models import (
 from app.portal_project_service import (
     active_task_overview_rows,
     team_assignment_rows,
+    unassigned_task_overview_rows,
 )
 from app.work_order_service import live_work_rows
 
@@ -94,6 +95,26 @@ def active_task_rows(database: Session, *, limit: int = 500) -> list[dict[str, A
     return rows
 
 
+def unassigned_task_rows(database: Session, *, limit: int = 100) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for source in unassigned_task_overview_rows(database, limit=limit):
+        due_date = str(source.get("due_date") or "—")
+        rows.append({
+            "id": int(source["id"]),
+            "project": str(source.get("project_name") or "—"),
+            "task": str(source.get("title") or "—"),
+            "status": str(source.get("status") or "NOT_STARTED"),
+            "priority": str(source.get("priority") or "NORMAL"),
+            "discipline": str(source.get("discipline") or "—"),
+            "progress": int(source.get("progress") or 0),
+            "start_date": str(source.get("start_date") or "—"),
+            "deadline": due_date,
+            "row_class": _task_highlight(str(source.get("status") or ""), due_date),
+            "href": f"/portal/tasks/{int(source['id'])}/edit",
+        })
+    return rows
+
+
 def team_availability_rows(database: Session) -> list[dict[str, Any]]:
     live_by_member = {
         int(row["freelancer_id"]): row
@@ -124,7 +145,8 @@ def team_availability_rows(database: Session) -> list[dict[str, Any]]:
         rows.append({
             "freelancer_id": freelancer_id,
             "name": str(source.get("name") or "—"),
-            "code": str(source.get("member_code") or ""),
+            "code": str(source.get("member_code") or source.get("code") or ""),
+            "join_date": str(source.get("join_date") or "—"),
             "availability": availability,
             "state": state,
             "row_class": row_class,
@@ -382,15 +404,18 @@ def build_role_my_work(database: Session, *, role: str) -> dict[str, Any]:
 
     task_rows = active_task_rows(database)
     team_rows = team_availability_rows(database)
+    unassigned_rows = unassigned_task_rows(database)
     result: dict[str, Any] = {
         "role": normalized_role,
         "task_rows": task_rows,
         "team_rows": team_rows,
+        "unassigned_task_rows": unassigned_rows,
         "task_summary": {
             "active": len(task_rows),
             "delayed": sum(row["row_class"] == "task-row-delayed" for row in task_rows),
             "in_progress": sum(str(row["status"]).upper() == "IN_PROGRESS" for row in task_rows),
             "for_review": sum(str(row["status"]).upper() == "FOR_REVIEW" for row in task_rows),
+            "unassigned": len(unassigned_rows),
         },
         "team_summary": {
             "available": sum(row["state"] == "available" for row in team_rows),

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Excel Export Center') }} · {{ app_name }}{% endblock %}
+{% block content %}
+<section class="operations-page-header compact export-center-header">
+  <div class="operations-header-copy">
+    <span class="eyebrow">{{ t('CONTROLLED DATA EXPORT') }}</span>
+    <h1>{{ t('Excel Export Center') }}</h1>
+    <p>{{ t('Download operational records in professionally formatted Excel workbooks for review, reporting, and controlled archiving.') }}</p>
+  </div>
+  <form class="export-month-control" method="get" action="/portal/exports">
+    <label><span>{{ t('Report Month') }}</span><input type="month" name="month" value="{{ selected_month }}" required></label>
+    <button class="button secondary" type="submit">{{ t('Apply Month') }}</button>
+  </form>
+</section>
+
+<section class="export-package-grid">
+  <article class="export-package-card featured">
+    <span class="export-package-icon">⇩</span>
+    <div><span class="eyebrow">{{ t('COMPLETE PACKAGE') }}</span><h2>{{ t('All Tasks and Reports') }}</h2><p>{{ t('Exports the task register, projects, team availability, attendance, DTR, requests, performance, project reports, and time utilization in one workbook.') }}</p></div>
+    <a class="button primary" href="/portal/exports/all.xlsx?month={{ selected_month }}">{{ t('Download Complete Excel') }}</a>
+  </article>
+  <article class="export-package-card">
+    <span class="export-package-icon">☷</span><div><h2>{{ t('All Tasks') }}</h2><p>{{ t('Complete task register with assignment, schedule, status, progress, and Quality Score.') }}</p></div>
+    <a class="button secondary" href="/portal/exports/tasks.xlsx">{{ t('Download Excel') }}</a>
+  </article>
+  <article class="export-package-card">
+    <span class="export-package-icon">▤</span><div><h2>{{ t('Monthly Reports') }}</h2><p>{{ t('Projects, team availability, performance, requests, and Task Time Utilization for management review.') }}</p></div>
+    <a class="button secondary" href="/portal/exports/monthly-reports.xlsx?month={{ selected_month }}">{{ t('Download Excel') }}</a>
+  </article>
+  <article class="export-package-card">
+    <span class="export-package-icon">◷</span><div><h2>{{ t('Monthly Attendance') }}</h2><p>{{ t('Daily attendance records, rendered time, late time, undertime, and review status.') }}</p></div>
+    <a class="button secondary" href="/portal/exports/attendance.xlsx?month={{ selected_month }}">{{ t('Download Excel') }}</a>
+  </article>
+  <article class="export-package-card">
+    <span class="export-package-icon">DTR</span><div><h2>{{ t('DTR Register') }}</h2><p>{{ t('Monthly DTR summary and day-by-day DTR supporting details for the selected month.') }}</p></div>
+    <a class="button secondary" href="/portal/exports/dtr.xlsx?month={{ selected_month }}">{{ t('Download Excel') }}</a>
+  </article>
+</section>
+
+<section class="content-card export-guidance-card">
+  <div><span class="eyebrow">{{ t('EXPORT GUIDANCE') }}</span><h2>{{ t('Use the selected month for monthly records') }}</h2><p>{{ t('Task and project registers reflect current portal records. Attendance, DTR, leave, overtime, and monthly report sheets use the month selected above.') }}</p></div>
+  <span class="status-chip status-completed">{{ t('Excel format') }} · .xlsx</span>
+</section>
+{% endblock %}

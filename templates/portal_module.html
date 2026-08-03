@@ -11,6 +11,7 @@
   <div class="operations-header-actions">
     {% if can_create_task %}<a class="button primary" href="/portal/tasks/new">＋ {{ t('New Task') }}</a>{% endif %}
     {% if module_name == 'team-workload' %}<a class="button secondary" href="/admin/project-team">{{ t('Project Team Detail') }}</a>{% endif %}
+    {% if can(Permission.REPORT_EXPORT) %}<a class="button secondary" href="{{ '/portal/exports/tasks.xlsx' if module_name == 'tasks' else '/portal/exports' }}">⇩ {{ t('Export Excel') }}</a>{% endif %}
   </div>
   <div class="operations-stat-strip">
     {% for card in cards %}
@@ -31,6 +32,7 @@
     <div class="action-row">
       {% if module_name == 'team-workload' %}<a class="button secondary" href="/admin/project-team">{{ t('Project Team Detail') }}</a>{% endif %}
       {% if can_create_task %}<a class="button secondary" href="/portal/tasks/new">{{ t('Create Task') }}</a>{% endif %}
+      {% if can(Permission.REPORT_EXPORT) %}<a class="button secondary" href="/portal/exports">{{ t('Excel Export Center') }}</a>{% endif %}
     </div>
   </div>
 

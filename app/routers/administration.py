@@ -5,6 +5,7 @@ Dependencies are injected during application startup as a compatibility bridge.
 """
 from __future__ import annotations
 
+from datetime import date
 from fastapi import APIRouter
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import joinedload
@@ -12,6 +13,7 @@ from sqlalchemy.orm import joinedload
 from app.auth.permissions import Permission, has_permission, normalize_role
 from app.calendar_board import build_reminder_calendar
 from app.database import Base
+from app.portal_project_service import unassigned_task_overview_rows
 from app.models import (
     AttendanceCalculation,
     AttendanceCorrection,
@@ -323,18 +325,10 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                 row["assignment_status"] == "No project assignment"
                 for row in project_team_rows
             )
-            team_available_count = sum(
-                int(row["active_task_count"]) == 0
-                for row in project_team_rows
-            )
-            team_assigned_count = sum(
-                int(row["active_task_count"]) > 0
-                for row in project_team_rows
-            )
-            team_with_overdue_count = sum(
-                int(row["overdue_task_count"]) > 0
-                for row in project_team_rows
-            )
+            team_available_count = 0
+            team_working_count = 0
+            team_assigned_count = 0
+            team_with_overdue_count = 0
 
             attendance_by_member = {
                 int(row["freelancer_id"]): row for row in today_rows
@@ -367,23 +361,27 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                 )
 
             available_member_rows = sorted(
-                (
-                    row for row in member_workload_rows
-                    if row["availability_status"] == "Available"
-                ),
+                (row for row in member_workload_rows if row["work_state"] == "available"),
                 key=lambda row: str(row["name"]).casefold(),
             )
-            busy_member_rows = sorted(
-                (
-                    row for row in member_workload_rows
-                    if row["availability_status"] == "Busy"
-                ),
-                key=lambda row: (
-                    -int(row["overdue_task_count"]),
-                    -int(row["active_task_count"]),
-                    str(row["name"]).casefold(),
-                ),
+            working_member_rows = sorted(
+                (row for row in member_workload_rows if row["work_state"] == "working"),
+                key=lambda row: str(row["name"]).casefold(),
             )
+            assigned_member_rows = sorted(
+                (row for row in member_workload_rows if row["work_state"] == "assigned"),
+                key=lambda row: (-int(row["active_task_count"]), str(row["name"]).casefold()),
+            )
+            overdue_member_rows = sorted(
+                (row for row in member_workload_rows if row["work_state"] == "overdue"),
+                key=lambda row: (-int(row["overdue_task_count"]), str(row["name"]).casefold()),
+            )
+            busy_member_rows = working_member_rows + assigned_member_rows + overdue_member_rows
+            team_available_count = len(available_member_rows)
+            team_working_count = len(working_member_rows)
+            team_assigned_count = len(assigned_member_rows)
+            team_with_overdue_count = len(overdue_member_rows)
+            unassigned_task_rows = unassigned_task_overview_rows(database, limit=200)
             attendance_recorded_count = today_complete + today_working
 
             return templates.TemplateResponse(
@@ -412,10 +410,15 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                     projects_without_members=project_health.projects_without_members,
                     active_tasks_without_assignees=project_health.active_tasks_without_assignees,
                     team_available_count=team_available_count,
+                    team_working_count=team_working_count,
                     team_assigned_count=team_assigned_count,
                     team_with_overdue_count=team_with_overdue_count,
                     available_member_rows=available_member_rows,
+                    working_member_rows=working_member_rows,
+                    assigned_member_rows=assigned_member_rows,
+                    overdue_member_rows=overdue_member_rows,
                     busy_member_rows=busy_member_rows,
+                    unassigned_task_rows=unassigned_task_rows,
                     member_workload_count=len(member_workload_rows),
                     attendance_recorded_count=attendance_recorded_count,
                     live_work_rows=live_work,
@@ -759,6 +762,7 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
         full_name: str = Form(...),
         email: str = Form(""),
         timezone_name: str = Form(DEFAULT_TIMEZONE),
+        join_date: str = Form(""),
         username: str = Form(...),
         temporary_password: str = Form(...),
         confirm_password: str = Form(...),
@@ -776,6 +780,14 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
         full_name = full_name.strip()
         email = email.strip().lower() or None
         timezone_name = timezone_name.strip() or DEFAULT_TIMEZONE
+        join_date_text = join_date.strip()
+        parsed_join_date = None
+        if join_date_text:
+            try:
+                parsed_join_date = date.fromisoformat(join_date_text)
+            except ValueError:
+                set_flash(request, "Join Date must use YYYY-MM-DD format.", "error")
+                return RedirectResponse(form_redirect, status_code=303)
         username = username.strip().lower()
 
         with SessionLocal() as database:
@@ -850,6 +862,7 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                 full_name=full_name,
                 email=email,
                 timezone_name=timezone_name,
+                join_date=parsed_join_date,
                 is_active=True,
             )
             database.add(freelancer)
@@ -907,6 +920,50 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
             "/admin/freelancers",
             status_code=303,
         )
+
+    @router.post("/admin/freelancers/{freelancer_id}/join-date")
+    def update_freelancer_join_date(
+        freelancer_id: int,
+        request: Request,
+        csrf: str = Form(...),
+        join_date: str = Form(""),
+    ):
+        redirect_path = "/admin/freelancers"
+        if not validate_csrf(request, csrf):
+            set_flash(request, "Invalid form token.", "error")
+            return RedirectResponse(redirect_path, status_code=303)
+        text = join_date.strip()
+        parsed = None
+        if text:
+            try:
+                parsed = date.fromisoformat(text)
+            except ValueError:
+                set_flash(request, "Join Date must use YYYY-MM-DD format.", "error")
+                return RedirectResponse(redirect_path, status_code=303)
+        with SessionLocal() as database:
+            admin = get_current_admin(request, database)
+            if admin is None:
+                return RedirectResponse("/admin/login", status_code=303)
+            if not _staff_can_manage(admin):
+                return RedirectResponse("/admin?access=readonly", status_code=303)
+            freelancer = database.get(Freelancer, freelancer_id)
+            if freelancer is None:
+                set_flash(request, "Freelancer was not found.", "error")
+                return RedirectResponse(redirect_path, status_code=303)
+            freelancer.join_date = parsed
+            write_audit(
+                database,
+                actor_type="HR_ADMIN",
+                actor_id=admin.id,
+                action="UPDATE_FREELANCER_JOIN_DATE",
+                request=request,
+                target_type="FREELANCER",
+                target_id=freelancer.id,
+                details=f"Join date set to {parsed.isoformat() if parsed else 'blank'} for {freelancer.full_name}.",
+            )
+            database.commit()
+        set_flash(request, "Join Date updated.", "success")
+        return RedirectResponse(redirect_path, status_code=303)
 
     @router.post("/admin/freelancers/{freelancer_id}/toggle")
     def toggle_freelancer(

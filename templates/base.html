@@ -59,12 +59,14 @@
       {{ nav_link('/portal/team-workload', t('Team Availability'), '◫') }}
       <a href="/portal/tasks?view=active" class="{% if request.url.path == '/portal/tasks' and request.query_params.get('view') == 'active' %}active{% endif %}" data-nav-path="/portal/tasks" data-nav-query="view=active"><span class="nav-icon">▶</span><span>{{ t('Active Tasks') }}</span></a>
       <a href="/portal/tasks?view=completed" class="{% if request.url.path == '/portal/tasks' and request.query_params.get('view') == 'completed' %}active{% endif %}" data-nav-path="/portal/tasks" data-nav-query="view=completed"><span class="nav-icon">✓</span><span>{{ t('Recently Completed Tasks') }}</span></a>
+      <a href="/portal/tasks?view=unassigned" class="{% if request.url.path == '/portal/tasks' and request.query_params.get('view') == 'unassigned' %}active{% endif %}" data-nav-path="/portal/tasks" data-nav-query="view=unassigned"><span class="nav-icon">!</span><span>{{ t('Unassigned Tasks') }}</span></a>
       {{ nav_link('/portal/performance', t('Performance'), '↗') }}
       {{ nav_link('/portal/projects', t('Projects'), '▦') }}
       {{ nav_link('/portal/reports', t('Project Reports'), '▤') }}
       {{ nav_link('/portal/time-utilization', t('Task Time Utilization'), '◴') }}
       {{ nav_link('/admin/project-team', t('Project Team'), '◎') }}
       {{ nav_link('/portal/calendar', t('Reminder Calendar'), '□') }}
+      {% if can(Permission.REPORT_EXPORT) %}{{ nav_link('/portal/exports', t('Excel Export Center'), '⇩') }}{% endif %}
 
       {% if can(Permission.ATTENDANCE_VIEW_ALL) %}
       <span class="nav-label">{{ t('HR Management') }}</span>

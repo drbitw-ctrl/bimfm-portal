@@ -21,6 +21,7 @@
         <tr>
           <th>{{ t('Name') }}</th>
           <th>{{ t('Username') }}</th>
+          <th>{{ t('Join Date') }}</th>
           <th>Password State</th>
           <th>{{ t('Status') }}</th>
           <th>Account Actions</th>
@@ -40,6 +41,13 @@
             </div>
           </td>
           <td>{{ freelancer.account.username if freelancer.account else '—' }}</td>
+          <td>
+            <form method="post" action="/admin/freelancers/{{ freelancer.id }}/join-date" class="join-date-inline-form">
+              <input type="hidden" name="csrf" value="{{ csrf_token }}">
+              <input type="date" name="join_date" value="{{ freelancer.join_date.isoformat() if freelancer.join_date else '' }}" aria-label="{{ t('Join Date') }}">
+              <button class="button small secondary" type="submit">{{ t('Save') }}</button>
+            </form>
+          </td>
           <td>
             {% if freelancer.account and freelancer.account.must_change_password %}
               <span class="badge warning">Temporary</span>
