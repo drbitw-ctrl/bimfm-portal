@@ -1,0 +1,48 @@
+BIMFM PORTAL RELEASE 21.09 TEST REPORT
+=======================================
+
+Version:
+3.0.9-release21.09-dashboard-data-backfill
+
+RESULT: PASSED
+FAILURES: 0
+ERRORS: 0
+
+VALIDATION
+----------
+Python compilation: PASSED
+Application import: PASSED
+Application routes: 125
+Jinja templates parsed: 49
+JavaScript syntax: PASSED
+Fresh database migration to 20260803_0012: PASSED
+Upgrade from 20260803_0011 to 20260803_0012: PASSED
+
+DATA MIGRATION TEST
+-------------------
+Task Start Date workbook mappings: 225
+Missing task Start Date backfill: PASSED
+Existing task Start Date protection: PASSED
+Missing project Start Date derivation: PASSED
+Gab leave July 1, 2, 3, and 6: PASSED
+Carlo July 27 leave removal: PASSED
+Alembic head verification: PASSED
+
+DASHBOARD TEST
+--------------
+Upper Working Now group card removed: PASSED
+Available group retained: PASSED
+Assigned group retained: PASSED
+Overdue group retained: PASSED
+Separate Live Work Orders panel retained: PASSED
+Working Now summary counter retained: PASSED
+Responsive three-card layout: PASSED
+
+ATTENDANCE SOURCE CHECK
+-----------------------
+Time In values supplied in workbook: 0
+Time Out values supplied in workbook: 0
+Attendance punches fabricated: NO
+Confirmed leave records imported: YES
+
+ZIP integrity: PASSED
