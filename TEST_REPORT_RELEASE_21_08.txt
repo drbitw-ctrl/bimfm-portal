@@ -1,0 +1,54 @@
+BIMFM Portal Release 21.08 — Validation Report
+================================================
+
+Result: PASSED
+Failures: 0
+Errors: 0
+
+Application validation
+----------------------
+- Python compilation: passed
+- Application import: passed
+- Application routes: 125
+- Jinja templates parsed: 49
+- English localization keys: 1,881
+- Traditional Chinese localization keys: 1,881
+- Localization key parity: passed
+
+Migration validation
+--------------------
+- Upgrade path tested: 20260803_0010 -> 20260803_0011
+- Test database: isolated SQLite database
+- Gabrielle Gameng leave dates created: 2026-07-01, 2026-07-02, 2026-07-03, 2026-07-06
+- Carlo Ninoy Nilo leave on 2026-07-27 removed: passed
+- Task 233 Start Date: 2025-06-16
+- Task 234 Start Date: 2025-06-20
+- Task 235 Start Date: 2025-07-03
+- Task 236 Start Date: 2025-07-15
+- Task 237 Start Date: 2025-07-22
+- Existing non-null task Start Date protection: implemented
+- System audit entry: passed
+
+Interface validation
+--------------------
+- Internal project-code output removed from Project Register table: passed
+- Internal project-code output removed from Open Tasks and Assignees table: passed
+- HR freelancer/member codes preserved: passed
+- Freelancer Dashboard identity card present: passed
+- Full name, freelancer code, Join Date, account status, and timezone fields present: passed
+- Responsive profile-card styling present: passed
+
+Spreadsheet-source validation
+-----------------------------
+- Updated task workbook read successfully
+- Five external-link Start Date values recovered and converted to literal Excel dates
+- Cleaned task workbook formula-error scan: 0 matches
+- Corrected July attendance workbook created
+- Carlo July 27 leave removed
+- Gabrielle July 1–3 and July 6 leave confirmed
+- July workbook still has blank Time In/Time Out and Member Code fields; no historical punch times were invented
+
+Production database access
+--------------------------
+- Production database was not accessed during testing.
+- Production changes occur only when Alembic revision 20260803_0011 is deployed.

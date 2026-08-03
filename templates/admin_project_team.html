@@ -138,7 +138,7 @@
     <div class="panel-heading-modern"><div><span class="eyebrow">PROJECT REGISTER</span><h2>Projects</h2><p>Projects and current assignment coverage.</p></div><a class="text-link" href="/portal/projects">Open project module →</a></div>
     {% if project_rows %}
     <div class="modern-table-wrap"><table class="modern-table smart-table" data-card-table><thead><tr><th>Project</th><th>Status</th><th>Progress</th><th>Members</th><th>Active Tasks</th><th>Deadline</th></tr></thead><tbody>
-    {% for row in project_rows %}<tr><td><strong>{{ row.code }}</strong><small>{{ row.name }}</small></td><td>{{ row.status }}</td><td>{{ row.progress }}%</td><td>{{ row.member_count }}</td><td>{{ row.active_task_count }}</td><td>{{ row.deadline }}</td></tr>{% endfor %}
+    {% for row in project_rows %}<tr><td><strong>{{ row.name }}</strong></td><td>{{ row.status }}</td><td>{{ row.progress }}%</td><td>{{ row.member_count }}</td><td>{{ row.active_task_count }}</td><td>{{ row.deadline }}</td></tr>{% endfor %}
     </tbody></table></div>
     {% else %}<div class="dashboard-empty">No portal projects are available.</div>{% endif %}
   </section>
@@ -160,7 +160,7 @@
   {% include "_task_status_legend.html" %}
   {% if task_rows %}
   <div class="modern-table-wrap"><table class="modern-table smart-table" data-card-table data-sortable-task-table><thead><tr><th data-sort-type="text">Project</th><th data-sort-type="text">Task</th><th data-sort-type="text">Assignees</th><th data-sort-type="status">Status</th><th data-sort-type="priority">Priority</th><th data-sort-type="number">Progress</th><th data-sort-type="date">Due</th></tr></thead><tbody>
-  {% for row in task_rows %}<tr data-task-state="ongoing" class="{{ row.row_highlight if row.row_highlight is defined else ('task-row-attention' if row.status in ['IN_PROGRESS', 'FOR_REVIEW'] else '') }}"><td><strong>{{ row.project_code }}</strong><small>{{ row.project_name }}</small></td><td>{{ row.title }}</td><td>{{ row.assignees }}</td><td>{{ row.status }}</td><td>{{ row.priority }}</td><td>{{ row.progress }}%</td><td>{{ row.due_date }}</td></tr>{% endfor %}
+  {% for row in task_rows %}<tr data-task-state="ongoing" class="{{ row.row_highlight if row.row_highlight is defined else ('task-row-attention' if row.status in ['IN_PROGRESS', 'FOR_REVIEW'] else '') }}"><td><strong>{{ row.project_name }}</strong></td><td>{{ row.title }}</td><td>{{ row.assignees }}</td><td>{{ row.status }}</td><td>{{ row.priority }}</td><td>{{ row.progress }}%</td><td>{{ row.due_date }}</td></tr>{% endfor %}
   </tbody></table></div>
   {% else %}<div class="dashboard-empty">No active portal tasks are available.</div>{% endif %}
 </section>

@@ -4869,3 +4869,105 @@ html[data-theme="dark"] .modern-table tbody tr.task-row-completed > td { backgro
   .command-snapshot-five, .team-command-stats-five { grid-template-columns: 1fr; }
   .export-package-card { grid-template-columns: 1fr; grid-template-areas: "icon" "copy" "action"; }
 }
+
+/* Release 21.08 — freelancer dashboard identity card */
+.freelancer-dashboard-heading {
+  align-items: stretch;
+  gap: 24px;
+}
+
+.freelancer-profile-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  min-width: min(100%, 430px);
+  padding: 16px 18px;
+  border: 1px solid color-mix(in srgb, var(--ui-brand-500) 20%, var(--ui-border));
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ui-brand-100) 62%, var(--ui-surface)), var(--ui-surface));
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--ui-brand-900) 9%, transparent);
+}
+
+.freelancer-profile-avatar {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 15px;
+  color: #fff;
+  background: linear-gradient(145deg, var(--ui-brand-500), var(--ui-brand-800));
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--ui-brand-700) 28%, transparent);
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.freelancer-profile-copy {
+  min-width: 0;
+}
+
+.freelancer-profile-copy > span,
+.freelancer-profile-copy > strong,
+.freelancer-profile-copy > small {
+  display: block;
+}
+
+.freelancer-profile-copy > span {
+  color: var(--ui-brand-700);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.freelancer-profile-copy > strong {
+  overflow: hidden;
+  margin-top: 3px;
+  color: var(--ui-text-strong);
+  font-size: 0.95rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.freelancer-profile-copy > small,
+.freelancer-profile-status > small {
+  margin-top: 3px;
+  color: var(--ui-muted);
+  font-size: 0.69rem;
+}
+
+.freelancer-profile-status {
+  text-align: right;
+}
+
+.freelancer-profile-status > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 9px;
+  border-radius: 999px;
+  color: var(--ui-success);
+  background: var(--ui-success-soft);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.freelancer-profile-status i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 14%, transparent);
+}
+
+@media (max-width: 760px) {
+  .freelancer-profile-card {
+    grid-template-columns: auto minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .freelancer-profile-status {
+    grid-column: 2;
+    text-align: left;
+  }
+}
