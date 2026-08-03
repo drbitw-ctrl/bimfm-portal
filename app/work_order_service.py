@@ -38,6 +38,8 @@ from app.portal_project_service import current_freelancer_portal_tasks, portal_t
 ACTIVE_SESSION_STATUS = "ACTIVE"
 STOPPED_SESSION_STATUS = "STOPPED"
 CLOSED_TASK_STATUSES = {"COMPLETED", "CANCELLED"}
+MIN_ACTIVITY_REPORT_LENGTH = 10
+MAX_ACTIVITY_REPORT_LENGTH = 1000
 
 
 def _aware(value: datetime) -> datetime:
@@ -118,6 +120,7 @@ def _complete_work_session(
     session: TaskWorkSession,
     stopped_at: datetime,
     notes: str = "",
+    require_activity_report: bool = False,
 ) -> tuple[TaskWorkSession, DailyTask]:
     """Finalize one active timer and mirror it into Daily Tasks.
 
@@ -137,22 +140,30 @@ def _complete_work_session(
     portal_status = str(getattr(task, "status", "IN_PROGRESS") or "IN_PROGRESS").upper()
     daily_status = "COMPLETED" if portal_status == "COMPLETED" else "IN_PROGRESS"
     progress = max(0, min(100, int(getattr(task, "progress", 0) or 0)))
-    clean_notes = notes.strip() or None
+    clean_notes = " ".join(str(notes or "").strip().split()) or None
+    if clean_notes and len(clean_notes) > MAX_ACTIVITY_REPORT_LENGTH:
+        raise ValueError("The Daily Task Report is too long. Use 1,000 characters or fewer.")
+    if require_activity_report and (
+        clean_notes is None or len(clean_notes) < MIN_ACTIVITY_REPORT_LENGTH
+    ):
+        raise ValueError(
+            "Enter the work activities completed for this Work Order before stopping the timer."
+        )
 
     daily_task = DailyTask(
         freelancer_id=freelancer.id,
         portal_task_id=session.portal_task_id,
         synced_project_task_id=None,
-        task_date=_local_date(stop_time, freelancer.timezone_name),
+        task_date=_local_date(start_time, freelancer.timezone_name),
         project_code=(project.project_code if project else session.project_code),
         project_name=(project.name if project else session.project_name),
         discipline=(getattr(task, "discipline", None) or getattr(project, "discipline", None) or session.discipline),
         task_description=(getattr(task, "title", None) or session.task_title),
-        accomplishment=None,
+        accomplishment=clean_notes,
         task_status=daily_status,
         minutes_spent=duration_minutes,
         completion_percentage=progress,
-        notes=clean_notes,
+        notes=None,
     )
     database.add(daily_task)
     database.flush()
@@ -183,6 +194,7 @@ def stop_work_session(
         session=session,
         stopped_at=_aware(stopped_at or utc_now()),
         notes=notes,
+        require_activity_report=True,
     )
 
 
@@ -302,6 +314,13 @@ def freelancer_work_order_view(database: Session, freelancer: Freelancer) -> dic
 
 
 def live_work_rows(database: Session) -> list[dict[str, Any]]:
+    """Return every active freelancer Work Order for management visibility.
+
+    One timer per freelancer is enforced by the database. The defensive
+    de-duplication below also keeps the dashboard stable if a legacy database
+    contains more than one open row for the same member: the newest active row
+    is displayed, while every other member remains visible.
+    """
     statement = (
         select(TaskWorkSession, Freelancer, PortalTask, PortalProject)
         .join(Freelancer, Freelancer.id == TaskWorkSession.freelancer_id)
@@ -312,16 +331,23 @@ def live_work_rows(database: Session) -> list[dict[str, Any]]:
             TaskWorkSession.stopped_at.is_(None),
             Freelancer.is_active.is_(True),
         )
-        .order_by(TaskWorkSession.started_at, Freelancer.full_name)
+        .order_by(
+            Freelancer.full_name.asc(),
+            TaskWorkSession.started_at.desc(),
+            TaskWorkSession.id.desc(),
+        )
     )
     now = utc_now()
-    rows: list[dict[str, Any]] = []
+    rows_by_member: dict[int, dict[str, Any]] = {}
     for session, freelancer, task, project in database.execute(statement).all():
+        freelancer_id = int(freelancer.id)
+        if freelancer_id in rows_by_member:
+            continue
         started = _aware(session.started_at)
         elapsed_minutes = max(0, int((now - started).total_seconds() // 60))
-        rows.append({
+        rows_by_member[freelancer_id] = {
             "session_id": session.id,
-            "freelancer_id": freelancer.id,
+            "freelancer_id": freelancer_id,
             "member_name": freelancer.full_name,
             "member_code": freelancer.freelancer_code,
             "task_id": session.portal_task_id,
@@ -335,8 +361,11 @@ def live_work_rows(database: Session) -> list[dict[str, Any]]:
             "progress": max(0, min(100, int(getattr(task, "progress", 0) or 0))),
             "priority": str(getattr(task, "priority", "NORMAL") or "NORMAL"),
             "due_date": getattr(task, "due_date", None),
-        })
-    return rows
+        }
+    return sorted(
+        rows_by_member.values(),
+        key=lambda row: (str(row["member_name"]).casefold(), int(row["freelancer_id"])),
+    )
 
 
 def unread_reminder_count(database: Session, freelancer_id: int) -> int:

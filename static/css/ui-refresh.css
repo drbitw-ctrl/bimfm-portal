@@ -3835,8 +3835,10 @@ html[data-theme="dark"] .time-under { color: #7fd7ad; }
   animation: livePulse 1.8s ease-out infinite;
 }
 @keyframes livePulse { 0%, 40% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-danger) 20%, transparent); } 100% { box-shadow: 0 0 0 10px transparent; } }
-.live-work-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.live-work-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; max-height: none; overflow: visible; align-items: stretch; }
 .live-work-card {
+  min-width: 0;
+  height: 100%;
   padding: 16px;
   border: 1px solid color-mix(in srgb, var(--ui-info) 42%, var(--ui-border));
   border-radius: 17px;
@@ -3890,6 +3892,19 @@ html[data-theme="dark"] .time-under { color: #7fd7ad; }
 .stop-work-order-form { display: grid; gap: 9px; }
 .stop-work-order-form label { display: grid; gap: 5px; }
 .stop-work-order-form label span { font-size: 0.64rem; font-weight: 800; }
+.stop-work-order-form textarea {
+  min-width: 280px;
+  min-height: 92px;
+  resize: vertical;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font: inherit;
+  line-height: 1.45;
+}
+.stop-work-order-form small { max-width: 420px; color: var(--ui-muted); font-size: 0.62rem; line-height: 1.4; }
 .work-order-stop-button { width: 100%; }
 .work-order-ready-banner {
   display: flex;

@@ -1879,5 +1879,10 @@
   "MY WORKSPACE": "MY WORKSPACE",
   "Good day": "Good day",
   "FREELANCER ACCOUNT": "FREELANCER ACCOUNT",
-  "Account Active": "Account Active"
+  "Account Active": "Account Active",
+  "Daily Task Report / Work Activities": "Daily Task Report / Work Activities",
+  "List the activities, outputs, or areas completed during this Work Order.": "List the activities, outputs, or areas completed during this Work Order.",
+  "Required. This becomes your Daily Task Report for the date the Work Order was started.": "Required. This becomes your Daily Task Report for the date the Work Order was started.",
+  "Stop and submit daily report": "Stop and submit daily report",
+  "Activity report pending": "Activity report pending"
 }

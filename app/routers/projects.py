@@ -239,11 +239,11 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
                 target_id=session.id,
                 details=(
                     f"Stopped {session.project_name} / {session.task_title}; "
-                    f"recorded {session.duration_minutes} minutes."
+                    f"recorded {session.duration_minutes} minutes and submitted the Daily Task Report."
                 ),
             )
             database.commit()
-        set_flash(request, "Work timer stopped and actual time was recorded.", "success")
+        set_flash(request, "Work timer stopped. Time and Daily Task Report were recorded.", "success")
         return RedirectResponse("/tasks", status_code=303)
 
     @router.get("/reminders", response_class=HTMLResponse)

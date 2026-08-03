@@ -28,10 +28,11 @@
   <form method="post" action="/tasks/work-orders/stop" class="stop-work-order-form">
     <input type="hidden" name="csrf" value="{{ csrf_token }}">
     <label>
-      <span>{{ t('Optional work note') }}</span>
-      <input name="notes" maxlength="500" placeholder="{{ t('Briefly note what you worked on.') }}">
+      <span>{{ t('Daily Task Report / Work Activities') }}</span>
+      <textarea name="notes" rows="4" minlength="10" maxlength="1000" required placeholder="{{ t('List the activities, outputs, or areas completed during this Work Order.') }}"></textarea>
+      <small>{{ t('Required. This becomes your Daily Task Report for the date the Work Order was started.') }}</small>
     </label>
-    <button class="button danger-button work-order-stop-button" type="submit">■ {{ t('Stop and record time') }}</button>
+    <button class="button danger-button work-order-stop-button" type="submit">■ {{ t('Stop and submit daily report') }}</button>
   </form>
 </section>
 {% else %}
@@ -89,7 +90,7 @@
   {% if work_orders.today_sessions %}
   <div class="modern-table-wrap">
     <table class="modern-table smart-table" data-card-table>
-      <thead><tr><th>{{ t('Project') }}</th><th>{{ t('Task') }}</th><th>{{ t('Started') }}</th><th>{{ t('Stopped') }}</th><th>{{ t('Actual Time') }}</th><th>{{ t('Status') }}</th></tr></thead>
+      <thead><tr><th>{{ t('Project') }}</th><th>{{ t('Task') }}</th><th>{{ t('Started') }}</th><th>{{ t('Stopped') }}</th><th>{{ t('Actual Time') }}</th><th>{{ t('Daily Task Report') }}</th><th>{{ t('Status') }}</th></tr></thead>
       <tbody>
       {% for row in work_orders.today_sessions %}
       <tr data-task-state="{{ 'ongoing' if row.status == 'ACTIVE' else 'closed' }}">
@@ -98,6 +99,7 @@
         <td>{{ row.started_at }}</td>
         <td>{{ row.stopped_at or '—' }}</td>
         <td>{% if row.status == 'ACTIVE' %}<span class="live-inline-timer" data-started-at="{{ row.started_at.isoformat() }}">{{ t('Running') }}</span>{% else %}<strong>{{ duration_label(row.duration_minutes) }}</strong>{% endif %}</td>
+        <td>{{ row.notes or ('—' if row.status == 'ACTIVE' else t('Activity report pending')) }}</td>
         <td><span class="status-chip status-{{ row.status|lower }}">{{ t('Working now') if row.status == 'ACTIVE' else t('Recorded') }}</span></td>
       </tr>
       {% endfor %}
@@ -121,14 +123,14 @@
   </div>
   <div class="modern-table-wrap">
     <table class="modern-table smart-table dense-table" id="dailyTaskTable" data-card-table data-sortable-task-table>
-      <thead><tr><th data-sort-type="date">{{ t('Date') }}</th><th data-sort-type="text">{{ t('Project') }}</th><th data-sort-type="text">{{ t('Discipline') }}</th><th data-sort-type="text">{{ t('Task') }}</th><th data-sort-type="status">{{ t('Status') }}</th><th data-sort-type="number">{{ t('Actual Time') }}</th><th data-sort-type="text">{{ t('Notes') }}</th></tr></thead>
+      <thead><tr><th data-sort-type="date">{{ t('Date') }}</th><th data-sort-type="text">{{ t('Project') }}</th><th data-sort-type="text">{{ t('Discipline') }}</th><th data-sort-type="text">{{ t('Task') }}</th><th data-sort-type="status">{{ t('Status') }}</th><th data-sort-type="number">{{ t('Actual Time') }}</th><th data-sort-type="text">{{ t('Daily Task Report') }}</th></tr></thead>
       <tbody>
       {% for row in rows %}
         {% set task_state = row.task_status|upper %}
         <tr class="{{ 'task-row-completed' if task_state == 'COMPLETED' else ('task-row-attention' if task_state in ['IN_PROGRESS','FOR_REVIEW'] else '') }}" data-task-state="{{ 'closed' if task_state in ['COMPLETED', 'CANCELLED'] else 'ongoing' }}">
           <td>{{ row.task_date }}</td><td>{{ row.project_name or row.project_code }}</td><td>{{ discipline_label(row.discipline) }}</td><td>{{ row.task_description }}</td>
           <td><span class="status-chip status-{{ row.task_status|lower|replace('_','-') }}">{{ t(row.task_status|replace('_',' ')|title) }}</span></td>
-          <td data-sort-value="{{ row.minutes_spent }}"><strong>{{ duration_label(row.minutes_spent) }}</strong></td><td>{{ row.notes or '—' }}</td>
+          <td data-sort-value="{{ row.minutes_spent }}"><strong>{{ duration_label(row.minutes_spent) }}</strong></td><td>{{ row.accomplishment or row.notes or '—' }}</td>
         </tr>
       {% endfor %}
       </tbody>

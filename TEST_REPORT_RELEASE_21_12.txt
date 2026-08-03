@@ -1,0 +1,46 @@
+BIMFM PORTAL RELEASE 21.12 TEST REPORT
+=======================================
+
+Release: 3.0.12-release21.12-required-daily-task-report
+Result: PASSED
+Failures: 0
+Errors: 0
+
+VALIDATION SUMMARY
+------------------
+- Python application compilation: Passed
+- Application import: Passed
+- Application routes: 125
+- Jinja templates parsed: 49
+- English localization keys: 1,886
+- Traditional Chinese localization keys: 1,886
+- Localization catalog parity: Passed
+- Required textarea HTML validation: Passed
+- Server-side minimum activity-report validation: Passed
+- Maximum activity-report length validation: Passed
+- Blank/short report rejection without stopping timer: Passed
+- Work Order stop with valid activity report: Passed
+- Daily Task record creation: Passed
+- Activity report stored as Daily Task accomplishment: Passed
+- Work session note retention: Passed
+- Work date based on freelancer-local Work Order start date: Passed
+- Actual-minute calculation: Passed
+- Administrator-controlled automatic stop compatibility: Passed
+- No database schema migration: Confirmed
+
+FOCUSED WORKFLOW TEST
+---------------------
+1. Created an active freelancer, project, task, project membership, and task assignment.
+2. Started a Work Order at 09:00 local time.
+3. Attempted to stop using a report shorter than 10 characters.
+   Result: Rejected; active timer preserved.
+4. Stopped with a valid work-activity report.
+   Result: Session stopped and one Daily Task record created.
+5. Confirmed the report was stored in DailyTask.accomplishment.
+6. Confirmed the record date matched the local date the Work Order started.
+7. Confirmed 90 actual minutes were recorded.
+8. Confirmed the existing automatic timer safeguard could still close a session.
+
+PRODUCTION DATA
+---------------
+Testing used an isolated SQLite database. Production data was not accessed or modified.
