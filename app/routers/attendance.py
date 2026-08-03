@@ -99,9 +99,20 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
     def admin_attendance_monthly(
         request: Request,
         month: str = "",
-        freelancer_id: Optional[int] = None,
+        freelancer_id: str = "",
     ):
         selected_month = month.strip() or current_month_key(DEFAULT_TIMEZONE)
+        selected_freelancer_id: Optional[int] = None
+        raw_freelancer_id = (freelancer_id or "").strip()
+        if raw_freelancer_id:
+            try:
+                selected_freelancer_id = int(raw_freelancer_id)
+            except (TypeError, ValueError):
+                set_flash(request, "Invalid freelancer selection.", "error")
+                return RedirectResponse(
+                    f"/admin/attendance/monthly?month={selected_month}",
+                    status_code=303,
+                )
         month_range = parse_month_key(selected_month)
         if month_range is None:
             set_flash(request, "Invalid month. Use YYYY-MM.", "error")
@@ -131,8 +142,8 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                     Freelancer.full_name,
                 )
             )
-            if freelancer_id is not None:
-                query = query.where(Freelancer.id == freelancer_id)
+            if selected_freelancer_id is not None:
+                query = query.where(Freelancer.id == selected_freelancer_id)
 
             results = list(database.execute(query).all())
             daily_ids = [record.id for record, _ in results]
@@ -206,7 +217,7 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                     admin=admin,
                     freelancers=freelancers,
                     selected_month=selected_month,
-                    selected_freelancer_id=freelancer_id,
+                    selected_freelancer_id=selected_freelancer_id,
                     rows=rows,
                     summary=summary,
                     month_lock=month_lock,

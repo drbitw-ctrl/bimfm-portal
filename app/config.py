@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 APP_NAME = "BIMFM Portal"
-APP_VERSION = "3.0.9-release21.09-dashboard-data-backfill"
+APP_VERSION = "3.0.10-release21.10-july-attendance-search-hotfix"
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"

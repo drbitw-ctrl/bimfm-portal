@@ -1,0 +1,49 @@
+BIMFM PORTAL RELEASE 21.10 TEST REPORT
+======================================
+
+Result: PASSED
+Failures: 0
+Errors: 0
+
+APPLICATION VALIDATION
+----------------------
+Python compilation: Passed
+Application import: Passed
+Application routes: 125
+Jinja templates parsed: 49
+JavaScript syntax: Passed
+English localization keys: 1,881
+Traditional Chinese localization keys: 1,881
+Localization parity: Passed
+Application version: 3.0.10-release21.10-july-attendance-search-hotfix
+
+MONTHLY ATTENDANCE SEARCH
+-------------------------
+All Freelancers empty value: Passed (HTTP 200 when authenticated)
+Specific freelancer numeric value: Passed (HTTP 200)
+Invalid freelancer value: Passed (safe redirect; no server error)
+July attendance page rendering: Passed
+
+JULY ATTENDANCE MIGRATION
+-------------------------
+Upgrade 20260803_0012 -> 20260803_0013: Passed
+Active approved roster recognized: 6 members
+Standard weekday records expected with no holidays: 134
+  Five members x 23 weekdays: 115
+  Gabrielle Gameng x 19 attended weekdays: 19
+Gabrielle leave dates excluded from attendance: Passed
+Gabrielle leave July 1, 2, 3, and 6 preserved: Passed
+Carlo July 27 leave removed: Passed
+Inactive Raymond excluded: Passed
+09:00 local Time In conversion: Passed
+18:00 local Time Out conversion: Passed
+60-minute break: Passed
+480 rendered minutes: Passed
+Existing actual historical punch preservation: Passed
+Attendance calculations creation: Passed
+Audit record creation: Passed
+
+DATABASE TESTING
+----------------
+Tests used an isolated SQLite database.
+Production PostgreSQL was not accessed or modified.
