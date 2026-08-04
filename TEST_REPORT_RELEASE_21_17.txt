@@ -1,0 +1,90 @@
+BIM PORTAL RELEASE 21.17 — VALIDATION REPORT
+============================================================
+Version: 3.0.17-release21.17-clear-utilization-completed-filters
+Visible version: 3.0.17
+Result: PASSED
+Failures: 0
+Errors: 0
+
+STATIC AND APPLICATION VALIDATION
+------------------------------------------------------------
+Python application compilation: PASSED
+Application import: PASSED
+Application routes loaded: 126
+Jinja templates parsed: 49
+JavaScript files checked: 3
+JavaScript syntax: PASSED
+English localization keys: 2,061
+Traditional Chinese localization keys: 2,061
+Localization key parity: PASSED
+Missing literal translation keys: 0
+Visible version labels use v3.0.17 only: PASSED
+Full internal build retained for cache control: PASSED
+
+DATABASE AND MIGRATION VALIDATION
+------------------------------------------------------------
+Fresh isolated Alembic upgrade through head: PASSED
+Alembic head: 20260804_0015
+New Release 21.17 migration: NONE
+New tables: NONE
+New columns: NONE
+Production database accessed: NO
+Functional database: ISOLATED SQLITE ONLY
+
+TASK TIME UTILIZATION VALIDATION
+------------------------------------------------------------
+Visible formula: Recorded time on scheduled tasks / Planned time for those same tasks x 100
+Scheduled task planned time: 40 hours
+Scheduled task recorded time: 20 hours
+Calculated Time Budget Used: 50.0%
+Remaining planned time: 20 hours
+Formula assertion: PASSED
+
+Unscheduled task recorded time: 10 hours
+Unlinked project work: 5 hours
+Total excluded project time: 15 hours
+Excluded time remained visible in Total Recorded Time: PASSED
+Excluded time did not affect Time Budget Used: PASSED
+Unmatched time remained separate: PASSED
+
+Actual time source uses Work Order / Daily Task minutes only: PASSED
+Completion-date actual-time estimate removed: PASSED
+Tasks without Start and Deadline remain visible: PASSED
+Tasks without Start and Deadline excluded from percentage: PASSED
+Project and overall numerator/denominator use the same measured task scope: PASSED
+
+UTILIZATION EXCEL VALIDATION
+------------------------------------------------------------
+Project Time Utilization worksheet: PASSED
+Task Time Details worksheet: PASSED
+Planned Time column: PRESENT
+Included Recorded Time column: PRESENT
+Total Recorded Time column: PRESENT
+Excluded Time column: PRESENT
+Remaining / Overrun column: PRESENT
+Time Budget Used % column: PRESENT
+Task-level Calculation column: PRESENT
+Workbook opened successfully with openpyxl: PASSED
+
+RECENTLY COMPLETED TASK FILTER VALIDATION
+------------------------------------------------------------
+This week: PASSED
+Last 2 weeks: PASSED
+Last 3 weeks: PASSED
+This month: PASSED
+Last 3 months: PASSED
+Last 6 months: PASSED
+This year: PASSED
+All time: PASSED
+Invalid period fallback to This week: VERIFIED BY CODE REVIEW
+Date-range query filtering: PASSED
+All-time query: PASSED
+Result count and selected range context: PRESENT
+
+PACKAGE VALIDATION
+------------------------------------------------------------
+Release documentation: PRESENT
+Deployment guide: PRESENT
+Database safety guide: PRESENT
+ZIP integrity: PASSED
+============================================================

@@ -2,6 +2,10 @@
 from __future__ import annotations
 
 import hashlib
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+from app.config import DEFAULT_TIMEZONE
 
 from fastapi import APIRouter
 
@@ -10,6 +14,53 @@ def _internal_daily_project_code(project_name: str) -> str:
     normalized = " ".join(str(project_name or "").strip().split()).casefold()
     digest = hashlib.sha1(normalized.encode("utf-8")).hexdigest()[:16]
     return f"daily-{digest}"[:80]
+
+
+COMPLETED_TASK_PERIOD_OPTIONS = (
+    ("this_week", "This week"),
+    ("last_2_weeks", "Last 2 weeks"),
+    ("last_3_weeks", "Last 3 weeks"),
+    ("this_month", "This month"),
+    ("last_3_months", "Last 3 months"),
+    ("last_6_months", "Last 6 months"),
+    ("this_year", "This year"),
+    ("all_time", "All time"),
+)
+
+
+def _management_today() -> date:
+    try:
+        zone = ZoneInfo(DEFAULT_TIMEZONE)
+    except ZoneInfoNotFoundError:
+        zone = ZoneInfo("UTC")
+    return datetime.now(zone).date()
+
+
+def _month_start_offset(value: date, months_back: int) -> date:
+    month_index = value.year * 12 + (value.month - 1) - max(0, int(months_back))
+    return date(month_index // 12, month_index % 12 + 1, 1)
+
+
+def _completed_period_bounds(period: str, *, today: date) -> tuple[str, str, date | None, date | None]:
+    labels = dict(COMPLETED_TASK_PERIOD_OPTIONS)
+    normalized = period if period in labels else "this_week"
+    if normalized == "this_week":
+        start = today - timedelta(days=today.weekday())
+    elif normalized == "last_2_weeks":
+        start = today - timedelta(days=13)
+    elif normalized == "last_3_weeks":
+        start = today - timedelta(days=20)
+    elif normalized == "this_month":
+        start = today.replace(day=1)
+    elif normalized == "last_3_months":
+        start = _month_start_offset(today, 2)
+    elif normalized == "last_6_months":
+        start = _month_start_offset(today, 5)
+    elif normalized == "this_year":
+        start = date(today.year, 1, 1)
+    else:
+        start = None
+    return normalized, labels[normalized], start, (today if start is not None else None)
 
 
 def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
@@ -77,7 +128,14 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
             )
 
     @router.get("/projects/completed", response_class=HTMLResponse)
-    def freelancer_recently_completed_tasks(request: Request):
+    def freelancer_recently_completed_tasks(
+        request: Request,
+        period: str = "this_week",
+    ):
+        today = _management_today()
+        selected_period, selected_period_label, completed_from, completed_to = (
+            _completed_period_bounds(period, today=today)
+        )
         with SessionLocal() as database:
             account = get_current_freelancer_account(request, database)
             if account is None:
@@ -87,6 +145,9 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
             rows = completed_freelancer_portal_tasks(
                 database,
                 freelancer_id=account.freelancer_id,
+                completed_from=completed_from,
+                completed_to=completed_to,
+                limit=500,
             )
             return templates.TemplateResponse(
                 request=request,
@@ -95,6 +156,12 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
                     request,
                     account=account,
                     rows=rows,
+                    selected_period=selected_period,
+                    selected_period_label=selected_period_label,
+                    period_options=COMPLETED_TASK_PERIOD_OPTIONS,
+                    completed_from=completed_from,
+                    completed_to=completed_to,
+                    completed_count=len(rows),
                 ),
             )
 

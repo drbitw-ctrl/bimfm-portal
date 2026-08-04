@@ -10,6 +10,7 @@ from app.config import (
     ACCOUNT_LOCK_MINUTES,
     APP_NAME,
     APP_VERSION,
+    APP_VERSION_NUMBER,
     MAX_FAILED_LOGIN_ATTEMPTS,
 )
 from app.database import SessionLocal
@@ -150,6 +151,7 @@ def template_context(
         "client_catalog": load_catalog(locale),
         "app_name": APP_NAME,
         "app_version": APP_VERSION,
+        "app_version_number": APP_VERSION_NUMBER,
         "csrf_token": csrf_token(request),
         "flash": flash,
         "duration_label": duration_label,

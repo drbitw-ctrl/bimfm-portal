@@ -118,7 +118,7 @@
 
     <div class="side-nav-foot">
       <span class="system-dot"></span>
-      <div><strong>{{ t('System online') }}</strong><small>v{{ app_version }}</small></div>
+      <div><strong>{{ t('System online') }}</strong><small>v{{ app_version_number }}</small></div>
     </div>
   </aside>
 
@@ -159,7 +159,7 @@
   <div class="public-tools">
     <button class="topbar-icon-button theme-toggle" type="button" data-theme-toggle aria-label="{{ t('Toggle theme') }}"><span class="theme-icon-light">☀</span><span class="theme-icon-dark">☾</span></button>
     <form class="language-switcher" method="post" action="/language" data-readonly-allowed><input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="next_url" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button name="locale" value="en" class="lang-button {{ 'active' if locale == 'en' else '' }}" type="submit">EN</button><span>/</span><button name="locale" value="zh_TW" class="lang-button {{ 'active' if locale == 'zh_TW' else '' }}" type="submit">繁中</button></form>
-    <div class="version">v{{ app_version }}</div>
+    <div class="version">v{{ app_version_number }}</div>
   </div>
 </header>
 <main class="page-shell public-page-shell">
@@ -167,7 +167,7 @@
       {% if flash %}<div class="flash {{ flash.category }}" role="status"><span class="flash-mark">{{ '✓' if flash.category == 'success' else '!' }}</span><span>{{ flash.message }}</span></div>{% endif %}
       {% block content %}{% endblock %}
     </main>
-    <footer><span>{{ t('BIM Portal') }}</span><span>·</span><span>{{ t('Freelancers') }}</span><span>·</span><span>{{ t('Internal Use Only') }}</span><span>·</span><span>{{ t('Build') }} {{ app_version }}</span></footer>
+    <footer><span>{{ t('BIM Portal') }}</span><span>·</span><span>{{ t('Freelancers') }}</span><span>·</span><span>{{ t('Internal Use Only') }}</span><span>·</span><span>{{ t('Build') }} {{ app_version_number }}</span></footer>
 {% if current_staff or current_freelancer %}</div></div>{% endif %}
 <script>
 window.BIMFM_I18N = {

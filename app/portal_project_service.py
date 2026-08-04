@@ -7,7 +7,7 @@ synchronization is required.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, time as clock_time, timezone
 from typing import Optional
 
 from sqlalchemy import exists, func, or_, select
@@ -501,6 +501,8 @@ def completed_freelancer_portal_tasks(
     *,
     freelancer_id: int,
     limit: int = 200,
+    completed_from: Optional[date] = None,
+    completed_to: Optional[date] = None,
 ) -> list[CompletedPortalTask]:
     """Return only completed portal tasks assigned to the signed-in freelancer."""
     assignment_ids = resolved_assignment_ids(
@@ -520,13 +522,24 @@ def completed_freelancer_portal_tasks(
             assignment_match,
             PortalTask.status == "COMPLETED",
         )
-        .order_by(
-            PortalTask.completed_at.is_(None),
-            PortalTask.completed_at.desc(),
-            PortalTask.id.desc(),
-        )
-        .limit(max(1, min(int(limit), 500)))
     )
+    if completed_from is not None:
+        statement = statement.where(
+            PortalTask.completed_at >= datetime.combine(
+                completed_from, clock_time.min, tzinfo=timezone.utc
+            )
+        )
+    if completed_to is not None:
+        statement = statement.where(
+            PortalTask.completed_at < datetime.combine(
+                completed_to + date.resolution, clock_time.min, tzinfo=timezone.utc
+            )
+        )
+    statement = statement.order_by(
+        PortalTask.completed_at.is_(None),
+        PortalTask.completed_at.desc(),
+        PortalTask.id.desc(),
+    ).limit(max(1, min(int(limit), 500)))
     rows: list[CompletedPortalTask] = []
     for task, project in database.execute(statement).all():
         rows.append(

@@ -437,33 +437,38 @@ def _add_utilization_sheets(wb: Workbook, database: Session) -> None:
     _write_rows(
         wb.create_sheet("Project Time Utilization"),
         title="PROJECT TIME UTILIZATION",
-        subtitle="Total actual time, target time, variance, and utilization by project.",
-        headers=["Rank", "Project", "Code", "Status", "Tasks", "Active Tasks", "Target Time", "Actual Time", "Share %", "Variance", "Utilization %", "Unlinked Time"],
+        subtitle="Time Budget Used = recorded time on scheduled tasks divided by planned time for those same tasks.",
+        headers=["Rank", "Project", "Code", "Status", "Tasks", "Measurable Tasks", "Planned Time", "Included Recorded Time", "Total Recorded Time", "Excluded Time", "Remaining / Overrun", "Time Budget Used %", "Unlinked Time"],
         rows=[[
             row.get("actual_rank"), row.get("name"), row.get("code"), row.get("status"), row.get("task_count"),
-            row.get("active_task_count"), _duration(row.get("target_minutes")) if row.get("target_minutes") is not None else "—",
-            _duration(row.get("actual_minutes")), row.get("actual_share_percent"), row.get("variance_label"),
-            row.get("utilization") if row.get("utilization") is not None else "", _duration(row.get("unlinked_minutes")),
+            row.get("measured_task_count"), _duration(row.get("target_minutes")) if row.get("target_minutes") is not None else "—",
+            _duration(row.get("measured_actual_minutes")), _duration(row.get("actual_minutes")), _duration(row.get("excluded_actual_minutes")),
+            row.get("variance_label"), row.get("utilization") if row.get("utilization") is not None else "", _duration(row.get("unlinked_minutes")),
         ] for row in report.get("projects", [])],
-        widths=[9, 30, 16, 14, 10, 12, 14, 14, 11, 18, 14, 14],
+        widths=[9, 30, 16, 14, 10, 15, 14, 20, 18, 15, 20, 18, 14],
         status_column=4,
     )
     task_rows = []
     for project in report.get("projects", []):
         for row in project.get("rows", []):
+            calculation = (
+                f"{_duration(row.get('actual_minutes'))} / {_duration(row.get('target_minutes'))} x 100"
+                if row.get("included_in_utilization")
+                else "Excluded — complete Start and Deadline"
+            )
             task_rows.append([
                 project.get("name"), row.get("title"), row.get("assignees"), row.get("status"), row.get("start_date"),
                 row.get("deadline"), _duration(row.get("target_minutes")) if row.get("target_minutes") is not None else "—",
                 _duration(row.get("actual_minutes")), row.get("variance_label"), row.get("utilization") if row.get("utilization") is not None else "",
-                row.get("contributors"), "Yes" if row.get("is_estimated_actual") else "No",
+                "Yes" if row.get("included_in_utilization") else "No", calculation, row.get("contributors"),
             ])
     _write_rows(
         wb.create_sheet("Task Time Details"),
         title="TASK TIME UTILIZATION DETAILS",
-        subtitle="Task-level target and actual time supporting the project totals.",
-        headers=["Project", "Task", "Assigned Member", "Status", "Start Date", "Deadline", "Target Time", "Actual Time", "Variance", "Utilization %", "Contributors", "Estimated Actual"],
+        subtitle="Only tasks with both Start and Deadline dates are included in the utilization percentage.",
+        headers=["Project", "Task", "Assigned Member", "Status", "Start Date", "Deadline", "Planned Time", "Recorded Time", "Remaining / Overrun", "Time Budget Used %", "Included", "Calculation", "Contributors"],
         rows=task_rows,
-        widths=[28, 34, 26, 15, 13, 13, 14, 14, 18, 14, 42, 15],
+        widths=[28, 34, 26, 15, 13, 13, 14, 14, 20, 18, 11, 30, 42],
         status_column=4,
         due_column=6,
     )

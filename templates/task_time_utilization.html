@@ -3,56 +3,42 @@
 {% block content %}
 {% macro variance_text(value, absolute, direction) -%}
   {%- if value is none -%}—
-  {%- elif direction == 'target' -%}{{ t('On target') }}
-  {%- elif direction == 'over' -%}{{ duration_label(absolute) }} {{ t('over target') }}
-  {%- else -%}{{ duration_label(absolute) }} {{ t('under target') }}
+  {%- elif direction == 'target' -%}{{ t('Exactly on plan') }}
+  {%- elif direction == 'over' -%}{{ duration_label(absolute) }} {{ t('over planned hours') }}
+  {%- else -%}{{ duration_label(absolute) }} {{ t('planned hours remaining') }}
   {%- endif -%}
 {%- endmacro %}
 <section class="hero-panel time-utilization-hero">
   <div>
     <span class="eyebrow">{{ t('PROJECT TIME CONTROL') }}</span>
     <h1>{{ t('Task Time Utilization') }}</h1>
-    <p>{{ t('Compare planned working hours with the actual time freelancers recorded for every project and task.') }}</p>
+    <p>{{ t('See exactly how recorded Work Order time compares with the planned hours for scheduled tasks.') }}</p>
   </div>
   <div class="hero-actions">{% if can(Permission.REPORT_EXPORT) %}<a class="button secondary" href="/portal/exports/monthly-reports.xlsx">⇩ {{ t('Export Excel') }}</a>{% endif %}<div class="hero-badge">{{ t('Updated') }} {{ report.updated_at }}</div></div>
 </section>
 
 <div class="stats-grid time-utilization-summary">
   <article class="stat-card"><span>{{ t('Projects tracked') }}</span><strong>{{ report.summary.project_count }}</strong><small>{{ report.summary.task_count }} {{ t('portal tasks') }}</small></article>
-  <article class="stat-card"><span>{{ t('Total time used') }}</span><strong>{{ duration_label(report.summary.actual_project_minutes) }}</strong><small>{{ t('Across all tracked projects') }}</small></article>
-  <article class="stat-card"><span>{{ t('Target time') }}</span><strong>{{ duration_label(report.summary.target_minutes) if report.summary.target_minutes is not none else '—' }}</strong><small>{{ t('Scheduled workdays × 8 hours') }}</small></article>
-  <article class="stat-card"><span>{{ t('Time utilization') }}</span><strong>{{ '%.1f%%'|format(report.summary.utilization) if report.summary.utilization is not none else '—' }}</strong><small>{{ variance_text(report.summary.variance_minutes, report.summary.variance_absolute_minutes, report.summary.variance_direction) }}</small></article>
-  <article class="stat-card time-top-project"><span>{{ t('Most time used') }}</span><strong>{{ report.summary.top_project_name }}</strong><small>{{ duration_label(report.summary.top_project_actual_minutes) }}</small></article>
-  <article class="stat-card"><span>{{ t('Unmatched time') }}</span><strong>{{ duration_label(report.summary.unmatched_minutes) }}</strong><small>{{ report.summary.unmatched_entries }} {{ t('Daily Task entries need project matching') }}</small></article>
+  <article class="stat-card"><span>{{ t('Total recorded time') }}</span><strong>{{ duration_label(report.summary.actual_project_minutes) }}</strong><small>{{ t('All time linked to tracked projects') }}</small></article>
+  <article class="stat-card"><span>{{ t('Planned time') }}</span><strong>{{ duration_label(report.summary.target_minutes) if report.summary.target_minutes is not none else '—' }}</strong><small>{{ report.summary.targeted_task_count }} {{ t('tasks included in calculation') }}</small></article>
+  <article class="stat-card"><span>{{ t('Recorded time included') }}</span><strong>{{ duration_label(report.summary.measured_actual_minutes) }}</strong><small>{{ t('Only tasks with Start and Deadline') }}</small></article>
+  <article class="stat-card"><span>{{ t('Time budget used') }}</span><strong>{{ '%.1f%%'|format(report.summary.utilization) if report.summary.utilization is not none else '—' }}</strong><small>{{ t('Recorded ÷ Planned × 100') }}</small></article>
+  <article class="stat-card"><span>{{ t('Remaining / Overrun') }}</span><strong class="{{ 'time-over' if report.summary.variance_direction == 'over' else ('time-under' if report.summary.variance_direction == 'under' else '') }}">{{ variance_text(report.summary.variance_minutes, report.summary.variance_absolute_minutes, report.summary.variance_direction) }}</strong><small>{{ t('Compared only within measurable tasks') }}</small></article>
 </div>
 
-{% if report.projects %}
-<section class="content-card project-time-overview">
-  <div class="section-heading">
-    <div><span class="eyebrow">{{ t('PROJECT TIME OVERVIEW') }}</span><h2>{{ t('Total time used by project') }}</h2><p>{{ t('Projects are ranked by actual time used so the largest work effort is visible immediately.') }}</p></div>
-    <strong class="project-time-total">{{ duration_label(report.summary.actual_project_minutes) }}</strong>
-  </div>
-  <div class="project-time-card-grid">
-    {% for project in report.projects %}
-    <a class="project-time-summary-card" href="#project-time-{{ project.id }}">
-      <div class="project-time-card-head"><span class="project-time-rank">#{{ project.actual_rank }}</span><span>{{ discipline_label(project.discipline) }}</span></div>
-      <h3>{{ project.name }}</h3>
-      <strong>{{ duration_label(project.actual_minutes) }}</strong>
-      <small>{{ '%.1f%%'|format(project.actual_share_percent) }} {{ t('of total recorded project time') }}</small>
-      <div class="project-time-share-track" aria-hidden="true"><i style="width: {{ project.actual_bar_percent }}%"></i></div>
-      <div class="project-time-card-meta"><span>{{ t('Target') }} · {{ duration_label(project.target_minutes) if project.target_minutes is not none else '—' }}</span><span>{{ project.active_task_count }} {{ t('active tasks') }}</span></div>
-    </a>
-    {% endfor %}
-  </div>
-</section>
-{% endif %}
-
-<section class="content-card time-method-card">
+<section class="content-card utilization-formula-card">
   <div>
-    <span class="eyebrow">{{ t('CALCULATION METHOD') }}</span>
-    <h2>{{ t('How target and actual time are calculated') }}</h2>
-    <p>{{ t('Target time counts each scheduled workday from Start through Deadline, inclusive, at 8 hours per day. Weekends or rest days follow the active Work Schedule, and active company holidays are excluded.') }}</p>
-    <p>{{ t('Actual time uses linked Daily Task entries first. When a completed task has no Daily Task time, the report estimates time from Start Date through Completion Date at 8 scheduled hours per workday. Estimated values are clearly labelled. Unlinked project work remains separate.') }}</p>
+    <span class="eyebrow">{{ t('CLEAR CALCULATION') }}</span>
+    <h2>{{ t('What the percentage means') }}</h2>
+    <div class="utilization-formula" aria-label="{{ t('Recorded time on scheduled tasks divided by planned time for the same tasks multiplied by one hundred') }}">
+      <span>{{ t('Recorded time on scheduled tasks') }}</span><b>÷</b><span>{{ t('Planned time for those same tasks') }}</span><b>× 100</b>
+    </div>
+    <div class="utilization-meaning-grid">
+      <div><strong>{{ t('Below 100%') }}</strong><span>{{ t('Planned hours are still available.') }}</span></div>
+      <div><strong>{{ t('Exactly 100%') }}</strong><span>{{ t('All planned hours have been used.') }}</span></div>
+      <div><strong>{{ t('Above 100%') }}</strong><span>{{ t('Recorded time has exceeded the plan.') }}</span></div>
+    </div>
+    <p class="muted utilization-caution">{{ t('Time budget used is not a Quality Score or an Overall Performance score. It only compares recorded hours with planned hours.') }}</p>
   </div>
   <form method="get" action="/portal/time-utilization" class="time-project-filter">
     <label><span>{{ t('Project') }}</span><select name="project">
@@ -63,6 +49,35 @@
   </form>
 </section>
 
+{% if report.summary.excluded_actual_minutes > 0 or report.summary.unmatched_minutes > 0 %}
+<section class="utilization-exclusion-grid">
+  <article class="content-card utilization-exclusion-card"><span class="eyebrow">{{ t('VISIBLE BUT EXCLUDED') }}</span><h3>{{ duration_label(report.summary.excluded_actual_minutes) }}</h3><p>{{ t('Recorded project time from tasks without complete Start and Deadline dates, including unlinked project work. It remains in Total Recorded Time but does not affect Time Budget Used.') }}</p></article>
+  <article class="content-card utilization-exclusion-card"><span class="eyebrow">{{ t('UNMATCHED TIME') }}</span><h3>{{ duration_label(report.summary.unmatched_minutes) }}</h3><p>{{ report.summary.unmatched_entries }} {{ t('Daily Task entries do not match a tracked project or task and are not included in project totals.') }}</p></article>
+</section>
+{% endif %}
+
+{% if report.projects %}
+<section class="content-card project-time-overview">
+  <div class="section-heading">
+    <div><span class="eyebrow">{{ t('PROJECT TIME OVERVIEW') }}</span><h2>{{ t('Total recorded time by project') }}</h2><p>{{ t('Projects are ranked by total recorded effort. Each card separately identifies the hours included in utilization.') }}</p></div>
+    <strong class="project-time-total">{{ duration_label(report.summary.actual_project_minutes) }}</strong>
+  </div>
+  <div class="project-time-card-grid">
+    {% for project in report.projects %}
+    <a class="project-time-summary-card" href="#project-time-{{ project.id }}">
+      <div class="project-time-card-head"><span class="project-time-rank">#{{ project.actual_rank }}</span><span>{{ discipline_label(project.discipline) }}</span></div>
+      <h3>{{ project.name }}</h3>
+      <strong>{{ duration_label(project.actual_minutes) }}</strong>
+      <small>{{ '%.1f%%'|format(project.actual_share_percent) }} {{ t('of total recorded project time') }}</small>
+      <div class="project-time-share-track" aria-hidden="true"><i style="width: {{ project.actual_bar_percent }}%"></i></div>
+      <div class="project-time-card-meta"><span>{{ t('Included') }} · {{ duration_label(project.measured_actual_minutes) }}</span><span>{{ t('Planned') }} · {{ duration_label(project.target_minutes) if project.target_minutes is not none else '—' }}</span></div>
+      <div class="project-time-card-meta"><span>{{ t('Budget used') }} · {{ '%.1f%%'|format(project.utilization) if project.utilization is not none else '—' }}</span><span>{{ project.active_task_count }} {{ t('active tasks') }}</span></div>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 {% include "_task_status_legend.html" %}
 
 {% for project in report.projects %}
@@ -71,16 +86,18 @@
     <div>
       <span class="eyebrow">{{ discipline_label(project.discipline) }} · {{ project.code }}</span>
       <h2>{{ project.name }}</h2>
-      <p>{{ project.active_task_count }} {{ t('active tasks') }} · {{ project.task_count }} {{ t('total tasks') }}{% if project.missing_target_count %} · {{ project.missing_target_count }} {{ t('without complete schedule dates') }}{% endif %}{% if project.estimated_actual_task_count %} · {{ project.estimated_actual_task_count }} {{ t('completion-date estimates') }}{% endif %}</p>
+      <p>{{ project.active_task_count }} {{ t('active tasks') }} · {{ project.task_count }} {{ t('total tasks') }} · {{ project.targeted_task_count }} {{ t('measurable tasks') }}{% if project.missing_target_count %} · {{ project.missing_target_count }} {{ t('excluded without complete schedule dates') }}{% endif %}</p>
     </div>
     <div class="time-project-metrics">
-      <div><span>{{ t('Target') }}</span><strong>{{ duration_label(project.target_minutes) if project.target_minutes is not none else '—' }}</strong></div>
-      <div><span>{{ t('Actual') }}</span><strong>{{ duration_label(project.actual_minutes) }}</strong></div>
-      <div><span>{{ t('Variance') }}</span><strong class="{{ 'time-over' if project.variance_direction == 'over' else ('time-under' if project.variance_direction == 'under' else '') }}">{{ variance_text(project.variance_minutes, project.variance_absolute_minutes, project.variance_direction) }}</strong></div>
-      <div><span>{{ t('Utilization') }}</span><strong>{{ '%.1f%%'|format(project.utilization) if project.utilization is not none else '—' }}</strong></div>
+      <div><span>{{ t('Total recorded') }}</span><strong>{{ duration_label(project.actual_minutes) }}</strong></div>
+      <div><span>{{ t('Planned') }}</span><strong>{{ duration_label(project.target_minutes) if project.target_minutes is not none else '—' }}</strong></div>
+      <div><span>{{ t('Included recorded') }}</span><strong>{{ duration_label(project.measured_actual_minutes) }}</strong></div>
+      <div><span>{{ t('Remaining / Overrun') }}</span><strong class="{{ 'time-over' if project.variance_direction == 'over' else ('time-under' if project.variance_direction == 'under' else '') }}">{{ variance_text(project.variance_minutes, project.variance_absolute_minutes, project.variance_direction) }}</strong></div>
+      <div><span>{{ t('Budget used') }}</span><strong>{{ '%.1f%%'|format(project.utilization) if project.utilization is not none else '—' }}</strong></div>
     </div>
   </div>
   {% if project.utilization is not none %}<div class="time-utilization-track" aria-label="{{ t('Project time utilization') }} {{ '%.1f%%'|format(project.utilization) }}"><i class="{{ 'over-target' if project.utilization > 100 else '' }}" style="width: {{ [project.utilization, 100]|min }}%"></i></div>{% endif %}
+  {% if project.excluded_actual_minutes > 0 %}<p class="project-utilization-exclusion">{{ duration_label(project.excluded_actual_minutes) }} {{ t('is visible in Total Recorded but excluded from this project percentage because it has no complete task schedule.') }}</p>{% endif %}
 
   <div class="table-toolbar" data-table-toolbar data-table-target="#timeProjectTable{{ project.id }}" data-record-singular="task" data-record-plural="tasks">
     <label class="table-search"><span class="sr-only">{{ t('Search tasks') }}</span><input type="search" data-table-search placeholder="{{ t('Search task or member') }}"></label>
@@ -94,10 +111,11 @@
         <th data-sort-type="status">{{ t('Status') }}</th>
         <th data-sort-type="date">{{ t('Start') }}</th>
         <th data-sort-type="date">{{ t('Deadline') }}</th>
-        <th data-sort-type="number">{{ t('Target Time') }}</th>
-        <th data-sort-type="number">{{ t('Actual Time') }}</th>
-        <th data-sort-type="number">{{ t('Variance') }}</th>
-        <th data-sort-type="number">{{ t('Utilization') }}</th>
+        <th data-sort-type="number">{{ t('Planned Time') }}</th>
+        <th data-sort-type="number">{{ t('Recorded Time') }}</th>
+        <th data-sort-type="number">{{ t('Remaining / Overrun') }}</th>
+        <th data-sort-type="number">{{ t('Time Budget Used') }}</th>
+        <th data-sort-type="text">{{ t('Calculation') }}</th>
       </tr></thead>
       <tbody>{% for row in project.rows %}
         <tr data-task-state="{{ 'closed' if row.is_closed else 'ongoing' }}" class="{% if row.status == 'COMPLETED' %}task-row-completed{% elif row.is_delayed %}task-row-delayed{% elif row.status in ['IN_PROGRESS', 'FOR_REVIEW'] %}task-row-attention{% endif %}">
@@ -106,20 +124,17 @@
           <td data-sort-value="{{ row.status }}"><span class="status-chip status-{{ row.status|lower|replace('_','-') }}">{{ t(row.status|replace('_',' ')|title) }}</span></td>
           <td data-sort-value="{{ row.start_date }}">{{ row.start_date }}</td>
           <td data-sort-value="{{ row.deadline }}">{{ row.deadline }}</td>
-          <td data-sort-value="{{ row.target_minutes if row.target_minutes is not none else -1 }}"><strong>{{ duration_label(row.target_minutes) if row.target_minutes is not none else '—' }}</strong>{% if row.scheduled_workdays is not none %}<small>{{ row.scheduled_workdays }} {{ t('workdays') }}</small>{% endif %}</td>
-          <td data-sort-value="{{ row.actual_minutes }}"><strong>{{ duration_label(row.actual_minutes) }}</strong>{% if row.is_estimated_actual %}<small class="time-estimate-note">{{ t('Estimated from Start Date to Completion Date') }} · {{ row.estimated_workdays }} {{ t('workdays') }}</small>{% elif row.is_unlinked %}<small>{{ row.linked_entries }} {{ t('unlinked Daily Task entries') }}</small>{% elif row.linked_entries > 0 %}<small>{{ row.linked_entries }} {{ t('Daily Task entries') }}</small>{% else %}<small>{{ t('No time entries yet') }}</small>{% endif %}</td>
-          <td data-sort-value="{{ row.variance_minutes if row.variance_minutes is not none else 999999999 }}"><span class="{{ 'time-over' if row.variance_direction == 'over' else ('time-under' if row.variance_direction == 'under' else '') }}">{% if row.is_unlinked %}{{ t('No task target') }}{% else %}{{ variance_text(row.variance_minutes, row.variance_absolute_minutes, row.variance_direction) }}{% endif %}</span></td>
-          <td data-sort-value="{{ row.utilization if row.utilization is not none else -1 }}">{% if row.utilization is not none %}<span class="metric-pill {{ 'metric-warning' if row.utilization > 100 else 'metric-good' }}">{{ '%.1f%%'|format(row.utilization) }}</span>{% else %}—{% endif %}</td>
+          <td data-sort-value="{{ row.target_minutes if row.target_minutes is not none else -1 }}"><strong>{{ duration_label(row.target_minutes) if row.target_minutes is not none else '—' }}</strong>{% if row.scheduled_workdays is not none %}<small>{{ row.scheduled_workdays }} {{ t('workdays') }} × 8h</small>{% else %}<small>{{ t('Start and Deadline required') }}</small>{% endif %}</td>
+          <td data-sort-value="{{ row.actual_minutes }}"><strong>{{ duration_label(row.actual_minutes) }}</strong>{% if row.is_unlinked %}<small>{{ row.linked_entries }} {{ t('unlinked Daily Task entries') }}</small>{% elif row.linked_entries > 0 %}<small>{{ row.linked_entries }} {{ t('Work Order / Daily Task entries') }}</small>{% else %}<small>{{ t('No recorded time yet') }}</small>{% endif %}</td>
+          <td data-sort-value="{{ row.variance_minutes if row.variance_minutes is not none else 999999999 }}"><span class="{{ 'time-over' if row.variance_direction == 'over' else ('time-under' if row.variance_direction == 'under' else '') }}">{% if row.included_in_utilization %}{{ variance_text(row.variance_minutes, row.variance_absolute_minutes, row.variance_direction) }}{% else %}{{ t('Excluded') }}{% endif %}</span></td>
+          <td data-sort-value="{{ row.utilization if row.utilization is not none else -1 }}">{% if row.utilization is not none %}<span class="metric-pill {{ 'metric-warning' if row.utilization > 100 else ('metric-neutral' if row.actual_minutes == 0 else 'metric-good') }}">{{ '%.1f%%'|format(row.utilization) }}</span>{% else %}<span class="metric-pill metric-neutral">—</span>{% endif %}</td>
+          <td data-sort-value="{{ row.time_budget_status }}">{% if row.included_in_utilization %}<strong class="time-formula-cell">{{ duration_label(row.actual_minutes) }} ÷ {{ duration_label(row.target_minutes) }} × 100</strong><small>{{ t('Included in utilization') }}</small>{% else %}<strong>{{ t('Not calculated') }}</strong><small>{{ t('Complete Start and Deadline to include this task.') }}</small>{% endif %}</td>
         </tr>
       {% endfor %}</tbody>
     </table>
   </div>
 </section>
 {% else %}
-<section class="content-card"><div class="empty-state"><h3>{{ t('No task time records are available.') }}</h3><p>{{ t('Create portal tasks with Start and Deadline dates, then link freelancer Daily Task entries to those tasks.') }}</p></div></section>
+<section class="content-card"><div class="empty-state"><h3>{{ t('No task time records are available.') }}</h3><p>{{ t('Create portal tasks and record Work Order time to begin the report.') }}</p></div></section>
 {% endfor %}
-
-{% if report.summary.unmatched_minutes > 0 %}
-<div class="report-method-note"><strong>{{ t('Unmatched Daily Task time') }}:</strong> {{ duration_label(report.summary.unmatched_minutes) }}. {{ t('These entries do not match a portal task or project. Correct the project selection in the freelancer Daily Task record to include them in project totals.') }}</div>
-{% endif %}
 {% endblock %}

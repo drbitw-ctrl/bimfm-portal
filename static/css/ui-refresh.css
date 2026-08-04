@@ -5490,3 +5490,129 @@ html[data-theme="dark"] .assignment-suggestion-card.state-overdue .suggestion-av
   .assignment-suggestion-grid { grid-template-columns: 1fr; }
   .assignment-suggestion-heading { display: grid; }
 }
+
+
+/* ========================================================================== 
+   Release 21.17 — clear time-budget utilization and completed-task periods
+   ========================================================================== */
+.metric-neutral {
+  color: var(--ui-muted);
+  background: var(--ui-surface-soft);
+}
+.utilization-formula-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  gap: 28px;
+  align-items: end;
+}
+.utilization-formula-card h2 { margin: 5px 0 12px; }
+.utilization-formula {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin: 12px 0 14px;
+}
+.utilization-formula span,
+.utilization-formula b {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 13px;
+  background: var(--ui-surface-soft);
+  text-align: center;
+}
+.utilization-formula b {
+  min-width: 48px;
+  color: var(--ui-accent-strong);
+  font-size: 1rem;
+}
+.utilization-meaning-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+.utilization-meaning-grid > div {
+  padding: 11px 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-surface-soft);
+}
+.utilization-meaning-grid strong,
+.utilization-meaning-grid span { display: block; }
+.utilization-meaning-grid span { margin-top: 3px; color: var(--ui-muted); font-size: .72rem; line-height: 1.4; }
+.utilization-caution { margin: 13px 0 0; line-height: 1.5; }
+.utilization-exclusion-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.utilization-exclusion-card h3 { margin: 5px 0 7px; font-size: 1.5rem; }
+.utilization-exclusion-card p { margin: 0; color: var(--ui-muted); line-height: 1.55; }
+.time-project-metrics { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.project-utilization-exclusion {
+  margin: -5px 26px 18px;
+  padding: 10px 12px;
+  border: 1px dashed var(--ui-border);
+  border-radius: 12px;
+  color: var(--ui-muted);
+  background: var(--ui-surface-soft);
+  font-size: .75rem;
+}
+.time-utilization-table { min-width: 1420px; }
+.time-formula-cell { white-space: nowrap; font-size: .75rem; }
+.completed-period-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 20px;
+  margin-bottom: 16px;
+}
+.completed-period-form {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  min-width: min(100%, 440px);
+}
+.completed-period-form label { flex: 1; }
+.completed-period-form label span {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--ui-muted);
+  font-size: .7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.completed-period-form select { width: 100%; min-height: 43px; }
+.completed-period-summary {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 2px 10px;
+  text-align: right;
+}
+.completed-period-summary span { color: var(--ui-muted); font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+.completed-period-summary strong { grid-row: span 2; font-size: 2rem; color: var(--ui-accent-strong); }
+.completed-period-summary small { color: var(--ui-muted); }
+
+@media (max-width: 1180px) {
+  .time-project-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 850px) {
+  .utilization-formula-card { grid-template-columns: 1fr; }
+  .utilization-formula { grid-template-columns: 1fr; }
+  .utilization-formula b { min-height: 34px; }
+  .utilization-meaning-grid { grid-template-columns: 1fr; }
+  .utilization-exclusion-grid { grid-template-columns: 1fr; }
+  .completed-period-card { align-items: stretch; flex-direction: column; }
+  .completed-period-summary { align-self: stretch; text-align: left; }
+}
+@media (max-width: 620px) {
+  .completed-period-form { flex-direction: column; align-items: stretch; min-width: 0; }
+  .time-project-metrics { grid-template-columns: 1fr 1fr; }
+}

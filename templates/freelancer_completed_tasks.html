@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ t('Recently Completed Tasks') }} · {{ app_name }}{% endblock %}
 {% block content %}
-<div class="toolbar">
+<div class="toolbar completed-page-toolbar">
   <div>
     <span class="eyebrow">{{ t('PERSONAL TASK HISTORY') }}</span>
     <h1>{{ t('Recently Completed Tasks') }}</h1>
@@ -13,11 +13,29 @@
   </div>
 </div>
 
+<section class="content-card completed-period-card">
+  <form method="get" action="/projects/completed" class="completed-period-form">
+    <label><span>{{ t('Completed period') }}</span><select name="period">
+      {% for value, label in period_options %}<option value="{{ value }}" {% if selected_period == value %}selected{% endif %}>{{ t(label) }}</option>{% endfor %}
+    </select></label>
+    <button class="button secondary" type="submit">{{ t('Show tasks') }}</button>
+  </form>
+  <div class="completed-period-summary">
+    <span>{{ t(selected_period_label) }}</span>
+    <strong>{{ completed_count }}</strong>
+    <small>{{ t('completed tasks shown') }}{% if completed_from and completed_to %} · {{ completed_from.isoformat() }} {{ t('to') }} {{ completed_to.isoformat() }}{% endif %}</small>
+  </div>
+</section>
+
 <section class="panel table-panel">
   {% include "_task_status_legend.html" %}
   {% if rows %}
+  <div class="table-toolbar" data-table-toolbar data-table-target="#completedTasksTable" data-record-singular="task" data-record-plural="tasks">
+    <label class="table-search"><span class="sr-only">{{ t('Search tasks') }}</span><input type="search" data-table-search placeholder="{{ t('Search project or task') }}"></label>
+    <span class="table-result-count" data-result-count></span>
+  </div>
   <div class="modern-table-wrap">
-    <table class="modern-table smart-table" data-card-table data-sortable-table>
+    <table class="modern-table smart-table" id="completedTasksTable" data-card-table data-sortable-table>
       <thead>
         <tr>
           <th data-sort-type="text">{{ t('Project') }}</th>
@@ -44,8 +62,8 @@
   </div>
   {% else %}
   <div class="empty-state">
-    <h2>{{ t('No completed tasks yet.') }}</h2>
-    <p>{{ t('Tasks completed under your assigned member profile will appear here.') }}</p>
+    <h2>{{ t('No completed tasks in this period.') }}</h2>
+    <p>{{ t('Choose a wider period, such as Last 3 months or All time, to view more completed tasks.') }}</p>
   </div>
   {% endif %}
 </section>
