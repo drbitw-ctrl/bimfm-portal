@@ -1,0 +1,38 @@
+BIMFM PORTAL RELEASE 21.13 TEST REPORT
+======================================
+
+Release:
+3.0.13-release21.13-dashboard-member-visibility-attendance-card
+
+RESULT
+------
+Passed
+Failures: 0
+Errors: 0
+
+VALIDATION COMPLETED
+--------------------
+- Python compilation passed.
+- Application import passed.
+- Application route count: 125.
+- Jinja template parsing passed.
+- Jinja templates checked: 49.
+- JavaScript syntax passed.
+- English localization keys: 1,888.
+- Traditional Chinese localization keys: 1,888.
+- Localization catalog parity passed.
+- Dashboard grouping helper passed with available, working, assigned, and overdue members.
+- Working members are included in the visible Assigned members section.
+- Assigned-without-timer summary count remains separate from Working Now count.
+- Overdue responsibility retains highest display priority.
+- Database test passed for one completed task plus one ongoing assigned task.
+- The member remained with exactly one active task after the other task was completed.
+- Active task details excluded the completed task and retained the ongoing task.
+- Freelancer attendance card uses the dedicated rounded-card class.
+- Main card, time blocks, calculation blocks, punch buttons, and completion notice have consistent corner styling.
+- No Alembic migration was added.
+
+DATABASE TESTING
+----------------
+The focused task-assignment test used an isolated temporary SQLite database.
+Production PostgreSQL was not accessed or modified.

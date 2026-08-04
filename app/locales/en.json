@@ -1884,5 +1884,7 @@
   "List the activities, outputs, or areas completed during this Work Order.": "List the activities, outputs, or areas completed during this Work Order.",
   "Required. This becomes your Daily Task Report for the date the Work Order was started.": "Required. This becomes your Daily Task Report for the date the Work Order was started.",
   "Stop and submit daily report": "Stop and submit daily report",
-  "Activity report pending": "Activity report pending"
+  "Activity report pending": "Activity report pending",
+  "Assigned members": "Assigned members",
+  "No members currently have active assigned tasks.": "No members currently have active assigned tasks."
 }

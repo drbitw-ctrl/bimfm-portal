@@ -1884,5 +1884,7 @@
   "List the activities, outputs, or areas completed during this Work Order.": "請列出本次工作單完成的工作內容、成果或處理區域。",
   "Required. This becomes your Daily Task Report for the date the Work Order was started.": "必填。此內容將作為工作單開始日期的每日工作報告。",
   "Stop and submit daily report": "停止並提交每日工作報告",
-  "Activity report pending": "工作內容待補"
+  "Activity report pending": "工作內容待補",
+  "Assigned members": "已指派成員",
+  "No members currently have active assigned tasks.": "目前沒有成員擁有進行中的已指派任務。"
 }

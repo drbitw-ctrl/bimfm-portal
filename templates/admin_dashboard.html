@@ -5,16 +5,17 @@
   {% if rows %}
   <div class="availability-state-grid">
     {% for row in rows %}
-    <article class="member-availability-card state-{{ state }}{% if state == 'overdue' %} has-overdue{% endif %}">
+    {% set card_state = row.work_state if row.work_state else state %}
+    <article class="member-availability-card state-{{ card_state }}{% if card_state == 'overdue' %} has-overdue{% endif %}">
       <div class="member-card-head">
         <span class="person-avatar member-command-avatar">{{ row.name[:1]|upper }}</span>
         <div class="member-card-identity">
           <strong>{{ row.name }}</strong>
           <small>{{ row.code }}{% if row.join_date and row.join_date != '—' %} · {{ t('Joined') }} {{ row.join_date }}{% endif %}</small>
         </div>
-        <span class="availability-badge {{ state }}"><i></i>{{ t('Available') if state == 'available' else (t('Working Now') if state == 'working' else (t('Assigned') if state == 'assigned' else t('Overdue'))) }}</span>
+        <span class="availability-badge {{ card_state }}"><i></i>{{ t('Available') if card_state == 'available' else (t('Working Now') if card_state == 'working' else (t('Assigned') if card_state == 'assigned' else t('Overdue'))) }}</span>
       </div>
-      {% if state == 'available' %}
+      {% if card_state == 'available' %}
       <div class="member-ready-state"><strong>{{ t('Ready for assignment') }}</strong><span>{{ row.project_count }} {{ t('projects') }} · {{ row.completed_task_count }} {{ t('completed tasks') }}</span></div>
       {% else %}
       <div class="member-current-tasks">
@@ -79,7 +80,7 @@
   {% if member_workload_count %}
   <div class="availability-board availability-board-three">
     <section class="availability-group available-group"><div class="availability-group-heading"><div><span class="availability-dot available"></span><h3>{{ t('Available now') }}</h3></div><span class="availability-count">{{ available_member_rows|length }}</span></div>{{ availability_cards(available_member_rows, 'available', 'No members are currently available.') }}</section>
-    <section class="availability-group assigned-group"><div class="availability-group-heading"><div><span class="availability-dot assigned"></span><h3>{{ t('Assigned — no active timer') }}</h3></div><span class="availability-count">{{ assigned_member_rows|length }}</span></div>{{ availability_cards(assigned_member_rows, 'assigned', 'No assigned members are waiting to start.') }}</section>
+    <section class="availability-group assigned-group"><div class="availability-group-heading"><div><span class="availability-dot assigned"></span><h3>{{ t('Assigned members') }}</h3></div><span class="availability-count">{{ assigned_member_rows|length }}</span></div>{{ availability_cards(assigned_member_rows, 'assigned', 'No members currently have active assigned tasks.') }}</section>
     <section class="availability-group overdue-group"><div class="availability-group-heading"><div><span class="availability-dot overdue"></span><h3>{{ t('Overdue responsibility') }}</h3></div><span class="availability-count">{{ overdue_member_rows|length }}</span></div>{{ availability_cards(overdue_member_rows, 'overdue', 'No members currently have overdue work.') }}</section>
   </div>
   {% else %}<div class="dashboard-empty">{{ t('No active team members are available yet.') }}</div>{% endif %}
@@ -110,7 +111,7 @@
     <div><span class="eyebrow">{{ t('LIVE WORK ORDERS') }}</span><h2>{{ t('Working now') }}</h2><p>{{ t('Real-time task timers started by freelancers today.') }}</p></div>
     <div class="live-work-summary"><span class="live-pulse"><i></i>{{ live_work_rows|length }} {{ t('active timer') if live_work_rows|length == 1 else t('active timers') }}</span><small data-live-work-updated>{{ t('Refreshes automatically') }}</small></div>
   </div>
-  <div class="live-work-grid" data-live-work-grid>
+  <div class="live-work-grid" data-live-work-grid data-live-work-count="{{ live_work_rows|length }}" aria-live="polite">
     {% if live_work_rows %}
       {% for row in live_work_rows %}
       <article class="live-work-card priority-{{ row.priority|lower }}" data-session-id="{{ row.session_id }}">

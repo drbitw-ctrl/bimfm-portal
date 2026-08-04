@@ -51,6 +51,47 @@ def _staff_can_manage(account) -> bool:
     )
 
 
+def _dashboard_availability_groups(member_workload_rows):
+    """Group dashboard members without hiding active Work Order users.
+
+    The upper availability board intentionally has no separate Working Now
+    column. Members with a live timer therefore remain visible in the
+    Assigned members column, while their individual card keeps the blue
+    Working Now state. Overdue responsibility still has highest priority.
+    """
+    available_rows = sorted(
+        (row for row in member_workload_rows if row["work_state"] == "available"),
+        key=lambda row: str(row["name"]).casefold(),
+    )
+    working_rows = sorted(
+        (row for row in member_workload_rows if row["work_state"] == "working"),
+        key=lambda row: str(row["name"]).casefold(),
+    )
+    assigned_without_timer_rows = sorted(
+        (row for row in member_workload_rows if row["work_state"] == "assigned"),
+        key=lambda row: (-int(row["active_task_count"]), str(row["name"]).casefold()),
+    )
+    overdue_rows = sorted(
+        (row for row in member_workload_rows if row["work_state"] == "overdue"),
+        key=lambda row: (-int(row["overdue_task_count"]), str(row["name"]).casefold()),
+    )
+    assigned_display_rows = sorted(
+        [*working_rows, *assigned_without_timer_rows],
+        key=lambda row: (
+            row["work_state"] != "working",
+            -int(row["active_task_count"]),
+            str(row["name"]).casefold(),
+        ),
+    )
+    return {
+        "available": available_rows,
+        "working": working_rows,
+        "assigned_without_timer": assigned_without_timer_rows,
+        "assigned_display": assigned_display_rows,
+        "overdue": overdue_rows,
+    }
+
+
 def _freelancer_delete_summary(database, freelancer_id: int) -> dict[str, object]:
     """Return dependency counts for the two-step account-deletion review.
 
@@ -360,26 +401,16 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                     }
                 )
 
-            available_member_rows = sorted(
-                (row for row in member_workload_rows if row["work_state"] == "available"),
-                key=lambda row: str(row["name"]).casefold(),
-            )
-            working_member_rows = sorted(
-                (row for row in member_workload_rows if row["work_state"] == "working"),
-                key=lambda row: str(row["name"]).casefold(),
-            )
-            assigned_member_rows = sorted(
-                (row for row in member_workload_rows if row["work_state"] == "assigned"),
-                key=lambda row: (-int(row["active_task_count"]), str(row["name"]).casefold()),
-            )
-            overdue_member_rows = sorted(
-                (row for row in member_workload_rows if row["work_state"] == "overdue"),
-                key=lambda row: (-int(row["overdue_task_count"]), str(row["name"]).casefold()),
-            )
-            busy_member_rows = working_member_rows + assigned_member_rows + overdue_member_rows
+            availability_groups = _dashboard_availability_groups(member_workload_rows)
+            available_member_rows = availability_groups["available"]
+            working_member_rows = availability_groups["working"]
+            assigned_member_rows = availability_groups["assigned_display"]
+            assigned_without_timer_rows = availability_groups["assigned_without_timer"]
+            overdue_member_rows = availability_groups["overdue"]
+            busy_member_rows = working_member_rows + assigned_without_timer_rows + overdue_member_rows
             team_available_count = len(available_member_rows)
             team_working_count = len(working_member_rows)
-            team_assigned_count = len(assigned_member_rows)
+            team_assigned_count = len(assigned_without_timer_rows)
             team_with_overdue_count = len(overdue_member_rows)
             unassigned_task_rows = unassigned_task_overview_rows(database, limit=200)
             attendance_recorded_count = today_complete + today_working

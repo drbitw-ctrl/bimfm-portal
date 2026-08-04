@@ -5003,3 +5003,41 @@ html[data-theme="dark"] .modern-table tbody tr.task-row-completed > td { backgro
     text-align: left;
   }
 }
+
+/* Release 21.13 — dashboard member visibility and consistent freelancer attendance cards */
+.member-layout .freelancer-attendance-card {
+  border-radius: 24px;
+  border: 1px solid var(--ui-border);
+  overflow: hidden;
+}
+.member-layout .freelancer-attendance-card .official-time > div,
+.member-layout .freelancer-attendance-card .today-record > div,
+.member-layout .freelancer-attendance-card .calculation-grid > div {
+  border-radius: 16px;
+  overflow: hidden;
+}
+.member-layout .freelancer-attendance-card .today-record {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.member-layout .freelancer-attendance-card .punch-grid .punch {
+  border-radius: 16px;
+}
+.member-layout .freelancer-attendance-card .completion-note {
+  border-radius: 16px;
+}
+.member-availability-card.state-working {
+  position: relative;
+}
+.member-availability-card.state-working::after {
+  content: "";
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ui-info);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--ui-info) 16%, transparent);
+}
