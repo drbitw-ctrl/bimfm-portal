@@ -1,0 +1,67 @@
+BIM PORTAL RELEASE 21.15 TEST REPORT
+====================================
+
+Release version:
+3.0.15-release21.15-gab-july-comp-credit-correction
+
+RESULT
+------
+Passed
+Failures: 0
+Errors: 0
+
+VALIDATION SUMMARY
+------------------
+Python compilation: Passed
+Application import: Passed
+Application routes: 125
+Jinja templates parsed: 49
+JavaScript syntax: Passed
+English localization keys: 1,917
+Traditional Chinese localization keys: 1,917
+Localization parity: Passed
+Alembic upgrade 20260803_0013 -> 20260804_0014: Passed
+
+GAB JULY 2026 SCENARIO
+----------------------
+Attendance days physically worked: 19
+Approved leave dates: 4
+Approved OT outcomes tested: 2
+Approved OT minutes: 960
+Compensatory credit earned: 960 minutes
+Compensatory credit applied: 960 minutes
+Compensatory leave applied: 2 days
+Effective deduction: 2 days
+Payable workday equivalents: 21 days
+Salary-covered calendar days: 29 of 31
+Opening comp balance with existing OT scenario: 0 minutes
+Closing comp balance: 0 minutes
+Finance ledger balanced: Passed
+
+LEAVE CLASSIFICATION
+--------------------
+2026-07-01: COMPENSATORY_LEAVE, paid, 480 minutes used
+2026-07-02: COMPENSATORY_LEAVE, paid, 480 minutes used
+2026-07-03: APPROVED_LEAVE, unpaid, 0 minutes used
+2026-07-06: APPROVED_LEAVE, unpaid, 0 minutes used
+
+DUPLICATE CREDIT PROTECTION
+---------------------------
+Existing two approved OT ledger credits were detected.
+No Release 21.15 opening-credit adjustment was added in that scenario.
+Passed
+
+FALLBACK CREDIT SCENARIO
+------------------------
+When the two supervisor-approved credits are not yet represented in the ledger,
+the migration adds only the missing shortfall required for two complete 8-hour
+credits. Passed.
+
+DATA SAFETY
+-----------
+Existing attendance punches preserved: Passed
+Existing approved OT claims preserved: Passed
+Existing tasks/projects preserved: Passed
+Finalized DTR preservation logic: Passed
+Non-finalized July DTR invalidation: Passed
+Audit entry creation: Passed
