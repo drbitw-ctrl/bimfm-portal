@@ -71,10 +71,16 @@
       <div class="project-time-card-head"><span class="project-time-rank">#{{ project.actual_rank }}</span><span>{{ discipline_label(project.discipline) }}</span></div>
       <h3>{{ project.name }}</h3>
       <strong>{{ duration_label(project.actual_minutes) }}</strong>
-      <small>{{ '%.1f%%'|format(project.actual_share_percent) }} {{ t('of all project hours') }}</small>
-      <div class="project-time-share-track" aria-hidden="true"><i style="width: {{ project.actual_bar_percent }}%"></i></div>
+      <small>{{ t('All-time hours') }}</small>
+      <div class="project-utilization-bar-label">
+        <span>{{ t('Time budget used') }}</span>
+        <strong>{{ '%.1f%%'|format(project.utilization) if project.utilization is not none else t('No planned time') }}</strong>
+      </div>
+      <div class="project-utilization-bar {{ 'is-unavailable' if project.utilization is none else '' }}" role="progressbar" aria-label="{{ t('Project time utilization') }}" aria-valuemin="0" aria-valuemax="100" {% if project.utilization is not none %}aria-valuenow="{{ [project.utilization, 100]|min }}"{% endif %}>
+        <i class="{{ 'over-target' if project.utilization is not none and project.utilization > 100 else '' }}" style="width: {{ [project.utilization, 100]|min if project.utilization is not none else 0 }}%"></i>
+      </div>
       <div class="project-time-card-meta"><span>{{ t('Recorded') }} · {{ duration_label(project.recorded_minutes) }}</span><span>{{ t('Fallback') }} · {{ duration_label(project.planned_fallback_minutes) }}</span></div>
-      <div class="project-time-card-meta"><span>{{ t('Planned') }} · {{ duration_label(project.target_minutes) if project.target_minutes is not none else '—' }}</span><span>{{ t('Utilization') }} · {{ '%.1f%%'|format(project.utilization) if project.utilization is not none else '—' }}</span></div>
+      <div class="project-time-card-meta"><span>{{ t('Planned') }} · {{ duration_label(project.target_minutes) if project.target_minutes is not none else '—' }}</span><span>{{ t('Utilization time') }} · {{ duration_label(project.measured_actual_minutes) }}</span></div>
     </a>
     {% endfor %}
   </div>

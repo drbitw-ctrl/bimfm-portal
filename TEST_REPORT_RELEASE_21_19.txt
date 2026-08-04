@@ -1,0 +1,41 @@
+BIM PORTAL RELEASE 21.19 VALIDATION REPORT
+==========================================
+
+Version: v3.0.19
+Result: PASSED
+Failures: 0
+Errors: 0
+
+SOURCE AND APPLICATION CHECKS
+-----------------------------
+[PASS] Python source compilation
+[PASS] FastAPI application import
+[PASS] 126 application routes loaded
+[PASS] 49 Jinja templates parsed
+[PASS] JavaScript syntax checks
+[PASS] 2,110 English localization keys loaded
+[PASS] 2,110 Traditional Chinese localization keys loaded
+[PASS] English and Traditional Chinese localization-key parity
+[PASS] Alembic head remains 20260804_0015
+
+PROJECT CARD CHECKS
+-------------------
+[PASS] Project cards display a labelled Time budget used bar
+[PASS] Project-card bar uses the project utilization percentage
+[PASS] Utilization values above 100% retain their numeric value and use warning styling
+[PASS] Projects without planned time show a neutral unavailable bar
+[PASS] All-time hours remain visible on every project card
+[PASS] Recorded, fallback, planned, and utilization-time values remain visible
+[PASS] Relative project-hours percentage removed from the template
+[PASS] Relative project-hours bar removed from the stylesheet
+[PASS] Obsolete relative project-hours calculations removed from reporting output
+
+DATABASE CHECKS
+---------------
+[PASS] No new Alembic migration
+[PASS] No table or column changes
+[PASS] No data rewrite or backfill
+
+PACKAGE CHECKS
+--------------
+[PASS] Release ZIP integrity

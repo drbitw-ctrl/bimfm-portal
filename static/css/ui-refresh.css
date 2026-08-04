@@ -4425,18 +4425,42 @@ html[data-theme="dark"] .modern-table tbody tr.task-row-completed > td { backgro
 .project-time-summary-card > small {
   color: var(--muted);
 }
-.project-time-share-track {
+.project-utilization-bar-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 3px;
+  font-size: .72rem;
+}
+.project-utilization-bar-label span {
+  color: var(--muted);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.project-utilization-bar-label strong {
+  color: var(--ui-accent-strong);
+  font-size: .8rem;
+}
+.project-utilization-bar {
   display: block;
   height: 10px;
   overflow: hidden;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--line) 65%, transparent);
+  background: color-mix(in srgb, var(--line) 72%, transparent);
 }
-.project-time-share-track i {
+.project-utilization-bar i {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--ui-accent), color-mix(in srgb, var(--ui-accent) 58%, #6f63d9));
+  background: linear-gradient(90deg, var(--ui-brand-600), #57b8dd);
+}
+.project-utilization-bar i.over-target {
+  background: linear-gradient(90deg, #d89a23, #d9535b);
+}
+.project-utilization-bar.is-unavailable {
+  background: color-mix(in srgb, var(--line) 55%, transparent);
 }
 .time-project-card {
   scroll-margin-top: 20px;
