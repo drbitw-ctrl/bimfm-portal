@@ -2,7 +2,7 @@
 {% block title %}Freelancer Login · {{ app_name }}{% endblock %}
 {% block content %}
 <section class="auth-card modern-auth">
-  <div class="auth-company-lockup"><img src="{{ url_for('static', path='/images/bimfm-company-logo-web.png') }}" alt="BIMFM Technology · 繽紛科技"></div>
+  <div class="auth-text-lockup"><strong>{{ t('BIM Portal') }}</strong><span>{{ t('Freelancers') }}</span></div>
   <span class="eyebrow">{{ t('FREELANCER ACCESS') }}</span>
   <h1>{{ t('My Workspace') }}</h1>
   <p class="muted">{{ t('Sign in to access attendance, project assignments, daily tasks, leave, and overtime records.') }}</p>

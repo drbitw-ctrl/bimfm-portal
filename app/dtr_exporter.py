@@ -150,7 +150,7 @@ def build_dtr_workbook(
     wb = Workbook()
     summary = wb.active
     summary.title = "Finance Summary"
-    title_row(summary, "BIMFM MONTHLY DTR — FINANCE SUMMARY", 12)
+    title_row(summary, "BIM PORTAL MONTHLY DTR — FINANCE SUMMARY", 12)
 
     details = [
         ("Freelancer", freelancer.full_name, "Code", freelancer.freelancer_code),

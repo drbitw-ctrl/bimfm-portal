@@ -5041,3 +5041,174 @@ html[data-theme="dark"] .modern-table tbody tr.task-row-completed > td { backgro
   background: var(--ui-info);
   box-shadow: 0 0 0 5px color-mix(in srgb, var(--ui-info) 16%, transparent);
 }
+
+/* Release 21.14 · overall performance, text-only portal identity, and login reminders. */
+.text-only-brand {
+  min-height: 58px;
+  padding: 10px 12px;
+}
+.text-only-brand .brand-copy {
+  display: grid;
+  gap: 3px;
+}
+.text-only-brand .brand-copy strong {
+  font-size: 1.08rem;
+  letter-spacing: -0.02em;
+}
+.text-only-brand .brand-copy small {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.text-public-brand {
+  display: grid;
+  gap: 2px;
+  color: var(--ui-text);
+  text-decoration: none;
+}
+.text-public-brand strong {
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+.text-public-brand span {
+  color: var(--ui-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.auth-text-lockup {
+  display: inline-grid;
+  gap: 3px;
+  margin-bottom: 22px;
+  padding: 14px 18px;
+  border: 1px solid var(--ui-border);
+  border-radius: 16px;
+  background: var(--ui-surface-soft);
+}
+.auth-text-lockup strong {
+  color: var(--ui-heading);
+  font-size: 1.08rem;
+  letter-spacing: -0.02em;
+}
+.auth-text-lockup span {
+  color: var(--ui-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.leaderboard-mode-switch {
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+}
+.overall-formula-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+  padding: 18px 22px;
+  border: 1px solid color-mix(in srgb, var(--ui-info) 42%, var(--ui-border));
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--ui-info) 8%, var(--ui-surface));
+}
+.overall-formula-banner span {
+  color: var(--ui-muted);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.overall-formula-banner strong {
+  color: var(--ui-heading);
+  font-size: 1.15rem;
+}
+.overall-score {
+  color: #0f5f46;
+  background: #dff6eb;
+}
+html[data-theme="dark"] .overall-score {
+  color: #b9f3dc;
+  background: #174636;
+}
+.overall-performance-table {
+  min-width: 1000px;
+}
+
+.reminder-page-header {
+  margin-bottom: 18px;
+}
+.login-reminder-notice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 22px;
+  padding: 24px 26px;
+  border: 2px solid color-mix(in srgb, var(--ui-info) 58%, var(--ui-border));
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--ui-info) 10%, var(--ui-surface));
+  box-shadow: var(--ui-shadow-md);
+}
+.login-reminder-icon {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  border-radius: 18px;
+  color: #fff;
+  background: var(--ui-info);
+  font-size: 1.7rem;
+}
+.login-reminder-notice h2 {
+  margin: 3px 0 6px;
+  color: var(--ui-heading);
+  font-size: 1.35rem;
+}
+.login-reminder-notice p {
+  margin: 0;
+  color: var(--ui-muted);
+}
+.reminder-inbox-prominent {
+  gap: 18px;
+}
+.reminder-card-large {
+  border-radius: 22px;
+}
+.reminder-card-large.unread {
+  border-width: 2px;
+  box-shadow: inset 7px 0 0 var(--ui-info), var(--ui-shadow-md);
+}
+.reminder-card-large .email-reminder-meta {
+  padding: 18px 22px;
+}
+.reminder-card-large .email-reminder-content {
+  padding: 24px 26px;
+}
+.reminder-card-large .email-reminder-content h2 {
+  margin: 7px 0 13px;
+  font-size: 1.28rem;
+}
+.reminder-card-large .email-reminder-content p {
+  font-size: 1rem;
+  line-height: 1.75;
+}
+.reminder-card-large .email-reminder-footer {
+  padding: 15px 22px;
+}
+.reminder-new-badge {
+  font-size: 0.7rem;
+}
+
+@media (max-width: 980px) {
+  .leaderboard-mode-switch { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .leaderboard-mode-switch { grid-template-columns: 1fr; }
+  .overall-formula-banner { align-items: flex-start; flex-direction: column; }
+  .login-reminder-notice { grid-template-columns: auto minmax(0, 1fr); }
+  .login-reminder-notice .button { grid-column: 1 / -1; width: 100%; }
+}

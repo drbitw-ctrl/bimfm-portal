@@ -253,10 +253,17 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
             if account is None:
                 return RedirectResponse("/login", status_code=303)
             rows = reminder_rows(database, account.freelancer_id)
+            unread_count = sum(1 for row in rows if row.get("is_unread"))
             return templates.TemplateResponse(
                 request=request,
                 name="freelancer_reminders.html",
-                context=template_context(request, account=account, rows=rows),
+                context=template_context(
+                    request,
+                    account=account,
+                    rows=rows,
+                    unread_count=unread_count,
+                    login_notice=(request.query_params.get("login") == "1"),
+                ),
             )
 
     @router.post("/reminders/{reminder_id}/read")

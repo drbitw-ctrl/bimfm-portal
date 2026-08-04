@@ -4,8 +4,8 @@
 <section class="hero-panel performance-hero">
   <div>
     <span class="eyebrow">PERFORMANCE MANAGEMENT</span>
-    <h1>Performance Leaderboards</h1>
-    <p>Compare quality, task output, and delivery speed using the complete task history.</p>
+    <h1>{{ t('Overall Performance Report') }}</h1>
+    <p>{{ t('Review overall performance first, followed by quality, task output, and delivery speed.') }}</p>
   </div>
   <div class="hero-actions">{% if can(Permission.REPORT_EXPORT) %}<a class="button secondary" href="/portal/exports/monthly-reports.xlsx">⇩ {{ t('Export Excel') }}</a>{% endif %}
     <div class="hero-badge">Updated {{ performance.updated_at }}</div>
@@ -14,14 +14,17 @@
 
 <section class="content-card leaderboard-control-card">
   <div class="leaderboard-mode-switch" role="tablist" aria-label="Leaderboard category">
-    <button type="button" class="leaderboard-mode active" data-leaderboard-tab="quality" role="tab" aria-selected="true">
-      <span>01</span><strong>{{ t('Quality Score') }}</strong><small>{{ t('Quality Score as calculated') }}</small>
+    <button type="button" class="leaderboard-mode active" data-leaderboard-tab="overall" role="tab" aria-selected="true">
+      <span>01</span><strong>{{ t('Overall Performance') }}</strong><small>{{ t('40% Speed + 60% Quality') }}</small>
+    </button>
+    <button type="button" class="leaderboard-mode" data-leaderboard-tab="quality" role="tab" aria-selected="false">
+      <span>02</span><strong>{{ t('Quality Score') }}</strong><small>{{ t('Quality Score as calculated') }}</small>
     </button>
     <button type="button" class="leaderboard-mode" data-leaderboard-tab="tasks" role="tab" aria-selected="false">
-      <span>02</span><strong>Total Tasks</strong><small>Assigned and delivered work</small>
+      <span>03</span><strong>{{ t('Total Tasks') }}</strong><small>{{ t('Assigned and delivered work') }}</small>
     </button>
     <button type="button" class="leaderboard-mode" data-leaderboard-tab="speed" role="tab" aria-selected="false">
-      <span>03</span><strong>Delivery Speed</strong><small>Early and on-time delivery</small>
+      <span>04</span><strong>{{ t('Delivery Speed') }}</strong><small>{{ t('Early and on-time delivery') }}</small>
     </button>
   </div>
   <label class="leaderboard-search">
@@ -30,7 +33,55 @@
   </label>
 </section>
 
-<section class="leaderboard-panel active" data-leaderboard-panel="quality">
+<section class="leaderboard-panel active" data-leaderboard-panel="overall">
+  <div class="overall-formula-banner">
+    <span>{{ t('Overall Performance Formula') }}</span>
+    <strong>{{ t('40% Speed + 60% Quality') }}</strong>
+  </div>
+
+  <div class="stats-grid performance-summary-grid">
+    <article class="stat-card"><span>{{ t('Overall leader') }}</span><strong>{{ performance.overall_summary.leader }}</strong><small>{{ t('Highest combined performance result') }}</small></article>
+    <article class="stat-card"><span>{{ t('Team average') }}</span><strong>{{ '%.1f%%'|format(performance.overall_summary.team_average) if performance.overall_summary.team_average is not none else '—' }}</strong><small>{{ t('Across members with Quality and Speed data') }}</small></article>
+    <article class="stat-card"><span>{{ t('Members measured') }}</span><strong>{{ performance.overall_summary.eligible_members }}</strong><small>{{ t('Members with both required components') }}</small></article>
+    <article class="stat-card"><span>{{ t('Team members') }}</span><strong>{{ performance.overall_summary.total_members }}</strong><small>{{ t('Members included in performance records') }}</small></article>
+  </div>
+
+  <div class="leaderboard-podium" aria-label="Top overall performers">
+    {% for row in performance.overall_ranked[:3] if row.overall_score is not none %}
+    <article class="podium-card podium-rank-{{ loop.index }}">
+      <span class="podium-medal">{{ '🥇' if loop.index == 1 else ('🥈' if loop.index == 2 else '🥉') }}</span>
+      <div><small>#{{ loop.index }} {{ t('Overall') }}</small><h2>{{ row.name }}</h2><p>{{ row.code or t('Team member') }}</p></div>
+      <strong>{{ '%.1f%%'|format(row.overall_score) }}</strong>
+      <span>{{ t('Speed') }} {{ '%.1f%%'|format(row.delivery_rate) }} · {{ t('Quality') }} {{ '%.1f%%'|format(row.average_quality) }}</span>
+    </article>
+    {% endfor %}
+  </div>
+
+  <section class="content-card data-register-card leaderboard-table-card">
+    <div class="section-heading"><div><span class="eyebrow">{{ t('OVERALL PERFORMANCE RANKING') }}</span><h2>{{ t('Overall Performance Report') }}</h2><p>{{ t('Overall Performance is calculated from 40% Speed and 60% Quality.') }}</p></div></div>
+    <div class="modern-table-wrap">
+      <table class="modern-table smart-table leaderboard-table overall-performance-table" data-sortable-table data-leaderboard-table data-card-table>
+        <thead><tr><th data-sort-type="number">{{ t('Rank') }}</th><th data-sort-type="text">{{ t('Member') }}</th><th data-sort-type="number">{{ t('Overall Performance') }}</th><th data-sort-type="number">{{ t('Speed') }}</th><th data-sort-type="number">{{ t('Quality') }}</th><th data-sort-type="number">{{ t('Measured Tasks') }}</th><th data-sort-type="number">{{ t('Rated Tasks') }}</th><th data-sort-type="text">{{ t('Recommendation') }}</th></tr></thead>
+        <tbody>
+        {% for row in performance.overall_ranked %}
+          <tr data-member-search="{{ (row.name ~ ' ' ~ row.code)|lower }}">
+            <td data-sort-value="{{ loop.index }}"><span class="leaderboard-rank">{{ '🥇' if loop.index == 1 and row.overall_score is not none else ('🥈' if loop.index == 2 and row.overall_score is not none else ('🥉' if loop.index == 3 and row.overall_score is not none else loop.index)) }}</span></td>
+            <td data-sort-value="{{ row.name }}"><div class="table-identity-cell"><span class="person-avatar">{{ row.name[:1]|upper }}</span><div><strong>{{ row.name }}</strong><small>{{ row.code or t('Team member') }}</small></div></div></td>
+            <td data-sort-value="{{ row.overall_score if row.overall_score is not none else -1 }}">{% if row.overall_score is not none %}<span class="leaderboard-score overall-score">{{ '%.1f%%'|format(row.overall_score) }}</span>{% else %}<span class="muted-cell">—</span>{% endif %}</td>
+            <td data-sort-value="{{ row.delivery_rate if row.measured_tasks else -1 }}">{{ '%.1f%%'|format(row.delivery_rate) if row.measured_tasks else '—' }}</td>
+            <td data-sort-value="{{ row.average_quality if row.rated_tasks else -1 }}">{{ '%.1f%%'|format(row.average_quality) if row.rated_tasks else '—' }}</td>
+            <td data-sort-value="{{ row.measured_tasks }}">{{ row.measured_tasks }}</td>
+            <td data-sort-value="{{ row.rated_tasks }}">{{ row.rated_tasks }}</td>
+            <td data-sort-value="{{ row.overall_recommendation }}"><span class="performance-recommendation">{{ t(row.overall_recommendation) }}</span></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</section>
+
+<section class="leaderboard-panel" data-leaderboard-panel="quality" hidden>
   <div class="stats-grid performance-summary-grid">
     <article class="stat-card"><span>{{ t('Quality leader') }}</span><strong>{{ performance.quality_summary.leader }}</strong><small>{{ t('Highest Quality Score') }}</small></article>
     <article class="stat-card"><span>Team average</span><strong>{{ '%.1f%%'|format(performance.quality_summary.team_average) if performance.quality_summary.team_average is not none else '—' }}</strong><small>Across rated portal tasks</small></article>

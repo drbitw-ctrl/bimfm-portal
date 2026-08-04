@@ -1,8 +1,8 @@
 import os
 from pathlib import Path
 
-APP_NAME = "BIMFM Portal"
-APP_VERSION = "3.0.13-release21.13-dashboard-member-visibility-attendance-card"
+APP_NAME = "BIM Portal"
+APP_VERSION = "3.0.14-release21.14-overall-performance-reminder-brand-cleanup"
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"

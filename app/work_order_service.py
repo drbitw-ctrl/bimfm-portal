@@ -395,7 +395,7 @@ def reminder_rows(database: Session, freelancer_id: int) -> list[dict[str, Any]]
             "id": reminder.id,
             "subject": reminder.subject,
             "message": reminder.message,
-            "sender": sender.display_name if sender else "BIMFM Operations",
+            "sender": sender.display_name if sender else "BIM Portal",
             "created_at": reminder.created_at,
             "is_unread": reminder.read_at is None,
             "task_id": reminder.portal_task_id,
@@ -481,7 +481,7 @@ def create_task_reminder(
             f"Task: {task.title}\n"
             f"Deadline: {task.due_date.isoformat() if task.due_date else 'No deadline'}\n\n"
             f"Sent by: {sender.display_name}\n"
-            "BIMFM Portal"
+            "BIM Portal"
         )
         reminder.email_attempted = True
         sent, error = _send_email(freelancer.email, clean_subject, email_body)

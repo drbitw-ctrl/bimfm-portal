@@ -1,0 +1,49 @@
+BIM Portal Release 21.14 Validation Report
+==========================================
+Result: PASSED
+Failures: 0
+Errors: 0
+
+Application validation
+----------------------
+Python compilation: Passed
+Application import: Passed
+Application routes: 125
+Jinja templates parsed: 49
+JavaScript syntax: Passed
+English localization keys: 1,917
+Traditional Chinese localization keys: 1,917
+Localization parity: Passed
+Alembic head: 20260803_0013
+New migration: None
+
+Overall Performance validation
+------------------------------
+Overall Performance is the first active Performance option: Passed
+Formula displayed as 40% Speed + 60% Quality: Passed
+Overall result uses 40% delivery rate and 60% Quality Score: Passed
+Members missing either component show no invented Overall result: Passed
+Overall ranking order: Passed
+Existing Quality Score calculation preserved: Passed
+Quality Score presentation remains free of calibration formulas: Passed
+
+Reminder validation
+-------------------
+Freelancer with unread reminder redirects to /reminders?login=1: Passed
+Large login reminder notice renders: Passed
+Unread reminder content renders: Passed
+Reminder remains unread until Mark as Read: Passed
+Freelancer without unread reminder keeps normal Attendance landing: Passed
+Forced password change remains higher priority: Passed
+
+Brand presentation validation
+-----------------------------
+Application name is BIM Portal: Passed
+Sidebar shows BIM Portal and Freelancers: Passed
+Top bar shows BIM Portal and Freelancers: Passed
+Public login branding is text-only: Passed
+Visible logo-image references in templates: 0
+Visible company-name footer branding removed: Passed
+Export workbook and filename wording updated: Passed
+
+Isolated test databases were used. Production PostgreSQL was not accessed or modified.

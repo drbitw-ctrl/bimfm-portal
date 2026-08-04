@@ -1,18 +1,31 @@
 {% extends "base.html" %}
 {% block title %}{{ t('Reminders') }} · {{ app_name }}{% endblock %}
 {% block content %}
-<section class="compact-page-header">
-  <div><span class="eyebrow">{{ t('TASK NOTIFICATIONS') }}</span><h1>{{ t('Reminders') }}</h1><p>{{ t('Messages from BIMFM administrators and supervisors about your assigned work.') }}</p></div>
+<section class="compact-page-header reminder-page-header">
+  <div><span class="eyebrow">{{ t('TASK NOTIFICATIONS') }}</span><h1>{{ t('Reminders') }}</h1><p>{{ t('Messages from administrators and supervisors about your assigned work.') }}</p></div>
   <a class="button secondary" href="/tasks">{{ t('Back to Work Orders') }}</a>
 </section>
-<section class="reminder-inbox">
+
+{% if login_notice and unread_count %}
+<section class="login-reminder-notice" role="alert" aria-live="assertive">
+  <span class="login-reminder-icon" aria-hidden="true">✉</span>
+  <div>
+    <span class="eyebrow">{{ t('NEW REMINDERS') }}</span>
+    <h2>{{ t('You have {count} unread reminder(s).').format(count=unread_count) }}</h2>
+    <p>{{ t('Review the instructions below before continuing to your Work Orders.') }}</p>
+  </div>
+  <a class="button primary" href="#unread-reminders">{{ t('Review now') }}</a>
+</section>
+{% endif %}
+
+<section class="reminder-inbox reminder-inbox-prominent" id="unread-reminders">
   {% if rows %}
     {% for row in rows %}
-    <article class="email-reminder-card{% if row.is_unread %} unread{% endif %}">
+    <article class="email-reminder-card reminder-card-large{% if row.is_unread %} unread{% endif %}">
       <div class="email-reminder-meta">
         <span class="email-avatar">{{ row.sender[:1]|upper }}</span>
         <div><strong>{{ row.sender }}</strong><small>{{ row.created_at }}</small></div>
-        {% if row.is_unread %}<span class="viz-badge">{{ t('New') }}</span>{% endif %}
+        {% if row.is_unread %}<span class="viz-badge reminder-new-badge">{{ t('New') }}</span>{% endif %}
       </div>
       <div class="email-reminder-content">
         <span class="eyebrow">{{ row.project_name }} · {{ row.task_title }}</span>
@@ -21,7 +34,7 @@
       </div>
       <div class="email-reminder-footer">
         <span>{{ t('Email sent') if row.email_sent else (t('In-app notification') if not row.email_attempted else t('Email unavailable · in-app notification delivered')) }}</span>
-        {% if row.is_unread %}<form method="post" action="/reminders/{{ row.id }}/read"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="button secondary small">{{ t('Mark as read') }}</button></form>{% endif %}
+        {% if row.is_unread %}<form method="post" action="/reminders/{{ row.id }}/read"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="button primary">{{ t('Mark as read') }}</button></form>{% endif %}
       </div>
     </article>
     {% endfor %}

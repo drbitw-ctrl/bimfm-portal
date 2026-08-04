@@ -178,7 +178,7 @@ def _add_summary_sheet(wb: Workbook, month_key: str, database: Session) -> None:
         ("Active Team Members", len(team)),
         ("DTR Records", len(dtrs)),
     ]
-    _title(sheet, "BIMFM PORTAL — EXCEL EXPORT PACKAGE", f"Generated {datetime.now().strftime('%Y-%m-%d %H:%M')}", 4)
+    _title(sheet, "BIM PORTAL — FREELANCER EXPORT PACKAGE", f"Generated {datetime.now().strftime('%Y-%m-%d %H:%M')}", 4)
     _header(sheet, 4, ["Metric", "Value", "Purpose", "Scope"])
     purpose = {
         "Selected Month": "Monthly attendance and DTR period",

@@ -10,6 +10,7 @@ from sqlalchemy.orm import joinedload
 from app.database import SessionLocal
 from app.models import FreelancerAccount, HRAdminAccount
 from app.security import hash_password, password_needs_rehash, verify_password
+from app.work_order_service import unread_reminder_count
 from app.web_helpers import (
     account_is_locked,
     admin_count,
@@ -491,8 +492,13 @@ def create_auth_router(templates: Jinja2Templates) -> APIRouter:
                     status_code=303,
                 )
 
+            has_unread_reminders = unread_reminder_count(
+                database,
+                account.freelancer_id,
+            ) > 0
+
         return RedirectResponse(
-            "/attendance",
+            "/reminders?login=1" if has_unread_reminders else "/attendance",
             status_code=303,
         )
 
@@ -611,6 +617,10 @@ def create_auth_router(templates: Jinja2Templates) -> APIRouter:
                 request=request,
             )
             database.commit()
+            has_unread_reminders = unread_reminder_count(
+                database,
+                account.freelancer_id,
+            ) > 0
 
         set_flash(
             request,
@@ -618,7 +628,7 @@ def create_auth_router(templates: Jinja2Templates) -> APIRouter:
             "success",
         )
         return RedirectResponse(
-            "/attendance",
+            "/reminders?login=1" if has_unread_reminders else "/attendance",
             status_code=303,
         )
 

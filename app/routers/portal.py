@@ -1025,7 +1025,12 @@ def create_portal_router(
                 "started_at": row["started_at_iso"],
                 "due_date": row["due_date"].isoformat() if row["due_date"] else None,
             })
-        return JSONResponse({"rows": payload, "count": len(payload)})
+        response = JSONResponse({"rows": payload, "count": len(payload)})
+        # Live timer visibility must never reuse a stale browser or proxy copy.
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
 
     @router.get("/portal/tasks/{task_id}/reminder", response_class=HTMLResponse)
     def task_reminder_page(
@@ -1162,7 +1167,7 @@ def create_portal_router(
         content = build_export_workbook(database, month_key=date.today().strftime("%Y-%m"), include_tasks=True)
         write_audit(database, actor_type="HR_ADMIN", actor_id=account.id, action="EXPORT_ALL_TASKS_XLSX", request=request, target_type="REPORT", details="Exported complete task register.")
         database.commit()
-        return _xlsx_response(content, f"BIMFM_All_Tasks_{date.today().isoformat()}.xlsx")
+        return _xlsx_response(content, f"BIM_All_Tasks_{date.today().isoformat()}.xlsx")
 
     @router.get("/portal/exports/monthly-reports.xlsx")
     def export_monthly_reports(request: Request, month: str = "", database: Session = Depends(get_db)):
@@ -1173,7 +1178,7 @@ def create_portal_router(
         content = build_export_workbook(database, month_key=selected_month, include_reports=True)
         write_audit(database, actor_type="HR_ADMIN", actor_id=account.id, action="EXPORT_MONTHLY_REPORTS_XLSX", request=request, target_type="REPORT", details=f"Exported management reports for {selected_month}.")
         database.commit()
-        return _xlsx_response(content, f"BIMFM_Monthly_Reports_{selected_month}.xlsx")
+        return _xlsx_response(content, f"BIM_Monthly_Reports_{selected_month}.xlsx")
 
     @router.get("/portal/exports/attendance.xlsx")
     def export_monthly_attendance(request: Request, month: str = "", database: Session = Depends(get_db)):
@@ -1184,7 +1189,7 @@ def create_portal_router(
         content = build_export_workbook(database, month_key=selected_month, include_attendance=True)
         write_audit(database, actor_type="HR_ADMIN", actor_id=account.id, action="EXPORT_MONTHLY_ATTENDANCE_XLSX", request=request, target_type="REPORT", details=f"Exported attendance for {selected_month}.")
         database.commit()
-        return _xlsx_response(content, f"BIMFM_Attendance_{selected_month}.xlsx")
+        return _xlsx_response(content, f"BIM_Attendance_{selected_month}.xlsx")
 
     @router.get("/portal/exports/dtr.xlsx")
     def export_monthly_dtr_register(request: Request, month: str = "", database: Session = Depends(get_db)):
@@ -1195,7 +1200,7 @@ def create_portal_router(
         content = build_export_workbook(database, month_key=selected_month, include_dtr=True)
         write_audit(database, actor_type="HR_ADMIN", actor_id=account.id, action="EXPORT_DTR_REGISTER_XLSX", request=request, target_type="REPORT", details=f"Exported DTR register for {selected_month}.")
         database.commit()
-        return _xlsx_response(content, f"BIMFM_DTR_Register_{selected_month}.xlsx")
+        return _xlsx_response(content, f"BIM_DTR_Register_{selected_month}.xlsx")
 
     @router.get("/portal/exports/all.xlsx")
     def export_complete_package(request: Request, month: str = "", database: Session = Depends(get_db)):
@@ -1206,7 +1211,7 @@ def create_portal_router(
         content = build_export_workbook(database, month_key=selected_month, include_all=True)
         write_audit(database, actor_type="HR_ADMIN", actor_id=account.id, action="EXPORT_COMPLETE_REPORT_PACKAGE_XLSX", request=request, target_type="REPORT", details=f"Exported complete Excel package for {selected_month}.")
         database.commit()
-        return _xlsx_response(content, f"BIMFM_Complete_Report_Package_{selected_month}.xlsx")
+        return _xlsx_response(content, f"BIM_Complete_Report_Package_{selected_month}.xlsx")
 
     @router.get("/portal/{module_name}", response_class=HTMLResponse)
     def portal_module(
@@ -1223,7 +1228,7 @@ def create_portal_router(
 
         page_title, description = definitions.get(
             module_name,
-            ("BIMFM Portal", "Unified operations module."),
+            ("BIM Portal", "Freelancer operations module."),
         )
 
         if module_name == "my-work":

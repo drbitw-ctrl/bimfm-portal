@@ -10,9 +10,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#123a63">
   <title>{% block title %}{{ app_name }}{% endblock %}</title>
-  <link rel="icon" href="{{ url_for('static', path='/images/favicon.ico') }}" sizes="any">
-  <link rel="icon" type="image/png" href="{{ url_for('static', path='/images/bimfm-mark.png') }}">
-  <link rel="apple-touch-icon" href="{{ url_for('static', path='/images/bimfm-mark.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}?v={{ app_version }}">
   <link rel="stylesheet" href="{{ url_for('static', path='/css/ui-refresh.css') }}?v={{ app_version }}">
   <script>
@@ -29,9 +26,8 @@
   <div class="nav-scrim" data-nav-close></div>
   <aside class="side-nav" id="sideNav" aria-label="{{ t('Primary navigation') }}">
     <div class="side-nav-head">
-      <a class="side-brand" href="{{ '/admin' if current_staff else '/attendance' }}">
-        <img class="brand-logo" src="{{ url_for('static', path='/images/bimfm-mark.png') }}" alt="BIMFM">
-        <span class="brand-copy"><strong>BIMFM Portal</strong><small>{{ t('Unified Operations') if current_staff else t('My Workspace') }}</small></span>
+      <a class="side-brand text-only-brand" href="{{ '/admin' if current_staff else '/attendance' }}">
+        <span class="brand-copy"><strong>{{ t('BIM Portal') }}</strong><small>{{ t('Freelancers') }}</small></span>
       </a>
       <button class="nav-close" type="button" aria-label="{{ t('Close navigation') }}" data-nav-close>×</button>
     </div>
@@ -130,9 +126,8 @@
     <header class="modern-topbar">
       <button class="nav-toggle" type="button" aria-label="{{ t('Toggle navigation') }}" data-nav-toggle><span></span><span></span><span></span></button>
       <div class="topbar-title">
-        <span class="topbar-kicker">{{ t('BIMFM OPERATIONS') }}</span>
-        <strong>{{ app_name }}</strong>
-        <span>{{ t('Unified operations workspace') if current_staff else t('Freelancer self-service portal') }}</span>
+        <span class="topbar-kicker">{{ t('Freelancers') }}</span>
+        <strong>{{ t('BIM Portal') }}</strong>
       </div>
       <div class="topbar-spacer"></div>
       <div class="topbar-date" data-live-date aria-hidden="true"></div>
@@ -158,8 +153,8 @@
 {% else %}
 <div class="public-background" aria-hidden="true"><span></span><span></span><span></span></div>
 <header class="topbar public-topbar">
-  <a class="public-brand company-lockup" href="/" aria-label="BIMFM Technology">
-    <img src="{{ url_for('static', path='/images/bimfm-company-logo-web.png') }}" alt="BIMFM Technology · 繽紛科技">
+  <a class="public-brand text-public-brand" href="/" aria-label="BIM Portal">
+    <strong>{{ t('BIM Portal') }}</strong><span>{{ t('Freelancers') }}</span>
   </a>
   <div class="public-tools">
     <button class="topbar-icon-button theme-toggle" type="button" data-theme-toggle aria-label="{{ t('Toggle theme') }}"><span class="theme-icon-light">☀</span><span class="theme-icon-dark">☾</span></button>
@@ -172,7 +167,7 @@
       {% if flash %}<div class="flash {{ flash.category }}" role="status"><span class="flash-mark">{{ '✓' if flash.category == 'success' else '!' }}</span><span>{{ flash.message }}</span></div>{% endif %}
       {% block content %}{% endblock %}
     </main>
-    <footer><span>BIMFM Technology Co., Ltd.</span><span>·</span><span>{{ t('Internal Use Only') }}</span><span>·</span><span>{{ t('Build') }} {{ app_version }}</span></footer>
+    <footer><span>{{ t('BIM Portal') }}</span><span>·</span><span>{{ t('Freelancers') }}</span><span>·</span><span>{{ t('Internal Use Only') }}</span><span>·</span><span>{{ t('Build') }} {{ app_version }}</span></footer>
 {% if current_staff or current_freelancer %}</div></div>{% endif %}
 <script>
 window.BIMFM_I18N = {

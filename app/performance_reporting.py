@@ -35,6 +35,9 @@ QUALITY_EXCELLENT_THRESHOLD = 88.0
 QUALITY_STRONG_THRESHOLD = 80.0
 QUALITY_ACCEPTABLE_THRESHOLD = 70.0
 
+OVERALL_QUALITY_WEIGHT = 0.60
+OVERALL_SPEED_WEIGHT = 0.40
+
 
 def calibrate_quality_score(raw_score: Any) -> float:
     """Return a conservative display score without modifying stored data."""
@@ -269,6 +272,21 @@ def _speed_recommendation(metric: dict[str, Any]) -> str:
     return "Delivery is often delayed"
 
 
+
+
+def _overall_recommendation(metric: dict[str, Any]) -> str:
+    if metric["overall_score"] is None:
+        return "Complete both Quality and Speed records"
+    score = float(metric["overall_score"])
+    if score >= 88:
+        return "Excellent overall performance"
+    if score >= 80:
+        return "Strong and dependable performance"
+    if score >= 70:
+        return "Good performance with room to improve"
+    return "Prioritize quality and delivery improvement"
+
+
 def _format_average_days(value: float, measured: int) -> str:
     if measured <= 0:
         return "—"
@@ -328,6 +346,13 @@ def build_performance_dashboard(database: Session) -> dict[str, Any]:
         delivery_rate = (early + on_time) / measured * 100 if measured else 0.0
         coverage = rated / total_tasks * 100 if total_tasks else 0.0
 
+        overall_score = (
+            average_quality * OVERALL_QUALITY_WEIGHT
+            + delivery_rate * OVERALL_SPEED_WEIGHT
+            if rated and measured
+            else None
+        )
+
         metric: dict[str, Any] = {
             **identity,
             "total_tasks": total_tasks,
@@ -347,12 +372,24 @@ def build_performance_dashboard(database: Session) -> dict[str, Any]:
             "average_days_label": _format_average_days(average_days, measured),
             "delivery_rate": round(delivery_rate, 1),
             "completion_rate": round(completion_rate, 1),
+            "overall_score": round(overall_score, 1) if overall_score is not None else None,
         }
         metric["quality_recommendation"] = _quality_recommendation(metric)
         metric["task_recommendation"] = _task_recommendation(metric)
         metric["speed_recommendation"] = _speed_recommendation(metric)
+        metric["overall_recommendation"] = _overall_recommendation(metric)
         member_metrics.append(metric)
 
+    overall_ranked = sorted(
+        member_metrics,
+        key=lambda item: (
+            item["overall_score"] is None,
+            -(item["overall_score"] if item["overall_score"] is not None else -1),
+            -item["average_quality"],
+            -item["delivery_rate"],
+            str(item["name"]).casefold(),
+        ),
+    )
     quality_ranked = sorted(
         member_metrics,
         key=lambda item: (
@@ -402,6 +439,19 @@ def build_performance_dashboard(database: Session) -> dict[str, Any]:
         if (difference := _days_difference(task)) is not None
     ]
 
+    eligible_overall = [
+        item for item in member_metrics if item["overall_score"] is not None
+    ]
+    overall_summary = {
+        "leader": overall_ranked[0]["name"] if overall_ranked and overall_ranked[0]["overall_score"] is not None else "—",
+        "team_average": round(
+            sum(float(item["overall_score"]) for item in eligible_overall) / len(eligible_overall),
+            1,
+        ) if eligible_overall else None,
+        "eligible_members": len(eligible_overall),
+        "total_members": len(member_metrics),
+    }
+
     quality_summary = {
         "leader": quality_ranked[0]["name"] if quality_ranked and quality_ranked[0]["rated_tasks"] else "—",
         "team_average": round(sum(unique_adjusted) / len(unique_adjusted), 1) if unique_adjusted else None,
@@ -425,13 +475,16 @@ def build_performance_dashboard(database: Session) -> dict[str, Any]:
     }
 
     return {
+        "overall_ranked": overall_ranked,
         "quality_ranked": quality_ranked,
         "task_ranked": task_ranked,
         "speed_ranked": speed_ranked,
+        "overall_summary": overall_summary,
         "quality_summary": quality_summary,
         "task_summary": task_summary,
         "delivery_summary": delivery_summary,
-        "quality_formula": "management reporting score = original task rating × 0.70 + 22 (maximum 92)",
+        "overall_formula": "Overall Performance = 40% Speed + 60% Quality",
+        "quality_formula": "Quality Score as calculated",
         "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
     }
 
@@ -805,6 +858,7 @@ def build_project_reports(
             {"label": row["name"], "value": row["delivered_tasks"]}
             for row in project_rows if row["delivered_tasks"] > 0
         ][:10],
-        "quality_formula": "management reporting score = original task rating × 0.70 + 22 (maximum 92)",
+        "overall_formula": "Overall Performance = 40% Speed + 60% Quality",
+        "quality_formula": "Quality Score as calculated",
         "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
     }
