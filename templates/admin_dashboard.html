@@ -184,7 +184,7 @@
       <a href="/portal/tasks?view=active"><span>01</span><strong>{{ t('Active tasks') }}</strong><small>{{ t('Review current assignments') }}</small></a>
       <a href="/admin/attendance/monthly"><span>02</span><strong>{{ t('Monthly attendance') }}</strong><small>{{ t('Review attendance trends') }}</small></a>
       <a href="/admin/dtr"><span>03</span><strong>{{ t('Monthly DTR') }}</strong><small>{{ t('Generate and review records') }}</small></a>
-      {% if can(Permission.FINANCE_VIEW) %}<a href="/admin/finance"><span>04</span><strong>{{ t('Finance center') }}</strong><small>{{ t('Whole-day payroll review') }}</small></a>{% endif %}
+      {% if can(Permission.FINANCE_VIEW) %}<a href="/admin/finance"><span>04</span><strong>{{ t('Finance center') }}</strong><small>{{ t('Hourly payroll review') }}</small></a>{% endif %}
       {% if can(Permission.STAFF_MANAGE) %}<a href="/admin/freelancers"><span>05</span><strong>{{ t('Freelancers') }}</strong><small>{{ t('Accounts and profiles') }}</small></a>{% endif %}
     </div>
   </section>

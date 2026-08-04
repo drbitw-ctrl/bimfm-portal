@@ -39,6 +39,227 @@ OVERALL_QUALITY_WEIGHT = 0.60
 OVERALL_SPEED_WEIGHT = 0.40
 
 
+DISCIPLINE_ALIASES = {
+    "ARCHITECTURE": "AR",
+    "ARCHITECTURAL": "AR",
+    "AR": "AR",
+    "STRUCTURE": "ST",
+    "STRUCTURAL": "ST",
+    "ST": "ST",
+    "AS": "AS",
+    "AR+ST": "AS",
+    "AS (AR+ST)": "AS",
+    "AS (AR + ST)": "AS",
+    "MEP": "MEP",
+    "E&M": "E&M",
+    "EM": "E&M",
+    "RFA": "RFA",
+    "CDR": "CDR",
+    "GE": "GE",
+    "CIVIL WORKS": "CIVIL WORKS",
+}
+
+SPECIALTY_SPECS = (
+    {"key": "MEP", "label": "MEP", "kind": "discipline"},
+    {"key": "AR", "label": "AR", "kind": "discipline"},
+    {"key": "ST", "label": "ST", "kind": "discipline"},
+    {"key": "MRT", "label": "MRT", "kind": "category"},
+    {"key": "安居", "label": "安居", "kind": "category"},
+    {"key": "BRIDGE", "label": "Bridge", "kind": "category"},
+    {"key": "RFA", "label": "RFA", "kind": "discipline"},
+)
+
+
+def normalize_discipline(value: Any) -> str:
+    text = " ".join(str(value or "").strip().split()).upper()
+    return DISCIPLINE_ALIASES.get(text, text)
+
+
+def normalize_project_category(value: Any) -> str:
+    text = " ".join(str(value or "").strip().split())
+    if not text:
+        return ""
+    upper = text.upper()
+    if upper == "BRIDGE":
+        return "BRIDGE"
+    if upper == "MRT":
+        return "MRT"
+    return text
+
+
+def _record_matches_specialty(record: dict[str, Any], *, key: str, kind: str) -> bool:
+    task = record["task"]
+    project = record.get("project")
+    if kind == "category":
+        return normalize_project_category(getattr(project, "project_category", None)) == key
+    discipline = normalize_discipline(
+        getattr(task, "discipline", None) or getattr(project, "discipline", None)
+    )
+    if key == "AR":
+        return discipline in {"AR", "AS"}
+    if key == "ST":
+        return discipline in {"ST", "AS"}
+    return discipline == key
+
+
+def _specialty_metric(records: list[dict[str, Any]]) -> dict[str, Any]:
+    completed = [
+        record for record in records
+        if str(record["task"].status or "").upper() == FINAL_COMPLETED_STATUS
+    ]
+    scores = [
+        score for record in completed
+        if (score := parse_quality_score(record["task"].quality_score)) is not None
+    ]
+    adjusted = [calibrate_quality_score(score) for score in scores]
+    differences = [
+        int(record["days_difference"]) for record in completed
+        if record["days_difference"] is not None
+    ]
+    quality = round(sum(adjusted) / len(adjusted), 1) if adjusted else None
+    speed = round(sum(1 for value in differences if value <= 0) / len(differences) * 100, 1) if differences else None
+    overall = (
+        round(float(quality) * OVERALL_QUALITY_WEIGHT + float(speed) * OVERALL_SPEED_WEIGHT, 1)
+        if quality is not None and speed is not None else None
+    )
+    return {
+        "completed_tasks": len(completed),
+        "rated_tasks": len(adjusted),
+        "measured_tasks": len(differences),
+        "quality": quality,
+        "speed": speed,
+        "overall": overall,
+        "eligible": len(completed) >= 3 and len(adjusted) >= 2 and len(differences) >= 2,
+    }
+
+
+def build_specialty_recommendations(database: Session) -> list[dict[str, Any]]:
+    records_by_member, identities, _tasks, _projects = _task_records_by_member(database)
+    results: list[dict[str, Any]] = []
+    for spec in SPECIALTY_SPECS:
+        candidates: list[dict[str, Any]] = []
+        for member_key, task_records in records_by_member.items():
+            identity = identities[member_key]
+            if not identity.get("is_active"):
+                continue
+            matched = [
+                record for record in task_records.values()
+                if _record_matches_specialty(record, key=spec["key"], kind=spec["kind"])
+            ]
+            metric = _specialty_metric(matched)
+            if metric["completed_tasks"] == 0:
+                continue
+            candidates.append({**identity, **metric})
+        candidates.sort(key=lambda row: (
+            not row["eligible"],
+            row["overall"] is None,
+            -(row["overall"] if row["overall"] is not None else -1),
+            -row["completed_tasks"],
+            str(row["name"]).casefold(),
+        ))
+        leader = candidates[0] if candidates else None
+        results.append({
+            **spec,
+            "leader": leader,
+            "has_reliable_data": bool(leader and leader["eligible"]),
+            "candidate_count": len(candidates),
+        })
+    return results
+
+
+def build_assignment_suggestions(
+    database: Session,
+    *,
+    discipline: str = "",
+    project_category: str = "",
+) -> list[dict[str, Any]]:
+    """Rank active members by specialty history and current availability."""
+    from app.my_work_service import team_availability_rows
+
+    records_by_member, identities, _tasks, _projects = _task_records_by_member(database)
+    availability = {int(row["freelancer_id"]): row for row in team_availability_rows(database)}
+    member_directory = list(database.scalars(
+        select(ProjectMember).where(
+            ProjectMember.is_active.is_(True),
+            ProjectMember.freelancer_id.is_not(None),
+        ).order_by(ProjectMember.member_name, ProjectMember.id)
+    ).all())
+    member_by_hr: dict[int, ProjectMember] = {}
+    for member in member_directory:
+        member_by_hr.setdefault(int(member.freelancer_id), member)
+
+    normalized_discipline = normalize_discipline(discipline)
+    normalized_category = normalize_project_category(project_category)
+    rows: list[dict[str, Any]] = []
+    availability_bonus = {"available": 15.0, "assigned": 5.0, "working": 0.0, "overdue": -25.0}
+    for hr_id, member in member_by_hr.items():
+        identity = identities.get(f"hr:{hr_id}")
+        if not identity or not identity.get("is_active"):
+            continue
+        records = list(records_by_member.get(f"hr:{hr_id}", {}).values())
+        discipline_metric = None
+        category_metric = None
+        if normalized_discipline:
+            discipline_metric = _specialty_metric([
+                record for record in records
+                if _record_matches_specialty(record, key=normalized_discipline, kind="discipline")
+            ])
+        if normalized_category:
+            category_metric = _specialty_metric([
+                record for record in records
+                if _record_matches_specialty(record, key=normalized_category, kind="category")
+            ])
+        component_scores = [
+            metric["overall"] for metric in (discipline_metric, category_metric)
+            if metric and metric["overall"] is not None
+        ]
+        specialty_score = round(sum(component_scores) / len(component_scores), 1) if component_scores else None
+        matched_tasks = sum(
+            metric["completed_tasks"] for metric in (discipline_metric, category_metric) if metric
+        )
+        avail = availability.get(hr_id, {
+            "state": "available", "availability": "Available", "active_tasks": 0,
+            "overdue_tasks": 0, "working_task": "No active task", "working_project": "—",
+        })
+        state = str(avail.get("state") or "available")
+        ranking_score = (specialty_score if specialty_score is not None else 0.0)
+        ranking_score += availability_bonus.get(state, 0.0)
+        ranking_score -= min(20, int(avail.get("active_tasks") or 0) * 2)
+        if specialty_score is not None and state == "available":
+            recommendation = "Strong specialty match and currently available"
+        elif specialty_score is not None:
+            recommendation = "Specialty match; review current workload"
+        elif state == "available":
+            recommendation = "Available; limited specialty history"
+        else:
+            recommendation = "Current workload should be reviewed"
+        rows.append({
+            "project_member_id": int(member.id),
+            "freelancer_id": hr_id,
+            "name": identity["name"],
+            "code": identity["code"],
+            "availability": avail.get("availability", "Available"),
+            "state": state,
+            "active_tasks": int(avail.get("active_tasks") or 0),
+            "overdue_tasks": int(avail.get("overdue_tasks") or 0),
+            "working_task": str(avail.get("working_task") or "No active task"),
+            "working_project": str(avail.get("working_project") or "—"),
+            "specialty_score": specialty_score,
+            "matched_tasks": matched_tasks,
+            "recommendation": recommendation,
+            "ranking_score": round(ranking_score, 2),
+        })
+    rows.sort(key=lambda row: (
+        -row["ranking_score"],
+        row["overdue_tasks"],
+        row["active_tasks"],
+        str(row["name"]).casefold(),
+    ))
+    for index, row in enumerate(rows, start=1):
+        row["rank"] = index
+    return rows
+
+
 def calibrate_quality_score(raw_score: Any) -> float:
     """Return a conservative display score without modifying stored data."""
     try:
@@ -483,6 +704,7 @@ def build_performance_dashboard(database: Session) -> dict[str, Any]:
         "quality_summary": quality_summary,
         "task_summary": task_summary,
         "delivery_summary": delivery_summary,
+        "specialty_recommendations": build_specialty_recommendations(database),
         "overall_formula": "Overall Performance = 40% Speed + 60% Quality",
         "quality_formula": "Quality Score as calculated",
         "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -858,6 +1080,7 @@ def build_project_reports(
             {"label": row["name"], "value": row["delivered_tasks"]}
             for row in project_rows if row["delivered_tasks"] > 0
         ][:10],
+        "specialty_recommendations": build_specialty_recommendations(database),
         "overall_formula": "Overall Performance = 40% Speed + 60% Quality",
         "quality_formula": "Quality Score as calculated",
         "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),

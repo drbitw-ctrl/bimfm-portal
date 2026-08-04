@@ -1060,6 +1060,7 @@ def project_overview_rows(database: Session, *, limit: int = 100) -> list[dict[s
             "code": project.project_code,
             "name": project.name,
             "project_engineer": project.project_engineer or "—",
+            "project_category": project.project_category or "—",
             "status": project.status,
             "priority": project.priority,
             "progress": int(project.progress or 0),

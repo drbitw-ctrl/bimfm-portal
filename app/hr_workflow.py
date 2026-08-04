@@ -20,18 +20,22 @@ COMP_LEAVE_DAY_MINUTES = 8 * 60
 
 
 def whole_comp_days(minutes: int) -> int:
-    """Return only fully earned 8-hour compensatory-leave days."""
+    """Compatibility display helper for complete-day equivalents.
+
+    Credit eligibility is hourly; this value is never used to block partial
+    credit redemption.
+    """
     return max(0, int(minutes or 0)) // COMP_LEAVE_DAY_MINUTES
 
 
 def redeemable_comp_minutes(minutes: int) -> int:
-    """Return the balance portion redeemable in complete 8-hour blocks."""
-    return whole_comp_days(minutes) * COMP_LEAVE_DAY_MINUTES
+    """Return all positive credit minutes; partial hours are immediately usable."""
+    return max(0, int(minutes or 0))
 
 
 def comp_remainder_minutes(minutes: int) -> int:
-    """Keep partial earned time in the ledger for future accumulation."""
-    return max(0, int(minutes or 0)) % COMP_LEAVE_DAY_MINUTES
+    """Retained for compatibility; hourly policy has no blocked remainder."""
+    return 0
 
 
 def utc_now() -> datetime:
@@ -232,11 +236,12 @@ def approve_leave_request(
     if request_record.status != "PENDING":
         raise ValueError("Only pending leave requests can be reviewed.")
 
-    # Leave and comp-credit redemption are whole-day only. One redeemable
-    # comp day is permanently fixed at eight hours (480 minutes).
-    full_day_minutes = COMP_LEAVE_DAY_MINUTES
+    # Leave requests remain full working days for attendance reporting, while
+    # overtime credits are applied hour-for-hour. Partial credit balances are
+    # usable immediately and may cover part of a leave day.
+    full_day_minutes = int(policy.standard_leave_day_minutes or COMP_LEAVE_DAY_MINUTES)
     if int(request_record.requested_minutes or 0) != full_day_minutes:
-        raise ValueError("Leave requests must be exactly one whole 8-hour day.")
+        raise ValueError("Leave requests must be exactly one standard workday.")
     approved = full_day_minutes
 
     existing = database.scalar(
@@ -251,19 +256,15 @@ def approve_leave_request(
     comp_used = 0
     paid = False
     if request_record.leave_type == "COMPENSATORY_LEAVE":
-        if approved != COMP_LEAVE_DAY_MINUTES:
-            raise ValueError("Compensatory leave must be exactly one whole 8-hour day.")
         available = comp_balance(
             database,
             request_record.freelancer_id,
             request_record.leave_date,
         )
-        if whole_comp_days(available) < 1:
-            raise ValueError(
-                "Compensatory leave cannot be applied until at least one full-day credit is available."
-            )
-        comp_used = COMP_LEAVE_DAY_MINUTES
-        paid = True
+        if available <= 0:
+            raise ValueError("No compensatory credit is available for this leave date.")
+        comp_used = min(approved, max(0, int(available)))
+        paid = comp_used >= approved
 
     leave = LeaveRecord(
         freelancer_id=request_record.freelancer_id,

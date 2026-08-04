@@ -23,6 +23,7 @@ class PortalProject(Base):
     status: Mapped[str] = mapped_column(String(40), nullable=False, default="ACTIVE")
     priority: Mapped[str] = mapped_column(String(40), nullable=False, default="NORMAL")
     discipline: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    project_category: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     deadline: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     completion_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)

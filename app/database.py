@@ -64,6 +64,7 @@ def _run_sqlite_schema_migrations() -> None:
             "daily_tasks": {"portal_task_id": "INTEGER", "synced_project_task_id": "INTEGER", "completion_percentage": "INTEGER NOT NULL DEFAULT 0"},
             "overtime_claims": {"planned_start_utc": "DATETIME", "planned_end_utc": "DATETIME", "actual_time_out_utc": "DATETIME", "claimed_time_out_utc": "DATETIME", "approved_time_out_utc": "DATETIME", "missing_time_out_reason": "TEXT", "final_submitted_at": "DATETIME"},
             "dtr_task_lines": {"completion_percentage": "INTEGER NOT NULL DEFAULT 0"},
+            "portal_projects": {"project_category": "TEXT"},
         }
         for table_name, columns in migrations.items():
             for column_name, definition in columns.items():

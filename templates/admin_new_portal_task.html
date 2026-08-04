@@ -36,6 +36,7 @@
                   data-name="{{ project.name }}"
                   data-engineer="{{ project.project_engineer or '' }}"
                   data-discipline="{{ project.discipline or '' }}"
+                  data-category="{{ project.project_category or '' }}"
                   data-start="{{ project.start_date.isoformat() if project.start_date else '' }}"
                   data-deadline="{{ project.deadline.isoformat() if project.deadline else '' }}"
                   {% if form_values.existing_project_id|int == project.id %}selected{% endif %}>
@@ -56,6 +57,13 @@
         <label for="project_engineer">{{ t('Project Engineer') }}</label>
         <input id="project_engineer" name="project_engineer" maxlength="200" value="{{ form_values.project_engineer }}" placeholder="{{ t('Enter the project engineer name manually') }}">
         <small class="field-hint">{{ t('Project engineers are external or operational contacts and are not portal supervisors.') }}</small>
+      </div>
+
+      <div>
+        <label for="project_category">{{ t('Project Category') }}</label>
+        <input id="project_category" name="project_category" list="project-category-options" maxlength="100" value="{{ form_values.project_category }}" placeholder="{{ t('Select or enter a project category') }}" data-project-category>
+        <datalist id="project-category-options">{% for category in project_categories %}<option value="{{ category }}">{% endfor %}</datalist>
+        <small class="field-hint">{{ t('Examples: 安居, MRT, Bridge. You may enter a new category when needed.') }}</small>
       </div>
     </div>
   </section>
@@ -112,11 +120,9 @@
 
       <div>
         <label for="discipline">{{ t('Discipline') }}</label>
-        <select id="discipline" name="discipline" data-discipline-selector>
-          {% for discipline in task_disciplines %}
-          <option value="{{ discipline }}" {% if form_values.discipline == discipline %}selected{% endif %}>{{ t(discipline) }}</option>
-          {% endfor %}
-        </select>
+        <input id="discipline" name="discipline" list="discipline-options" maxlength="100" value="{{ form_values.discipline }}" required data-discipline-selector placeholder="{{ t('Select or enter a discipline') }}">
+        <datalist id="discipline-options">{% for discipline in task_disciplines %}<option value="{{ discipline }}">{% endfor %}</datalist>
+        <small class="field-hint">{{ t('Available options include AR, ST, AS, MEP, E&M, RFA, and CDR. New disciplines are also accepted.') }}</small>
       </div>
 
       <div>
@@ -153,6 +159,35 @@
     </div>
   </section>
 
+  <section class="content-card assignment-suggestion-section" data-assignment-suggestions>
+    <div class="section-heading assignment-suggestion-heading">
+      <div>
+        <span class="eyebrow">{{ t('MEMBER SUGGESTIONS') }}</span>
+        <h2>{{ t('Suggested Members and Availability') }}</h2>
+        <p>{{ t('Suggestions combine matching task history with current availability. The final assignment remains your decision.') }}</p>
+      </div>
+      <span class="suggestion-refresh-status" data-suggestion-status aria-live="polite">{{ t('Ready') }}</span>
+    </div>
+    <div class="assignment-suggestion-legend" aria-label="Availability legend">
+      <span class="suggestion-state state-available">{{ t('Available') }}</span>
+      <span class="suggestion-state state-assigned">{{ t('Assigned') }}</span>
+      <span class="suggestion-state state-working">{{ t('Working Now') }}</span>
+      <span class="suggestion-state state-overdue">{{ t('Overdue') }}</span>
+    </div>
+    <div class="assignment-suggestion-grid" data-suggestion-list>
+      {% for row in assignment_suggestions %}
+      <button type="button" class="assignment-suggestion-card state-{{ row.state }}{% if form_values.project_member_id|int == row.project_member_id %} selected{% endif %}" data-suggested-member="{{ row.project_member_id }}">
+        <span class="suggestion-rank">#{{ row.rank }}</span>
+        <div class="suggestion-person"><span class="person-avatar">{{ row.name[:1]|upper }}</span><div><strong>{{ row.name }}</strong><small>{{ row.code }}</small></div></div>
+        <span class="suggestion-availability">{{ t(row.availability) }}</span>
+        <div class="suggestion-metrics"><span>{{ row.active_tasks }} {{ t('active') }}</span><span>{{ row.overdue_tasks }} {{ t('overdue') }}</span>{% if row.specialty_score is not none %}<span>{{ '%.1f%%'|format(row.specialty_score) }} {{ t('specialty') }}</span>{% endif %}</div>
+        <small class="suggestion-work">{% if row.state == 'working' %}{{ row.working_project }} · {{ row.working_task }}{% else %}{{ t(row.recommendation) }}{% endif %}</small>
+        <span class="suggestion-select-label">{{ t('Select member') }}</span>
+      </button>
+      {% else %}<div class="empty-state compact"><p>{{ t('No mapped active members are available for suggestions.') }}</p></div>{% endfor %}
+    </div>
+  </section>
+
   <section class="task-form-actions">
     <div>
       <strong>{{ t('Ready to create this task?') }}</strong>
@@ -174,6 +209,7 @@
   const newProjectFields = Array.from(form.querySelectorAll('[data-new-project-field]'));
   const projectName = form.querySelector('#project_name');
   const engineer = form.querySelector('#project_engineer');
+  const category = form.querySelector('[data-project-category]');
   const startDate = form.querySelector('#start_date');
   const deadline = form.querySelector('#deadline');
   const discipline = form.querySelector('[data-discipline-selector]');
@@ -182,10 +218,24 @@
   const progress = form.querySelector('[data-progress-input]');
   const progressOutput = form.querySelector('[data-progress-output]');
   const completionDate = form.querySelector('[data-completion-date]');
+  const suggestionList = form.querySelector('[data-suggestion-list]');
+  const suggestionStatus = form.querySelector('[data-suggestion-status]');
+  const labels = {
+    loading: {{ t('Updating suggestions…')|tojson }},
+    ready: {{ t('Suggestions updated')|tojson }},
+    failed: {{ t('Suggestions could not be loaded')|tojson }},
+    empty: {{ t('No mapped active members are available for suggestions.')|tojson }},
+    active: {{ t('active')|tojson }},
+    overdue: {{ t('overdue')|tojson }},
+    specialty: {{ t('specialty')|tojson }},
+    select: {{ t('Select member')|tojson }},
+    noTask: {{ t('No active task')|tojson }}
+  };
+  let suggestionTimer = null;
+  let suggestionController = null;
 
-  function selectedProject() {
-    return projectSelect.options[projectSelect.selectedIndex];
-  }
+  function selectedProject() { return projectSelect.options[projectSelect.selectedIndex]; }
+  function escapeText(value) { return String(value == null ? '' : value); }
 
   function applyProjectMode() {
     const option = selectedProject();
@@ -193,25 +243,22 @@
     newProjectFields.forEach((field) => field.classList.toggle('field-disabled', !isNew));
     projectName.readOnly = !isNew;
     projectName.required = isNew;
-
     if (!isNew) {
       projectName.value = option.dataset.name || '';
       if (option.dataset.discipline) discipline.value = option.dataset.discipline;
+      category.value = option.dataset.category || '';
       if (!startDate.value && option.dataset.start) startDate.value = option.dataset.start;
       if (!deadline.value && option.dataset.deadline) deadline.value = option.dataset.deadline;
       engineer.value = option.dataset.engineer || '';
     }
+    scheduleSuggestions();
   }
 
   function applyStatusRules() {
     const selected = status.value;
     const completed = selected === 'COMPLETED';
-    const completionStates = selected === 'COMPLETED' || selected === 'FOR_REVIEW';
-    if (completionStates) progress.value = '100';
-    if (selected === 'UNASSIGNED') {
-      progress.value = '0';
-      member.value = '0';
-    }
+    if (selected === 'COMPLETED' || selected === 'FOR_REVIEW') progress.value = '100';
+    if (selected === 'UNASSIGNED') { progress.value = '0'; member.value = '0'; markSelectedSuggestion(); }
     completionDate.required = completed;
     completionDate.closest('div').classList.toggle('field-required-state', completed);
     updateProgress();
@@ -223,20 +270,66 @@
     progressOutput.textContent = `${value}%`;
   }
 
-  projectSelect.addEventListener('change', applyProjectMode);
-  status.addEventListener('change', applyStatusRules);
-  progress.addEventListener('input', updateProgress);
-  form.querySelector('[data-task-reset]').addEventListener('click', () => {
-    window.setTimeout(() => {
-      applyProjectMode();
-      applyStatusRules();
-      updateProgress();
-    }, 0);
-  });
+  function markSelectedSuggestion() {
+    suggestionList.querySelectorAll('[data-suggested-member]').forEach((card) => {
+      card.classList.toggle('selected', card.dataset.suggestedMember === member.value);
+    });
+  }
 
-  applyProjectMode();
-  applyStatusRules();
-  updateProgress();
+  function suggestionCard(row) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `assignment-suggestion-card state-${escapeText(row.state)}`;
+    button.dataset.suggestedMember = String(row.project_member_id);
+
+    const rank = document.createElement('span'); rank.className = 'suggestion-rank'; rank.textContent = `#${row.rank}`;
+    const person = document.createElement('div'); person.className = 'suggestion-person';
+    const avatar = document.createElement('span'); avatar.className = 'person-avatar'; avatar.textContent = escapeText(row.name).slice(0, 1).toUpperCase();
+    const identity = document.createElement('div');
+    const name = document.createElement('strong'); name.textContent = escapeText(row.name);
+    const code = document.createElement('small'); code.textContent = escapeText(row.code);
+    identity.append(name, code); person.append(avatar, identity);
+    const availability = document.createElement('span'); availability.className = 'suggestion-availability'; availability.textContent = escapeText(row.availability);
+    const metrics = document.createElement('div'); metrics.className = 'suggestion-metrics';
+    const active = document.createElement('span'); active.textContent = `${row.active_tasks} ${labels.active}`;
+    const overdue = document.createElement('span'); overdue.textContent = `${row.overdue_tasks} ${labels.overdue}`;
+    metrics.append(active, overdue);
+    if (row.specialty_score != null) { const specialty = document.createElement('span'); specialty.textContent = `${Number(row.specialty_score).toFixed(1)}% ${labels.specialty}`; metrics.append(specialty); }
+    const work = document.createElement('small'); work.className = 'suggestion-work'; work.textContent = row.state === 'working' ? `${escapeText(row.working_project)} · ${escapeText(row.working_task || labels.noTask)}` : escapeText(row.recommendation);
+    const selectLabel = document.createElement('span'); selectLabel.className = 'suggestion-select-label'; selectLabel.textContent = labels.select;
+    button.append(rank, person, availability, metrics, work, selectLabel);
+    button.addEventListener('click', () => { member.value = String(row.project_member_id); markSelectedSuggestion(); member.focus(); });
+    return button;
+  }
+
+  async function refreshSuggestions() {
+    if (suggestionController) suggestionController.abort();
+    suggestionController = new AbortController();
+    suggestionStatus.textContent = labels.loading;
+    const params = new URLSearchParams({ discipline: discipline.value.trim(), project_category: category.value.trim(), _: String(Date.now()) });
+    try {
+      const response = await fetch(`/portal/task-assignment-suggestions.json?${params}`, { credentials: 'same-origin', cache: 'no-store', signal: suggestionController.signal });
+      if (!response.ok) throw new Error('request failed');
+      const payload = await response.json();
+      suggestionList.replaceChildren();
+      if (!payload.rows || !payload.rows.length) {
+        const empty = document.createElement('div'); empty.className = 'empty-state compact'; const copy = document.createElement('p'); copy.textContent = labels.empty; empty.append(copy); suggestionList.append(empty);
+      } else { payload.rows.forEach((row) => suggestionList.append(suggestionCard(row))); }
+      markSelectedSuggestion(); suggestionStatus.textContent = labels.ready;
+    } catch (error) { if (error.name !== 'AbortError') suggestionStatus.textContent = labels.failed; }
+  }
+  function scheduleSuggestions() { window.clearTimeout(suggestionTimer); suggestionTimer = window.setTimeout(refreshSuggestions, 220); }
+
+  projectSelect.addEventListener('change', applyProjectMode);
+  discipline.addEventListener('input', scheduleSuggestions);
+  category.addEventListener('input', scheduleSuggestions);
+  status.addEventListener('change', applyStatusRules);
+  member.addEventListener('change', markSelectedSuggestion);
+  progress.addEventListener('input', updateProgress);
+  suggestionList.querySelectorAll('[data-suggested-member]').forEach((card) => card.addEventListener('click', () => { member.value = card.dataset.suggestedMember; markSelectedSuggestion(); member.focus(); }));
+  form.querySelector('[data-task-reset]').addEventListener('click', () => window.setTimeout(() => { applyProjectMode(); applyStatusRules(); updateProgress(); scheduleSuggestions(); }, 0));
+
+  applyProjectMode(); applyStatusRules(); updateProgress(); markSelectedSuggestion();
 }());
 </script>
 {% endblock %}

@@ -34,6 +34,7 @@
           <option value="{{ project.id }}"
                   data-engineer="{{ project.project_engineer or '' }}"
                   data-discipline="{{ project.discipline or '' }}"
+                  data-category="{{ project.project_category or '' }}"
                   data-start="{{ project.start_date.isoformat() if project.start_date else '' }}"
                   data-deadline="{{ project.deadline.isoformat() if project.deadline else '' }}"
                   {% if form_values.existing_project_id|int == project.id %}selected{% endif %}>
@@ -48,6 +49,13 @@
         <label for="project_engineer">{{ t('Project Engineer') }}</label>
         <input id="project_engineer" name="project_engineer" maxlength="200" value="{{ form_values.project_engineer }}" placeholder="{{ t('Enter the project engineer name manually') }}">
         <small class="field-hint">{{ t('Changing this value updates the selected project record.') }}</small>
+      </div>
+
+      <div>
+        <label for="project_category">{{ t('Project Category') }}</label>
+        <input id="project_category" name="project_category" list="project-category-options" maxlength="100" value="{{ form_values.project_category }}" placeholder="{{ t('Select or enter a project category') }}" data-project-category>
+        <datalist id="project-category-options">{% for category in project_categories %}<option value="{{ category }}">{% endfor %}</datalist>
+        <small class="field-hint">{{ t('This updates the selected project category for future reports and recommendations.') }}</small>
       </div>
     </div>
   </section>
@@ -104,11 +112,9 @@
 
       <div>
         <label for="discipline">{{ t('Discipline') }}</label>
-        <select id="discipline" name="discipline" data-discipline-selector>
-          {% for discipline in task_disciplines %}
-          <option value="{{ discipline }}" {% if form_values.discipline == discipline %}selected{% endif %}>{{ t(discipline) }}</option>
-          {% endfor %}
-        </select>
+        <input id="discipline" name="discipline" list="discipline-options" maxlength="100" value="{{ form_values.discipline }}" required data-discipline-selector>
+        <datalist id="discipline-options">{% for discipline in task_disciplines %}<option value="{{ discipline }}">{% endfor %}</datalist>
+        <small class="field-hint">{{ t('Select an existing discipline or enter a new one.') }}</small>
       </div>
 
       <div>
@@ -176,6 +182,7 @@
 
   const projectSelect = form.querySelector('[data-project-selector]');
   const engineer = form.querySelector('#project_engineer');
+  const category = form.querySelector('[data-project-category]');
   const discipline = form.querySelector('[data-discipline-selector]');
   const status = form.querySelector('[data-task-status]');
   const member = form.querySelector('[data-member-selector]');
@@ -190,6 +197,7 @@
   function applyProjectSelection() {
     const option = selectedProject();
     engineer.value = option.dataset.engineer || '';
+    category.value = option.dataset.category || '';
     if (option.dataset.discipline) discipline.value = option.dataset.discipline;
   }
 

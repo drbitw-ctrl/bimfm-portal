@@ -781,69 +781,75 @@ def dtr_line_row(line: DTRDailyLine, timezone_name: str) -> dict[str, object]:
 
 def compact_dtr_metrics(database: Session, dtr: MonthlyDTR) -> dict[str, object]:
     policy = database.scalar(select(HRPolicy).order_by(HRPolicy.id))
-    standard_day_minutes = COMP_LEAVE_DAY_MINUTES
+    standard_day_minutes = max(
+        1, int(policy.standard_leave_day_minutes if policy else COMP_LEAVE_DAY_MINUTES)
+    )
     leave_lines = list(database.scalars(
         select(DTRLeaveLine).where(DTRLeaveLine.monthly_dtr_id == dtr.id)
     ).all())
-    comp_leave_minutes = sum(int(line.comp_leave_minutes_used or 0) for line in leave_lines)
+    approved_leave_minutes = sum(
+        max(0, int(line.duration_minutes or 0)) for line in leave_lines
+    )
+    comp_leave_minutes = sum(
+        max(0, int(line.comp_leave_minutes_used or 0)) for line in leave_lines
+    )
 
-    # Display whole calendar days only. Attendance day counts come from the
-    # generated daily DTR statuses, not from rendered hours divided by 8.
-    # This prevents overtime, lateness, and undertime from creating values such
-    # as 23.38 worked days.
-    worked_statuses = {"PRESENT", "LATE", "HOLIDAY_WORK", "REST_DAY_WORK", "WORKED_ON_LEAVE", "PARTIAL_LEAVE_WORK"}
+    # Working-day counts remain visible, but Finance deductions are based on
+    # hours. Approved overtime credits offset approved leave minute-for-minute.
+    worked_statuses = {
+        "PRESENT", "LATE", "HOLIDAY_WORK", "REST_DAY_WORK",
+        "WORKED_ON_LEAVE", "PARTIAL_LEAVE_WORK",
+    }
     daily_lines = list(database.scalars(
         select(DTRDailyLine).where(DTRDailyLine.monthly_dtr_id == dtr.id)
     ).all())
-    worked_days = len({line.attendance_date for line in daily_lines if line.attendance_status in worked_statuses})
-    regular_leave_taken_days = len({line.leave_date for line in leave_lines})
-    comp_leave_applied_days = comp_leave_minutes // standard_day_minutes
-    regular_leave_not_converted_days = max(
-        0, regular_leave_taken_days - comp_leave_applied_days
-    )
-    payable_days = worked_days + comp_leave_applied_days
-    non_payable_days = regular_leave_not_converted_days + int(dtr.absent_days or 0)
+    worked_days = len({
+        line.attendance_date for line in daily_lines
+        if line.attendance_status in worked_statuses
+    })
+    leave_days = len({line.leave_date for line in leave_lines})
 
-    # The Finance Center and its clickable Summary page must use the same
-    # calendar-day payroll basis. Only approved leave not covered by applied
-    # compensatory credits reduces the multiplier. Unused credits remain in
-    # the ledger and never increase the multiplier above 1.0000.
     payroll = calculate_payroll_multiplier(
         calendar_days=int(dtr.calendar_days or 0),
-        approved_leave_days=regular_leave_taken_days,
-        comp_credit_days_available=comp_leave_applied_days,
+        approved_leave_minutes=approved_leave_minutes,
+        comp_credit_minutes_available=comp_leave_minutes,
+        standard_day_minutes=standard_day_minutes,
     )
-    calendar_days = payroll.calendar_days
-    effective_deduction_days = payroll.effective_unpaid_leave_days
-    payroll_numerator_days = payroll.payroll_numerator_days
-    payroll_multiplier = payroll.payroll_multiplier
+    payable_days = worked_days + payroll.comp_credit_days_applied
+    non_payable_days = payroll.effective_unpaid_leave_days + int(dtr.absent_days or 0)
 
     return {
-        "standard_day_hours": standard_day_minutes // 60,
-        "calendar_days": calendar_days,
+        "standard_day_hours": standard_day_minutes / 60,
+        "standard_day_minutes": standard_day_minutes,
+        "calendar_days": payroll.calendar_days,
         "worked_days": worked_days,
-        "regular_leave_taken_days": regular_leave_taken_days,
-        "regular_leave_days": regular_leave_not_converted_days,
-        "comp_leave_days": comp_leave_applied_days,
-        "payable_days": payable_days,
-        "non_payable_days": non_payable_days,
-        "leave_days": regular_leave_taken_days,
-        "comp_credit_days_applied": min(
-            regular_leave_taken_days, comp_leave_applied_days
-        ),
-        "effective_unpaid_leave_days": effective_deduction_days,
-        "payroll_numerator_days": payroll_numerator_days,
-        "payroll_multiplier": payroll_multiplier,
-        # Exact multiplier values remain available internally, but user-facing
-        # finance pages use whole-day coverage and deduction labels.
+        "worked_hours": round(int(dtr.rendered_minutes or 0) / 60, 2),
+        "regular_leave_taken_days": leave_days,
+        "regular_leave_days": round(payroll.effective_unpaid_leave_days, 3),
+        "comp_leave_days": round(payroll.comp_credit_days_applied, 3),
+        "payable_days": round(payable_days, 3),
+        "non_payable_days": round(non_payable_days, 3),
+        "leave_days": leave_days,
+        "approved_leave_minutes": payroll.approved_leave_minutes,
+        "approved_leave_hours": round(payroll.approved_leave_hours, 2),
+        "comp_credit_minutes_applied": payroll.comp_credit_minutes_applied,
+        "comp_credit_hours_applied": round(payroll.comp_credit_hours_applied, 2),
+        "effective_unpaid_leave_minutes": payroll.effective_unpaid_leave_minutes,
+        "effective_unpaid_leave_hours": round(payroll.effective_unpaid_leave_hours, 2),
+        "comp_credit_days_applied": round(payroll.comp_credit_days_applied, 3),
+        "effective_unpaid_leave_days": round(payroll.effective_unpaid_leave_days, 3),
+        "payroll_numerator_days": round(payroll.payroll_numerator_days, 3),
+        "payroll_multiplier": payroll.payroll_multiplier,
         "payroll_multiplier_display": payroll.multiplier_display,
         "payroll_percentage_display": payroll.percentage_display,
         "payroll_formula_display": payroll.formula_display,
-        "salary_covered_days": payroll_numerator_days,
+        "salary_covered_days": round(payroll.payroll_numerator_days, 3),
+        "salary_covered_minutes": payroll.salary_covered_minutes,
+        "salary_basis_minutes": payroll.salary_basis_minutes,
         "salary_coverage_display": payroll.salary_coverage_display,
         "payroll_treatment_display": payroll.payroll_treatment_display,
         "deduction_display": payroll.deduction_display,
-        "payable_workday_equivalents": payable_days,
+        "payable_workday_equivalents": round(payable_days, 3),
         "rest_days": int(dtr.rest_days or 0),
         "holiday_days": int(dtr.holiday_days or 0),
         "absent_days": int(dtr.absent_days or 0),
@@ -853,13 +859,6 @@ def compact_dtr_metrics(database: Session, dtr: MonthlyDTR) -> dict[str, object]
         "used_comp_label": minutes_label(int(dtr.comp_leave_used_minutes or 0)),
         "closing_comp_label": minutes_label(int(dtr.comp_leave_closing_balance_minutes or 0)),
     }
-
-
-
-
-
-
-
 
 
 

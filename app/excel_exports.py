@@ -235,14 +235,14 @@ def _add_projects_sheet(wb: Workbook, database: Session) -> None:
         wb.create_sheet("Projects"),
         title="PROJECT REGISTER",
         subtitle="Current project-level status, progress, team coverage, and active workload.",
-        headers=["Project ID", "Project", "Project Engineer", "Status", "Priority", "Progress %", "Members", "Active Tasks", "Deadline"],
+        headers=["Project ID", "Project", "Project Category", "Project Engineer", "Status", "Priority", "Progress %", "Members", "Active Tasks", "Deadline"],
         rows=[[
-            row["id"], row["name"], row["project_engineer"], row["status"], row["priority"],
+            row["id"], row["name"], row["project_category"], row["project_engineer"], row["status"], row["priority"],
             row["progress"], row["member_count"], row["active_task_count"], row["deadline"],
         ] for row in rows],
-        widths=[11, 32, 24, 16, 12, 13, 11, 13, 14],
-        status_column=4,
-        due_column=9,
+        widths=[11, 32, 18, 24, 16, 12, 13, 11, 13, 14],
+        status_column=5,
+        due_column=10,
     )
 
 

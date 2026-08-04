@@ -342,7 +342,7 @@ def generate_monthly_dtr(
         elif status == "LATE":
             summary["present_days"] += 1; summary["late_days"] += 1
         elif status == "ABSENT": summary["absent_days"] += 1
-        elif status in {"REGULAR_LEAVE", "COMPENSATORY_LEAVE"}: summary["leave_days"] += 1
+        elif status in {"REGULAR_LEAVE", "COMPENSATORY_LEAVE", "PARTIAL_COMPENSATORY_LEAVE"}: summary["leave_days"] += 1
         elif status == "HOLIDAY": summary["holiday_days"] += 1
         elif status == "REST_DAY": summary["rest_days"] += 1
         elif status == "INCOMPLETE": summary["incomplete_days"] += 1

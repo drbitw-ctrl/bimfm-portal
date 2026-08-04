@@ -97,7 +97,7 @@
         <div>
             <span class="eyebrow">MONTHLY ATTENDANCE AND LEAVE SUMMARY</span>
             <h2>{{ monthly_summary_month }}</h2>
-            <p class="muted">Read-only whole-day summary. Physical workdays and compensatory leave are shown as separate categories.</p>
+            <p class="muted">Read-only monthly summary. Working days are retained while leave coverage and deductions are calculated in hours.</p>
         </div>
         {% if monthly_dtr_status %}<span class="badge {{ 'good' if monthly_dtr_status in ['REVIEWED','FINALIZED'] else 'warning' }}">{{ monthly_dtr_status.replace('_',' ').title() }}</span>{% endif %}
     </div>
@@ -105,16 +105,16 @@
     {% if monthly_summary %}
     <div class="member-monthly-grid">
         <article class="member-summary-card worked"><span>DAYS PHYSICALLY WORKED</span><strong>{{ monthly_summary.worked_days|int }}</strong><small>Days physically rendered</small></article>
-        <article class="member-summary-card leave"><span>APPROVED LEAVE TAKEN</span><strong>{{ monthly_summary.regular_leave_taken_days|int }}</strong><small>Approved whole-day leave</small></article>
-        <article class="member-summary-card comp"><span>COMPENSATORY LEAVE APPLIED</span><strong>{{ monthly_summary.comp_leave_days|int }}</strong><small>Covered by earned credits</small></article>
-        <article class="member-summary-card payable"><span>PAYABLE WORKDAY EQUIVALENTS</span><strong>{{ monthly_summary.payable_workday_equivalents|int }}</strong><small>Worked days + covered leave</small></article>
+        <article class="member-summary-card leave"><span>APPROVED LEAVE TAKEN</span><strong>{{ monthly_summary.regular_leave_taken_days|int }} day(s)</strong><small>{{ monthly_summary.approved_leave_hours }} leave hour(s)</small></article>
+        <article class="member-summary-card comp"><span>OT CREDIT APPLIED</span><strong>{{ monthly_summary.comp_credit_hours_applied }}h</strong><small>Applied hour-for-hour to leave</small></article>
+        <article class="member-summary-card payable"><span>UNPAID LEAVE</span><strong>{{ monthly_summary.effective_unpaid_leave_hours }}h</strong><small>Leave hours not covered by OT credit</small></article>
     </div>
     <div class="member-credit-strip">
         <div><span>Comp Credits Earned from Approved OT</span><strong>{{ monthly_summary.earned_comp_label }}</strong></div>
         <div><span>Comp Credits Used</span><strong>{{ monthly_summary.used_comp_label }}</strong></div>
         <div><span>Remaining Comp Credits</span><strong>{{ monthly_summary.closing_comp_label }}</strong></div>
     </div>
-    <p class="muted small-note">Approved overtime is credited directly to compensatory leave after final approval. Compensatory leave does not increase days physically worked.</p>
+    <p class="muted small-note">Approved overtime credit is applied to approved leave hour-for-hour. Working-day counts remain visible and partial credit balances carry forward.</p>
     {% else %}
     <div class="empty-state compact-empty">
         <h3>No monthly DTR summary is available yet.</h3>

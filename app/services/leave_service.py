@@ -74,9 +74,9 @@ class LeaveService:
 
         if normalized_type == "COMPENSATORY_LEAVE":
             available = self.deps.comp_balance(database, freelancer_id, parsed)
-            if self.deps.whole_comp_days(available) < 1:
+            if available <= 0:
                 return ServiceResult.failure(
-                    "Compensatory leave cannot be applied until you have at least one full-day credit.",
+                    "No compensatory credit is available for this leave date.",
                     month_key,
                 )
 

@@ -25,7 +25,11 @@ from app.models import (
     PortalTaskAssignment,
     ProjectMember,
 )
-from app.performance_reporting import build_performance_dashboard, build_project_reports
+from app.performance_reporting import (
+    build_assignment_suggestions,
+    build_performance_dashboard,
+    build_project_reports,
+)
 from app.calendar_board import build_reminder_calendar
 from app.my_work_service import build_role_my_work
 from app.task_time_reporting import build_task_time_utilization
@@ -58,11 +62,22 @@ TASK_PRIORITIES = (
     ("URGENT", "Critical"),
 )
 TASK_DISCIPLINES = (
-    "Architecture",
-    "Structure",
+    "AR",
+    "ST",
+    "AS (AR+ST)",
     "MEP",
+    "E&M",
+    "RFA",
+    "CDR",
     "GE",
     "Civil Works",
+)
+PROJECT_CATEGORIES = (
+    "安居",
+    "MRT",
+    "Bridge",
+    "Housing",
+    "Commercial",
 )
 
 
@@ -269,13 +284,14 @@ def create_portal_router(
             "existing_project_id": 0,
             "project_name": "",
             "project_engineer": "",
+            "project_category": "",
             "task_title": "",
             "start_date": date.today().isoformat(),
             "deadline": "",
             "completion_date": "",
             "status": "NOT_STARTED",
             "priority": "NORMAL",
-            "discipline": "Architecture",
+            "discipline": "AR",
             "project_member_id": 0,
             "progress": 0,
             "quality_score": "",
@@ -288,13 +304,14 @@ def create_portal_router(
                     "existing_project_id": task.project_id,
                     "project_name": project.name if project else "",
                     "project_engineer": project.project_engineer if project and project.project_engineer else "",
+                    "project_category": project.project_category if project and project.project_category else "",
                     "task_title": task.title,
                     "start_date": task.start_date.isoformat() if task.start_date else "",
                     "deadline": task.due_date.isoformat() if task.due_date else "",
                     "completion_date": _task_completion_date(task),
                     "status": task.status,
                     "priority": task.priority,
-                    "discipline": task.discipline or (project.discipline if project else None) or "Architecture",
+                    "discipline": task.discipline or (project.discipline if project else None) or "AR",
                     "project_member_id": selected_project_member_id(database, task.id),
                     "progress": int(task.progress or 0),
                     "quality_score": task.quality_score or "",
@@ -311,6 +328,12 @@ def create_portal_router(
             task_statuses=TASK_STATUSES,
             task_priorities=TASK_PRIORITIES,
             task_disciplines=TASK_DISCIPLINES,
+            project_categories=PROJECT_CATEGORIES,
+            assignment_suggestions=build_assignment_suggestions(
+                database,
+                discipline=str(defaults.get("discipline") or ""),
+                project_category=str(defaults.get("project_category") or ""),
+            ),
             form_values=defaults,
             editing_task=task,
         )
@@ -320,6 +343,7 @@ def create_portal_router(
         existing_project_id: int,
         project_name: str,
         project_engineer: str,
+        project_category: str,
         task_title: str,
         start_date: str,
         deadline: str,
@@ -336,6 +360,7 @@ def create_portal_router(
             "existing_project_id": existing_project_id,
             "project_name": project_name.strip(),
             "project_engineer": project_engineer.strip(),
+            "project_category": project_category.strip(),
             "task_title": task_title.strip(),
             "start_date": start_date.strip(),
             "deadline": deadline.strip(),
@@ -354,9 +379,16 @@ def create_portal_router(
         normalized_priority = form_values["priority"]
         if normalized_priority not in {value for value, _ in TASK_PRIORITIES}:
             raise ValueError("Select a valid task priority.")
-        normalized_discipline = form_values["discipline"]
-        if normalized_discipline not in TASK_DISCIPLINES:
-            raise ValueError("Select a valid discipline.")
+        normalized_discipline = " ".join(str(form_values["discipline"] or "").split())
+        if not normalized_discipline:
+            raise ValueError("Discipline is required.")
+        if len(normalized_discipline) > 100:
+            raise ValueError("Discipline must contain 100 characters or fewer.")
+        form_values["discipline"] = normalized_discipline
+        normalized_category = " ".join(str(form_values["project_category"] or "").split())
+        if len(normalized_category) > 100:
+            raise ValueError("Project Category must contain 100 characters or fewer.")
+        form_values["project_category"] = normalized_category
         title = form_values["task_title"]
         if not title:
             raise ValueError("Task title is required.")
@@ -398,6 +430,7 @@ def create_portal_router(
         existing_project_id: int,
         project_name: str,
         project_engineer: str,
+        project_category: str,
         priority: str,
         discipline: str,
         start_date: Optional[date],
@@ -413,6 +446,7 @@ def create_portal_router(
             if project is None:
                 raise ValueError("The selected project was not found.")
             project.project_engineer = engineer_name or None
+            project.project_category = project_category or None
         else:
             if not allow_create:
                 raise ValueError("Select an existing project for this task.")
@@ -434,6 +468,7 @@ def create_portal_router(
                 status="ACTIVE",
                 priority=priority,
                 discipline=discipline,
+                project_category=project_category or None,
                 start_date=start_date,
                 deadline=deadline,
                 completion_date=(completion_date if task_status == "COMPLETED" else None),
@@ -445,6 +480,8 @@ def create_portal_router(
 
         if not project.discipline:
             project.discipline = discipline
+        if project_category:
+            project.project_category = project_category
         if project.start_date is None:
             project.start_date = start_date
         if project.deadline is None:
@@ -501,6 +538,27 @@ def create_portal_router(
         )
         return member.member_name
 
+    @router.get("/portal/task-assignment-suggestions.json", response_class=JSONResponse)
+    def task_assignment_suggestions_json(
+        request: Request,
+        discipline: str = "",
+        project_category: str = "",
+        database: Session = Depends(get_db),
+    ):
+        account = require_project_editor(request, database)
+        if account is None:
+            return JSONResponse({"error": "Authentication required."}, status_code=401)
+        if account is False:
+            return JSONResponse({"error": "Access denied."}, status_code=403)
+        rows = build_assignment_suggestions(
+            database,
+            discipline=discipline,
+            project_category=project_category,
+        )
+        response = JSONResponse({"rows": rows, "count": len(rows)})
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+        return response
+
     @router.get("/portal/tasks/new", response_class=HTMLResponse)
     def new_portal_task_page(
         request: Request,
@@ -525,13 +583,14 @@ def create_portal_router(
         existing_project_id: int = Form(0),
         project_name: str = Form(""),
         project_engineer: str = Form(""),
+        project_category: str = Form(""),
         task_title: str = Form(...),
         start_date: str = Form(""),
         deadline: str = Form(""),
         completion_date: str = Form(""),
         status: str = Form("NOT_STARTED"),
         priority: str = Form("NORMAL"),
-        discipline: str = Form("Architecture"),
+        discipline: str = Form("AR"),
         project_member_id: int = Form(0),
         progress: str = Form("0"),
         quality_score: str = Form(""),
@@ -554,6 +613,7 @@ def create_portal_router(
             "existing_project_id": existing_project_id,
             "project_name": project_name,
             "project_engineer": project_engineer,
+            "project_category": project_category,
             "task_title": task_title,
             "start_date": start_date,
             "deadline": deadline,
@@ -580,6 +640,7 @@ def create_portal_router(
                 existing_project_id=int(form_values["existing_project_id"]),
                 project_name=str(form_values["project_name"]),
                 project_engineer=str(form_values["project_engineer"]),
+                project_category=str(form_values["project_category"]),
                 priority=str(form_values["priority"]),
                 discipline=str(form_values["discipline"]),
                 start_date=parsed_start,
@@ -626,7 +687,7 @@ def create_portal_router(
                 target_type="PORTAL_TASK",
                 target_id=task.id,
                 details=(
-                    f"project={project.name}; title={task.title}; status={task.status}; "
+                    f"project={project.name}; category={project.project_category or 'none'}; title={task.title}; status={task.status}; "
                     f"progress={task.progress}; quality={task.quality_score or 'not rated'}; "
                     f"assigned_member={assigned_member_name}"
                 ),
@@ -702,13 +763,14 @@ def create_portal_router(
         csrf: str = Form(...),
         existing_project_id: int = Form(...),
         project_engineer: str = Form(""),
+        project_category: str = Form(""),
         task_title: str = Form(...),
         start_date: str = Form(""),
         deadline: str = Form(""),
         completion_date: str = Form(""),
         status: str = Form("NOT_STARTED"),
         priority: str = Form("NORMAL"),
-        discipline: str = Form("Architecture"),
+        discipline: str = Form("AR"),
         project_member_id: int = Form(0),
         progress: str = Form("0"),
         quality_score: str = Form(""),
@@ -734,6 +796,7 @@ def create_portal_router(
             "existing_project_id": existing_project_id,
             "project_name": "",
             "project_engineer": project_engineer,
+            "project_category": project_category,
             "task_title": task_title,
             "start_date": start_date,
             "deadline": deadline,
@@ -760,6 +823,7 @@ def create_portal_router(
                 existing_project_id=int(form_values["existing_project_id"]),
                 project_name="",
                 project_engineer=str(form_values["project_engineer"]),
+                project_category=str(form_values["project_category"]),
                 priority=str(form_values["priority"]),
                 discipline=str(form_values["discipline"]),
                 start_date=parsed_start,
@@ -800,7 +864,7 @@ def create_portal_router(
                 target_type="PORTAL_TASK",
                 target_id=task.id,
                 details=(
-                    f"project={project.name}; title={task.title}; status={task.status}; "
+                    f"project={project.name}; category={project.project_category or 'none'}; title={task.title}; status={task.status}; "
                     f"progress={task.progress}; quality={task.quality_score or 'not rated'}; "
                     f"assigned_member={assigned_member_name}"
                 ),
@@ -1352,6 +1416,7 @@ def create_portal_router(
         if module_name == "projects":
             columns = [
                 {"key": "project", "label": "Project", "type": "project"},
+                {"key": "project_category", "label": "Project Category", "type": "translatable_text"},
                 {"key": "project_engineer", "label": "Project Engineer", "type": "text"},
                 {"key": "status", "label": "Status", "type": "status"},
                 {"key": "progress", "label": "Progress", "type": "progress"},
@@ -1362,6 +1427,7 @@ def create_portal_router(
             rows = [
                 {
                     "project": {"primary": row["name"], "secondary": ""},
+                    "project_category": row["project_category"],
                     "project_engineer": row["project_engineer"],
                     "status": row["status"],
                     "progress": int(row["progress"]),

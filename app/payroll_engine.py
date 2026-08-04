@@ -5,13 +5,59 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True, slots=True)
 class PayrollCalculation:
+    """Hourly monthly-salary calculation while retaining workday reporting.
+
+    The monthly salary basis follows the approved company example:
+    monthly salary / calendar days / standard work hours per day. Approved
+    overtime credit offsets approved leave minute-for-minute and can never
+    increase salary above the full monthly rate.
+    """
+
     calendar_days: int
-    approved_leave_days: int
-    comp_credit_days_available: int
-    comp_credit_days_applied: int
-    effective_unpaid_leave_days: int
-    payroll_numerator_days: int
+    standard_day_minutes: int
+    approved_leave_minutes: int
+    comp_credit_minutes_available: int
+    comp_credit_minutes_applied: int
+    effective_unpaid_leave_minutes: int
+    salary_basis_minutes: int
+    salary_covered_minutes: int
     payroll_multiplier: float
+
+    @property
+    def approved_leave_hours(self) -> float:
+        return self.approved_leave_minutes / 60
+
+    @property
+    def comp_credit_hours_available(self) -> float:
+        return self.comp_credit_minutes_available / 60
+
+    @property
+    def comp_credit_hours_applied(self) -> float:
+        return self.comp_credit_minutes_applied / 60
+
+    @property
+    def effective_unpaid_leave_hours(self) -> float:
+        return self.effective_unpaid_leave_minutes / 60
+
+    @property
+    def approved_leave_days(self) -> float:
+        return self.approved_leave_minutes / self.standard_day_minutes
+
+    @property
+    def comp_credit_days_available(self) -> float:
+        return self.comp_credit_minutes_available / self.standard_day_minutes
+
+    @property
+    def comp_credit_days_applied(self) -> float:
+        return self.comp_credit_minutes_applied / self.standard_day_minutes
+
+    @property
+    def effective_unpaid_leave_days(self) -> float:
+        return self.effective_unpaid_leave_minutes / self.standard_day_minutes
+
+    @property
+    def payroll_numerator_days(self) -> float:
+        return self.salary_covered_minutes / self.standard_day_minutes
 
     @property
     def multiplier_display(self) -> str:
@@ -24,53 +70,54 @@ class PayrollCalculation:
     @property
     def formula_display(self) -> str:
         return (
-            f"({self.calendar_days} - {self.effective_unpaid_leave_days}) "
-            f"/ {self.calendar_days}"
+            f"({self.salary_basis_minutes} - {self.effective_unpaid_leave_minutes}) "
+            f"/ {self.salary_basis_minutes}"
         )
 
     @property
     def salary_coverage_display(self) -> str:
-        return f"{self.payroll_numerator_days} of {self.calendar_days} days"
+        covered_hours = self.salary_covered_minutes / 60
+        basis_hours = self.salary_basis_minutes / 60
+        return f"{covered_hours:g} of {basis_hours:g} salary-basis hours"
 
     @property
     def payroll_treatment_display(self) -> str:
-        if self.effective_unpaid_leave_days == 0:
+        if self.effective_unpaid_leave_minutes == 0:
             return "Full Monthly Rate"
-        day_word = "day" if self.effective_unpaid_leave_days == 1 else "days"
-        return f"Reduced by {self.effective_unpaid_leave_days} calendar {day_word}"
+        return f"Reduced by {self.effective_unpaid_leave_hours:g} unpaid leave hours"
 
     @property
     def deduction_display(self) -> str:
-        day_word = "day" if self.effective_unpaid_leave_days == 1 else "days"
-        return f"{self.effective_unpaid_leave_days} {day_word}"
+        return f"{self.effective_unpaid_leave_hours:g} hours"
 
 
 def calculate_payroll_multiplier(
     *,
     calendar_days: int,
-    approved_leave_days: int,
-    comp_credit_days_available: int,
+    approved_leave_minutes: int,
+    comp_credit_minutes_available: int,
+    standard_day_minutes: int = 480,
 ) -> PayrollCalculation:
-    """Calculate the monthly-rate freelancer payroll multiplier.
-
-    Approved overtime never raises salary. Whole-day compensatory credits may
-    offset approved leave, and the final multiplier is always between 0 and 1.
-    """
+    """Calculate hourly leave deduction against a calendar-day monthly salary."""
     normalized_calendar_days = max(1, int(calendar_days or 0))
-    normalized_leave_days = max(0, int(approved_leave_days or 0))
-    normalized_comp_days = max(0, int(comp_credit_days_available or 0))
+    normalized_standard_day = max(1, int(standard_day_minutes or 0))
+    normalized_leave = max(0, int(approved_leave_minutes or 0))
+    normalized_comp = max(0, int(comp_credit_minutes_available or 0))
 
-    comp_applied = min(normalized_leave_days, normalized_comp_days)
-    effective_unpaid = max(0, normalized_leave_days - comp_applied)
-    numerator = max(0, normalized_calendar_days - effective_unpaid)
-    multiplier = min(1.0, max(0.0, numerator / normalized_calendar_days))
+    comp_applied = min(normalized_leave, normalized_comp)
+    effective_unpaid = max(0, normalized_leave - comp_applied)
+    salary_basis = normalized_calendar_days * normalized_standard_day
+    salary_covered = max(0, salary_basis - effective_unpaid)
+    multiplier = min(1.0, max(0.0, salary_covered / salary_basis))
 
     return PayrollCalculation(
         calendar_days=normalized_calendar_days,
-        approved_leave_days=normalized_leave_days,
-        comp_credit_days_available=normalized_comp_days,
-        comp_credit_days_applied=comp_applied,
-        effective_unpaid_leave_days=effective_unpaid,
-        payroll_numerator_days=numerator,
+        standard_day_minutes=normalized_standard_day,
+        approved_leave_minutes=normalized_leave,
+        comp_credit_minutes_available=normalized_comp,
+        comp_credit_minutes_applied=comp_applied,
+        effective_unpaid_leave_minutes=effective_unpaid,
+        salary_basis_minutes=salary_basis,
+        salary_covered_minutes=salary_covered,
         payroll_multiplier=multiplier,
     )

@@ -62,6 +62,8 @@ def configure_overtime_routes(legacy_namespace: dict[str, object]) -> APIRouter:
                 attendance=attendance,
                 selected_month=selected_month,
                 balance=balance,
+                balance_hours=round(balance / 60, 2),
+                balance_label=minutes_label(balance),
                 comp_days=whole_comp_days(balance),
                 comp_remainder=comp_remainder_minutes(balance),
                 policy=get_policy(database),

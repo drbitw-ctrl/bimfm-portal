@@ -39,6 +39,27 @@
     <strong>{{ t('40% Speed + 60% Quality') }}</strong>
   </div>
 
+  <section class="content-card specialty-recommendation-section">
+    <div class="section-heading">
+      <div><span class="eyebrow">{{ t('BEST-FIT RECOMMENDATIONS') }}</span><h2>{{ t('Recommended Members by Specialty') }}</h2><p>{{ t('Recommendations use completed-task Speed and Quality history. A reliable recommendation requires enough completed and rated work.') }}</p></div>
+    </div>
+    <div class="specialty-recommendation-grid">
+      {% for item in performance.specialty_recommendations %}
+      <article class="specialty-recommendation-card {{ 'reliable' if item.has_reliable_data else 'limited' }}">
+        <div class="specialty-card-heading"><span class="specialty-type">{{ t('Project Category') if item.kind == 'category' else t('Discipline') }}</span><strong>{{ item.label }}</strong></div>
+        {% if item.leader %}
+          <div class="specialty-person"><span class="person-avatar">{{ item.leader.name[:1]|upper }}</span><div><h3>{{ item.leader.name }}</h3><small>{{ item.leader.code or t('Team member') }}</small></div></div>
+          <div class="specialty-score-row"><span><small>{{ t('Overall') }}</small><strong>{{ '%.1f%%'|format(item.leader.overall) if item.leader.overall is not none else '—' }}</strong></span><span><small>{{ t('Speed') }}</small><strong>{{ '%.1f%%'|format(item.leader.speed) if item.leader.speed is not none else '—' }}</strong></span><span><small>{{ t('Quality') }}</small><strong>{{ '%.1f%%'|format(item.leader.quality) if item.leader.quality is not none else '—' }}</strong></span></div>
+          <div class="specialty-evidence"><span>{{ item.leader.completed_tasks }} {{ t('completed tasks') }}</span><span>{{ item.leader.rated_tasks }} {{ t('rated') }}</span></div>
+          {% if item.has_reliable_data %}<span class="specialty-confidence good">{{ t('Recommended') }}</span>{% else %}<span class="specialty-confidence warning">{{ t('Limited data') }}</span>{% endif %}
+        {% else %}
+          <div class="specialty-empty"><strong>{{ t('Insufficient data') }}</strong><small>{{ t('No completed tasks are available for this specialty yet.') }}</small></div>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+
   <div class="stats-grid performance-summary-grid">
     <article class="stat-card"><span>{{ t('Overall leader') }}</span><strong>{{ performance.overall_summary.leader }}</strong><small>{{ t('Highest combined performance result') }}</small></article>
     <article class="stat-card"><span>{{ t('Team average') }}</span><strong>{{ '%.1f%%'|format(performance.overall_summary.team_average) if performance.overall_summary.team_average is not none else '—' }}</strong><small>{{ t('Across members with Quality and Speed data') }}</small></article>

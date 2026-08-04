@@ -1,0 +1,96 @@
+BIM PORTAL RELEASE 21.16 — VALIDATION REPORT
+============================================================
+Version: 3.0.16-release21.16-hourly-finance-specialty-suggestions
+Result: PASSED
+Failures: 0
+Errors: 0
+
+STATIC AND APPLICATION VALIDATION
+------------------------------------------------------------
+Python application compilation: PASSED
+Application import: PASSED
+Application routes loaded: 126
+Jinja templates parsed: 49
+JavaScript syntax: PASSED
+English localization keys: 1,997
+Traditional Chinese localization keys: 1,997
+Localization key parity: PASSED
+Missing literal translation keys: 0
+
+DATABASE VALIDATION
+------------------------------------------------------------
+Fresh Alembic upgrade through head: PASSED
+Alembic head: 20260804_0015
+portal_projects.project_category column: PRESENT
+Upgrade from 20260803_0013 through 0014 and 0015 with seeded Gab data: PASSED
+Confirmed opening overtime credit: 900 minutes / 15 hours
+Confirmed July credit application: 900 minutes / 15 hours
+Gab July credit allocation: 480, 420, 0, 0 minutes
+Migration audit entry: PASSED
+Finalized-DTR preservation logic: VERIFIED BY CODE REVIEW
+
+HOURLY HR FINANCE VALIDATION
+------------------------------------------------------------
+Monthly salary example: ₱50,000.00
+Calendar days: 31
+Approved leave: 1,920 minutes / 32 hours
+Overtime credit applied: 900 minutes / 15 hours
+Unpaid leave: 1,020 minutes / 17 hours
+Calculated salary deduction: ₱3,427.42
+Calculated net salary: ₱46,572.58
+Payroll percentage: 93.15%
+Example calculation assertions: 8 passed
+
+PARTIAL CREDIT VALIDATION
+------------------------------------------------------------
+Available credit: 420 minutes / 7 hours
+Approved leave: 480 minutes / 8 hours
+Credit applied: 420 minutes
+Uncovered leave: 60 minutes
+Complete-day minimum required: NO
+Remaining ledger balance: 0 minutes
+Partial-credit assertions: 2 passed
+
+PERFORMANCE AND ASSIGNMENT VALIDATION
+------------------------------------------------------------
+Overall Performance weighting: 40% Speed + 60% Quality
+Existing Quality Score calculation preserved: PASSED
+MEP specialty leader selection: PASSED
+MRT category leader selection: PASSED
+Reliability threshold: PASSED
+AS contributes to AR and ST logic: VERIFIED BY CODE REVIEW
+Suggested-member ranking: PASSED
+Available-member priority: PASSED
+Assigned-member workload state: PASSED
+Active task, overdue task, and live-work fields: PRESENT
+Performance and suggestion assertions: 11 passed
+
+DTR AND FINANCE EXPORT VALIDATION
+------------------------------------------------------------
+Hourly Finance row calculation: PASSED
+Approved leave hours: 32
+Overtime credit applied: 15
+Unpaid leave hours: 17
+DTR Excel workbook generation: PASSED
+Finance Summary worksheet: PRESENT
+Unpaid Leave output: PRESENT
+Workbook opened successfully with openpyxl: PASSED
+
+TASK FORM AND CATEGORY VALIDATION
+------------------------------------------------------------
+Project Category nullable schema: PASSED
+Default category options: PASSED
+Custom category accepted up to 100 characters: VERIFIED
+Default Discipline options: PASSED
+Custom Discipline accepted up to 100 characters: VERIFIED
+Suggested-member cards on New Task form: PRESENT
+Dynamic suggestion endpoint: PRESENT
+Inline task-suggestion JavaScript syntax: PASSED
+Project Category shown in project registers and Excel export: PASSED
+
+PACKAGE VALIDATION
+------------------------------------------------------------
+Production database accessed: NO
+Testing databases: ISOLATED SQLITE DATABASES
+ZIP integrity: PASSED
+============================================================
