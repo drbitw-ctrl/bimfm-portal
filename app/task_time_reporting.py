@@ -1,12 +1,12 @@
-"""Clear task time-budget reporting.
+"""Clear task and project time-utilization reporting.
 
-Planned time is calculated only for tasks with both a Start Date and Deadline.
-Each scheduled workday contributes eight hours and active holidays are excluded.
-Recorded time comes only from linked Daily Task / Work Order records. The
-utilization percentage compares the same measurable population on both sides:
-recorded time on scheduled tasks divided by planned time for those scheduled
-tasks. Unscheduled, unlinked, and unmatched work remains visible but is excluded
-from the percentage so it cannot silently inflate the result.
+Planned time is calculated for tasks with both a Start Date and Deadline. Each
+scheduled workday contributes eight hours and active holidays are excluded.
+When a task has Work Order / Daily Task time, that recorded time is used as its
+actual utilization time. When no actual time exists but planned time is
+available, planned time is used as the effective actual time so historical
+tasks still receive a 100% utilization value. Project totals include all-time
+recorded work plus these clearly labelled planned-time substitutions.
 """
 from __future__ import annotations
 
@@ -133,12 +133,17 @@ def _contributors_label(values: dict[str, int]) -> str:
     return "; ".join(parts)
 
 
-def _time_budget_status(target_minutes: Optional[int], actual_minutes: int) -> str:
+def _time_budget_status(
+    target_minutes: Optional[int],
+    utilization_minutes: int,
+    *,
+    uses_planned_fallback: bool = False,
+) -> str:
     if target_minutes is None or int(target_minutes) <= 0:
         return "NO_SCHEDULE"
-    if int(actual_minutes) <= 0:
-        return "NO_TIME"
-    if int(actual_minutes) > int(target_minutes):
+    if uses_planned_fallback:
+        return "PLANNED_FALLBACK"
+    if int(utilization_minutes) > int(target_minutes):
         return "OVER_PLAN"
     return "WITHIN_PLAN"
 
@@ -240,25 +245,33 @@ def build_task_time_utilization(
             else None
         )
         linked_entries = linked_entries_by_task.get(int(task.id), 0)
-        actual_minutes = linked_minutes_by_task.get(int(task.id), 0)
+        recorded_minutes = linked_minutes_by_task.get(int(task.id), 0)
         included_in_utilization = target_minutes is not None and target_minutes > 0
+        uses_planned_fallback = bool(
+            included_in_utilization and recorded_minutes <= 0
+        )
+        utilization_minutes = (
+            int(target_minutes)
+            if uses_planned_fallback
+            else int(recorded_minutes)
+        )
         variance_minutes = (
-            actual_minutes - target_minutes
+            utilization_minutes - target_minutes
             if included_in_utilization
             else None
         )
         utilization = (
-            round(actual_minutes / target_minutes * 100, 1)
+            round(utilization_minutes / target_minutes * 100, 1)
             if included_in_utilization
             else None
         )
         remaining_minutes = (
-            max(0, target_minutes - actual_minutes)
+            max(0, target_minutes - utilization_minutes)
             if included_in_utilization
             else None
         )
         overrun_minutes = (
-            max(0, actual_minutes - target_minutes)
+            max(0, utilization_minutes - target_minutes)
             if included_in_utilization
             else None
         )
@@ -277,9 +290,18 @@ def build_task_time_utilization(
             "deadline": task.due_date.isoformat() if task.due_date else "—",
             "scheduled_workdays": workdays,
             "target_minutes": target_minutes,
-            "actual_minutes": actual_minutes,
-            "measured_actual_minutes": actual_minutes if included_in_utilization else 0,
-            "excluded_actual_minutes": actual_minutes if not included_in_utilization else 0,
+            # ``actual_minutes`` remains the compatibility field used by the
+            # report templates and exports. It now means effective utilization
+            # time: recorded time when available, otherwise planned time.
+            "actual_minutes": utilization_minutes,
+            "recorded_minutes": recorded_minutes,
+            "utilization_minutes": utilization_minutes,
+            "planned_fallback_minutes": (
+                int(target_minutes) if uses_planned_fallback else 0
+            ),
+            "uses_planned_fallback": uses_planned_fallback,
+            "measured_actual_minutes": utilization_minutes if included_in_utilization else 0,
+            "excluded_actual_minutes": recorded_minutes if not included_in_utilization else 0,
             "variance_minutes": variance_minutes,
             "variance_absolute_minutes": abs(variance_minutes) if variance_minutes is not None else None,
             "variance_direction": (
@@ -292,17 +314,29 @@ def build_task_time_utilization(
             "remaining_minutes": remaining_minutes,
             "overrun_minutes": overrun_minutes,
             "utilization": utilization,
-            "time_budget_status": _time_budget_status(target_minutes, actual_minutes),
+            "time_budget_status": _time_budget_status(
+                target_minutes,
+                utilization_minutes,
+                uses_planned_fallback=uses_planned_fallback,
+            ),
             "included_in_utilization": included_in_utilization,
             "linked_entries": linked_entries,
-            "logged_minutes": actual_minutes,
-            "is_estimated_actual": False,
-            "actual_time_source": "daily_task_entries" if linked_entries > 0 else "no_time_data",
+            "logged_minutes": recorded_minutes,
+            "is_estimated_actual": uses_planned_fallback,
+            "actual_time_source": (
+                "planned_time_fallback"
+                if uses_planned_fallback
+                else "daily_task_entries"
+                if linked_entries > 0
+                else "no_time_data"
+            ),
             "estimated_workdays": None,
             "completion_date": task.completed_at.date().isoformat() if task.completed_at else "—",
             "contributors": (
                 _contributors_label(linked_member_minutes.get(int(task.id), {}))
                 if linked_entries > 0
+                else "Planned time used as actual"
+                if uses_planned_fallback
                 else "—"
             ),
             "is_unlinked": False,
@@ -341,6 +375,10 @@ def build_task_time_utilization(
                 "scheduled_workdays": None,
                 "target_minutes": None,
                 "actual_minutes": unlinked_minutes,
+                "recorded_minutes": unlinked_minutes,
+                "utilization_minutes": unlinked_minutes,
+                "planned_fallback_minutes": 0,
+                "uses_planned_fallback": False,
                 "measured_actual_minutes": 0,
                 "excluded_actual_minutes": unlinked_minutes,
                 "variance_minutes": None,
@@ -362,17 +400,26 @@ def build_task_time_utilization(
                 "is_unlinked": True,
             })
 
-        if not task_rows:
-            continue
-
         measured_rows = [
             row for row in task_rows
             if not row["is_unlinked"] and row["included_in_utilization"]
         ]
         target_minutes = sum(int(row["target_minutes"] or 0) for row in measured_rows)
-        measured_actual_minutes = sum(int(row["actual_minutes"] or 0) for row in measured_rows)
-        actual_minutes = sum(int(row["actual_minutes"] or 0) for row in task_rows)
-        excluded_actual_minutes = max(0, actual_minutes - measured_actual_minutes)
+        measured_actual_minutes = sum(
+            int(row["utilization_minutes"] or 0) for row in measured_rows
+        )
+        actual_minutes = sum(
+            int(row["utilization_minutes"] or 0) for row in task_rows
+        )
+        recorded_minutes = sum(
+            int(row["recorded_minutes"] or 0) for row in task_rows
+        )
+        planned_fallback_minutes = sum(
+            int(row["planned_fallback_minutes"] or 0) for row in task_rows
+        )
+        excluded_actual_minutes = sum(
+            int(row["excluded_actual_minutes"] or 0) for row in task_rows
+        )
         variance_minutes = (
             measured_actual_minutes - target_minutes
             if target_minutes > 0
@@ -410,6 +457,8 @@ def build_task_time_utilization(
             "target_minutes": target_minutes if target_minutes > 0 else None,
             "measured_actual_minutes": measured_actual_minutes,
             "actual_minutes": actual_minutes,
+            "recorded_minutes": recorded_minutes,
+            "planned_fallback_minutes": planned_fallback_minutes,
             "excluded_actual_minutes": excluded_actual_minutes,
             "variance_minutes": variance_minutes,
             "variance_absolute_minutes": abs(variance_minutes) if variance_minutes is not None else None,
@@ -424,11 +473,15 @@ def build_task_time_utilization(
             "overrun_minutes": overrun_minutes,
             "utilization": utilization,
             "unlinked_minutes": unlinked_minutes,
-            "estimated_actual_task_count": 0,
+            "estimated_actual_task_count": sum(
+                1 for row in task_rows
+                if not row["is_unlinked"] and row["uses_planned_fallback"]
+            ),
             "rows": task_rows,
         })
 
-    # The project overview is intentionally ranked by total recorded effort.
+    # The project overview is ranked by total all-time project effort. This
+    # includes recorded time and planned-time substitutions for historical tasks.
     project_rows.sort(
         key=lambda item: (
             -int(item["actual_minutes"] or 0),
@@ -447,8 +500,14 @@ def build_task_time_utilization(
     total_actual_project_minutes = sum(
         int(row["actual_minutes"] or 0) for row in project_rows
     )
-    total_excluded_actual_minutes = max(
-        0, total_actual_project_minutes - total_measured_actual_minutes
+    total_recorded_project_minutes = sum(
+        int(row["recorded_minutes"] or 0) for row in project_rows
+    )
+    total_planned_fallback_minutes = sum(
+        int(row["planned_fallback_minutes"] or 0) for row in project_rows
+    )
+    total_excluded_actual_minutes = sum(
+        int(row["excluded_actual_minutes"] or 0) for row in project_rows
     )
     maximum_project_actual_minutes = max(
         (int(row["actual_minutes"] or 0) for row in project_rows),
@@ -507,6 +566,8 @@ def build_task_time_utilization(
             "target_minutes": total_target_minutes if total_target_minutes > 0 else None,
             "measured_actual_minutes": total_measured_actual_minutes,
             "actual_project_minutes": total_actual_project_minutes,
+            "recorded_project_minutes": total_recorded_project_minutes,
+            "planned_fallback_minutes": total_planned_fallback_minutes,
             "excluded_actual_minutes": total_excluded_actual_minutes,
             "top_project_name": top_project["name"] if top_project else "—",
             "top_project_actual_minutes": int(top_project["actual_minutes"] or 0) if top_project else 0,
@@ -525,14 +586,16 @@ def build_task_time_utilization(
             "unlinked_project_minutes": sum(int(row["unlinked_minutes"] or 0) for row in project_rows),
             "unmatched_minutes": unmatched_minutes,
             "unmatched_entries": unmatched_entries,
-            "estimated_actual_task_count": 0,
+            "estimated_actual_task_count": sum(
+                int(row["estimated_actual_task_count"] or 0) for row in project_rows
+            ),
         },
         "method": {
             "minutes_per_day": STANDARD_TASK_DAY_MINUTES,
             "hours_per_day": 8,
             "holiday_count": len(holidays),
             "workweek": workweek,
-            "formula": "Recorded time on scheduled tasks ÷ Planned time for those same tasks × 100",
+            "formula": "Utilization time (recorded, or planned when no record exists) ÷ Planned time × 100",
         },
         "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
     }

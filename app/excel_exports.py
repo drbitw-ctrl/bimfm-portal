@@ -437,38 +437,47 @@ def _add_utilization_sheets(wb: Workbook, database: Session) -> None:
     _write_rows(
         wb.create_sheet("Project Time Utilization"),
         title="PROJECT TIME UTILIZATION",
-        subtitle="Time Budget Used = recorded time on scheduled tasks divided by planned time for those same tasks.",
-        headers=["Rank", "Project", "Code", "Status", "Tasks", "Measurable Tasks", "Planned Time", "Included Recorded Time", "Total Recorded Time", "Excluded Time", "Remaining / Overrun", "Time Budget Used %", "Unlinked Time"],
+        subtitle="Utilization Time uses recorded time when available; otherwise planned time is used. All-time project hours include both sources.",
+        headers=["Rank", "Project", "Code", "Status", "Tasks", "Tasks with Utilization", "Planned Time", "Utilization Time", "Actual Recorded Time", "Planned Fallback Time", "All-time Project Hours", "Recorded Without Plan", "Remaining / Overrun", "Time Budget Used %", "Unlinked Time"],
         rows=[[
             row.get("actual_rank"), row.get("name"), row.get("code"), row.get("status"), row.get("task_count"),
             row.get("measured_task_count"), _duration(row.get("target_minutes")) if row.get("target_minutes") is not None else "—",
-            _duration(row.get("measured_actual_minutes")), _duration(row.get("actual_minutes")), _duration(row.get("excluded_actual_minutes")),
-            row.get("variance_label"), row.get("utilization") if row.get("utilization") is not None else "", _duration(row.get("unlinked_minutes")),
+            _duration(row.get("measured_actual_minutes")), _duration(row.get("recorded_minutes")), _duration(row.get("planned_fallback_minutes")),
+            _duration(row.get("actual_minutes")), _duration(row.get("excluded_actual_minutes")), row.get("variance_label"),
+            row.get("utilization") if row.get("utilization") is not None else "", _duration(row.get("unlinked_minutes")),
         ] for row in report.get("projects", [])],
-        widths=[9, 30, 16, 14, 10, 15, 14, 20, 18, 15, 20, 18, 14],
+        widths=[9, 30, 16, 14, 10, 18, 14, 16, 18, 18, 18, 20, 20, 18, 14],
         status_column=4,
     )
     task_rows = []
     for project in report.get("projects", []):
         for row in project.get("rows", []):
             calculation = (
-                f"{_duration(row.get('actual_minutes'))} / {_duration(row.get('target_minutes'))} x 100"
+                f"{_duration(row.get('utilization_minutes'))} / {_duration(row.get('target_minutes'))} x 100"
                 if row.get("included_in_utilization")
-                else "Excluded — complete Start and Deadline"
+                else "Not calculated — complete Start and Deadline"
+            )
+            source = (
+                "Planned time fallback"
+                if row.get("uses_planned_fallback")
+                else "Unlinked recorded time"
+                if row.get("is_unlinked")
+                else "Actual recorded time"
             )
             task_rows.append([
                 project.get("name"), row.get("title"), row.get("assignees"), row.get("status"), row.get("start_date"),
                 row.get("deadline"), _duration(row.get("target_minutes")) if row.get("target_minutes") is not None else "—",
-                _duration(row.get("actual_minutes")), row.get("variance_label"), row.get("utilization") if row.get("utilization") is not None else "",
+                _duration(row.get("recorded_minutes")), _duration(row.get("utilization_minutes")), source,
+                row.get("variance_label"), row.get("utilization") if row.get("utilization") is not None else "",
                 "Yes" if row.get("included_in_utilization") else "No", calculation, row.get("contributors"),
             ])
     _write_rows(
         wb.create_sheet("Task Time Details"),
         title="TASK TIME UTILIZATION DETAILS",
-        subtitle="Only tasks with both Start and Deadline dates are included in the utilization percentage.",
-        headers=["Project", "Task", "Assigned Member", "Status", "Start Date", "Deadline", "Planned Time", "Recorded Time", "Remaining / Overrun", "Time Budget Used %", "Included", "Calculation", "Contributors"],
+        subtitle="Recorded time is used when available. If no actual time is recorded, planned time is used as the utilization time and produces 100%.",
+        headers=["Project", "Task", "Assigned Member", "Status", "Start Date", "Deadline", "Planned Time", "Recorded Time", "Utilization Time", "Time Source", "Remaining / Overrun", "Time Budget Used %", "Included", "Calculation", "Contributors"],
         rows=task_rows,
-        widths=[28, 34, 26, 15, 13, 13, 14, 14, 20, 18, 11, 30, 42],
+        widths=[28, 34, 26, 15, 13, 13, 14, 14, 16, 22, 20, 18, 11, 30, 42],
         status_column=4,
         due_column=6,
     )

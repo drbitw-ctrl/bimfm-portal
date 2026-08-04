@@ -1,0 +1,59 @@
+BIM PORTAL RELEASE 21.18 VALIDATION REPORT
+==========================================
+
+Version: v3.0.18
+Result: PASSED
+Failures: 0
+Errors: 0
+
+SOURCE AND APPLICATION CHECKS
+-----------------------------
+[PASS] Python source compilation
+[PASS] FastAPI application import
+[PASS] 126 application routes loaded
+[PASS] 49 Jinja templates parsed
+[PASS] JavaScript syntax: ui.js
+[PASS] JavaScript syntax: i18n.js
+[PASS] JavaScript syntax: reporting.js
+[PASS] 2,110 English localization keys loaded
+[PASS] 2,110 Traditional Chinese localization keys loaded
+[PASS] English and Traditional Chinese localization-key parity
+[PASS] Alembic head remains 20260804_0015
+
+UTILIZATION ENGINE SCENARIO
+---------------------------
+Test data included three projects:
+- Project One with scheduled, unscheduled, recorded, fallback, and unlinked work
+- Project Three with recorded time below plan
+- Empty Project with no tasks
+
+[PASS] Scheduled task with 40 planned hours and zero recorded hours used 40 fallback hours
+[PASS] Fallback task produced 100.0% utilization
+[PASS] Fallback task retained 0 actual recorded hours
+[PASS] Scheduled task with 16 planned hours and 20 recorded hours produced 125.0%
+[PASS] Scheduled task with 8 planned hours and 4 recorded hours produced 50.0%
+[PASS] Recorded task without a complete schedule remained visible without a percentage
+[PASS] Unlinked project work remained included in all-time project hours
+[PASS] Unmatched work remained separate from project totals
+[PASS] Empty project remained visible with 0 hours
+[PASS] Project One all-time hours equalled recorded + fallback + unlinked/unscheduled hours
+[PASS] Project One recorded hours and planned fallback hours remained separately available
+[PASS] All three projects were included in the report
+
+TEST TOTALS
+-----------
+All-time project hours: 71.0 hours
+Actually recorded project hours: 31.0 hours
+Planned-time fallback: 40.0 hours
+Projects shown: 3
+
+EXCEL CHECKS
+------------
+[PASS] Project Time Utilization worksheet created
+[PASS] Task Time Details worksheet created
+[PASS] Time-source values exported
+[PASS] Recorded Time and Utilization Time exported separately
+
+PACKAGE CHECKS
+--------------
+[PASS] Release ZIP integrity

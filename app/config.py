@@ -2,8 +2,8 @@ import os
 from pathlib import Path
 
 APP_NAME = "BIM Portal"
-APP_VERSION = "3.0.17-release21.17-clear-utilization-completed-filters"
-APP_VERSION_NUMBER = "3.0.17"
+APP_VERSION = "3.0.18-release21.18-all-time-utilization-fallback"
+APP_VERSION_NUMBER = "3.0.18"
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
