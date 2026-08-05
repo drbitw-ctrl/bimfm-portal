@@ -127,7 +127,7 @@ def configure_overtime_routes(legacy_namespace: dict[str, object]) -> APIRouter:
         return RedirectResponse(target, 303)
 
     @router.get("/admin/overtime", response_class=HTMLResponse)
-    def admin_overtime(request: Request, month: str = "", status: str = "PENDING"):
+    def admin_overtime(request: Request, month: str = "", status: str = "ALL"):
         selected_month = month if parse_month_key(month) else current_month_key()
         first, next_month = parse_month_key(selected_month)
         with SessionLocal() as database:
@@ -143,8 +143,9 @@ def configure_overtime_routes(legacy_namespace: dict[str, object]) -> APIRouter:
                 query = query.where(OvertimeClaim.status.in_(pending_states))
             elif status and status != "ALL":
                 query = query.where(OvertimeClaim.status == status)
-            claims = list(database.scalars(query.order_by(OvertimeClaim.attendance_date, OvertimeClaim.id)).all())
-            freelancers = {f.id: f for f in get_active_freelancers(database)}
+            claims = list(database.scalars(query.order_by(OvertimeClaim.attendance_date.desc(), OvertimeClaim.id.desc())).all())
+            active_freelancer_list = get_active_freelancers(database)
+            freelancers = {f.id: f for f in active_freelancer_list}
             attendance = {(r.freelancer_id, r.attendance_date): r for r in database.scalars(select(DailyAttendance).where(
                 DailyAttendance.attendance_date >= first,
                 DailyAttendance.attendance_date < next_month,
@@ -154,6 +155,7 @@ def configure_overtime_routes(legacy_namespace: dict[str, object]) -> APIRouter:
                 admin=admin,
                 claims=claims,
                 freelancers=freelancers,
+                active_freelancers=active_freelancer_list,
                 attendance=attendance,
                 selected_month=selected_month,
                 selected_status=status,

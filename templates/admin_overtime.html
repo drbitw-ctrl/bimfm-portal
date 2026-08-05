@@ -6,7 +6,7 @@
   <div class="section-heading">
     <div><span class="eyebrow">{{ t('ADMINISTRATOR ENTRY') }}</span><h2>{{ t('Add Previous Overtime') }}</h2><p>{{ t('Create and approve verified historical overtime without a freelancer request.') }}</p></div>
   </div>
-  <form method="post" action="/admin/overtime/previous" class="historical-ot-form">
+  <form method="post" action="/admin/overtime/historical" class="historical-ot-form">
     <input type="hidden" name="csrf" value="{{ csrf_token }}">
     <div><label>{{ t('Member') }}</label><select name="freelancer_id" required>{% for freelancer in active_freelancers %}<option value="{{ freelancer.id }}">{{ freelancer.full_name }}</option>{% endfor %}</select></div>
     <div><label>{{ t('Date') }}</label><input type="date" name="attendance_date" required></div>
@@ -21,6 +21,21 @@
 
 <section class="content-card ot-approval-register">
   <div class="section-heading"><div><span class="eyebrow">{{ t('TWO-STAGE APPROVAL') }}</span><h1>{{ t('Overtime Approval Center') }}</h1><p>{{ t('Compare planned overtime with the verified actual duration before granting compensatory credit.') }}</p></div></div>
+  <form method="get" action="/admin/overtime" class="ot-filter-bar">
+    <label>{{ t('Month') }}<input type="month" name="month" value="{{ selected_month }}"></label>
+    <label>{{ t('Status') }}
+      <select name="status">
+        <option value="PENDING" {% if selected_status == 'PENDING' %}selected{% endif %}>{{ t('Pending approval') }}</option>
+        <option value="ALL" {% if selected_status == 'ALL' %}selected{% endif %}>{{ t('All statuses') }}</option>
+        <option value="PENDING_PLAN" {% if selected_status == 'PENDING_PLAN' %}selected{% endif %}>{{ t('Pending plan approval') }}</option>
+        <option value="PENDING_FINAL" {% if selected_status == 'PENDING_FINAL' %}selected{% endif %}>{{ t('Pending final approval') }}</option>
+        <option value="PENDING_FINAL_MISSING" {% if selected_status == 'PENDING_FINAL_MISSING' %}selected{% endif %}>{{ t('Missing logout review') }}</option>
+        <option value="APPROVED" {% if selected_status == 'APPROVED' %}selected{% endif %}>{{ t('Approved') }}</option>
+        <option value="REJECTED" {% if selected_status == 'REJECTED' %}selected{% endif %}>{{ t('Rejected') }}</option>
+      </select>
+    </label>
+    <button class="button primary" type="submit">{{ t('Apply') }}</button>
+  </form>
   {% if claims %}
   <div class="ot-approval-list">
   {% for claim in claims %}
