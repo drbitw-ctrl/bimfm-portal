@@ -1,9 +1,67 @@
 {% extends "base.html" %}
-{% block title %}Overtime Review · {{ app_name }}{% endblock %}
+{% block title %}{{ t('Overtime Approval Center') }} · {{ app_name }}{% endblock %}
 {% block content %}
-<div class="toolbar"><div><span class="eyebrow">TWO-STAGE APPROVAL</span><h1>Overtime Approval Center</h1><p class="muted">Stage 1 authorizes planned overtime. Stage 2 verifies actual hours. Missing logouts require a claimed end time, evidence, and manual approval.</p></div><a class="button secondary" href="/admin">{{ t('Dashboard') }}</a></div>
-<section class="panel"><form method="get" class="inline-filter"><div><label>{{ t('Month') }}</label><input type="month" name="month" value="{{ selected_month }}"></div><div><label>{{ t('Status') }}</label><select name="status">{% for s in ['PENDING','PENDING_PLAN','PLAN_APPROVED','PENDING_FINAL','PENDING_FINAL_MISSING','APPROVED','REJECTED','ALL'] %}<option value="{{ s }}" {% if selected_status==s %}selected{% endif %}>{{ s.replace('_',' ') }}</option>{% endfor %}</select></div><div class="filter-action"><button class="primary">Apply</button></div></form></section>
+{% if can(Permission.OVERTIME_APPROVE) %}
+<section class="content-card ot-history-entry-card">
+  <div class="section-heading">
+    <div><span class="eyebrow">{{ t('ADMINISTRATOR ENTRY') }}</span><h2>{{ t('Add Previous Overtime') }}</h2><p>{{ t('Create and approve verified historical overtime without a freelancer request.') }}</p></div>
+  </div>
+  <form method="post" action="/admin/overtime/previous" class="historical-ot-form">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <div><label>{{ t('Member') }}</label><select name="freelancer_id" required>{% for freelancer in active_freelancers %}<option value="{{ freelancer.id }}">{{ freelancer.full_name }}</option>{% endfor %}</select></div>
+    <div><label>{{ t('Date') }}</label><input type="date" name="attendance_date" required></div>
+    <div><label>{{ t('Start Time') }}</label><input type="time" name="start_time" required></div>
+    <div><label>{{ t('End Time') }}</label><input type="time" name="end_time" required></div>
+    <div class="wide"><label>{{ t('Work Description') }}</label><textarea name="work_description" minlength="3" required></textarea></div>
+    <div><label>{{ t('Administrator Reason') }}</label><textarea name="reason" minlength="5" required></textarea></div>
+    <div class="form-action"><button class="button primary" type="submit">{{ t('Add Previous Overtime') }}</button></div>
+  </form>
+</section>
+{% endif %}
 
-<section class="panel"><div class="section-heading"><div><span class="eyebrow">{{ t('ADMINISTRATOR ENTRY') }}</span><h2>{{ t('Add Previous Overtime') }}</h2><p>{{ t('Create and approve verified historical overtime without a freelancer request.') }}</p></div></div><form method="post" action="/admin/overtime/historical" class="filter-grid"><input type="hidden" name="csrf" value="{{ csrf_token }}"><div><label>{{ t('Member') }}</label><select name="freelancer_id" required>{% for f in freelancers.values()|sort(attribute='full_name') %}<option value="{{ f.id }}">{{ f.full_name }}</option>{% endfor %}</select></div><div><label>{{ t('Date') }}</label><input type="date" name="attendance_date" required></div><div><label>{{ t('Start Time') }}</label><input type="time" name="start_time" required></div><div><label>{{ t('End Time') }}</label><input type="time" name="end_time" required></div><div class="wide"><label>{{ t('Work Description') }}</label><textarea name="work_description" minlength="5" required></textarea></div><div class="wide"><label>{{ t('Administrator Reason') }}</label><textarea name="reason" minlength="5" required></textarea></div><div class="filter-action"><button class="primary">{{ t('Add Previous Overtime') }}</button></div></form></section>
-<section class="panel table-panel"><table class="dense-table modern-table smart-table" data-card-table><thead><tr><th>Date / Member</th><th>Planned</th><th>Recorded / Claimed Actual</th><th>Work & Evidence</th><th>Decision</th></tr></thead><tbody>{% for claim in claims %}{% set f = freelancers[claim.freelancer_id] %}{% set record = attendance.get((claim.freelancer_id, claim.attendance_date)) %}<tr><td>{{ claim.attendance_date }}<br><strong>{{ f.freelancer_code }} · {{ f.full_name }}</strong><br><span class="status">{{ claim.status.replace('_',' ') }}</span></td><td>{% if claim.planned_start_utc %}{{ format_local_datetime(claim.planned_start_utc, f.timezone_name) }}–{{ format_local_datetime(claim.planned_end_utc, f.timezone_name) }}<br>{{ claim.requested_minutes }} min{% else %}Previous claim<br>{{ claim.requested_minutes }} min{% endif %}</td><td>Recorded logout: <strong>{{ format_local_datetime(record.time_out_utc, f.timezone_name) if record else 'Missing' }}</strong>{% if claim.actual_time_out_utc %}<br>Actual submitted: {{ format_local_datetime(claim.actual_time_out_utc, f.timezone_name) }}{% endif %}{% if claim.claimed_time_out_utc %}<br>Claimed end: <strong>{{ format_local_datetime(claim.claimed_time_out_utc, f.timezone_name) }}</strong>{% endif %}<br>Potential: {{ claim.potential_minutes_snapshot }} min</td><td>{{ claim.work_description }}{% if claim.missing_time_out_reason %}<hr><strong>Missing logout explanation</strong><br>{{ claim.missing_time_out_reason }}{% endif %}</td><td>{% if not can(Permission.OVERTIME_APPROVE) and claim.status in ['PENDING_PLAN','PENDING_FINAL','PENDING_FINAL_MISSING','PENDING'] %}<span class="badge warning">Pending · Read only</span><br><small>Administrator review required.</small>{% elif claim.status=='PENDING_PLAN' %}<form method="post" action="/admin/overtime/{{ claim.id }}/review" class="stack-form"><input type="hidden" name="csrf" value="{{ csrf_token }}"><input name="reason" minlength="5" required placeholder="Planning approval reason"><div class="action-row"><button class="small primary" name="decision" value="APPROVE_PLAN">Approve Plan</button><button class="small secondary" name="decision" value="REJECT">{{ t('Reject') }}</button></div></form>{% elif claim.status in ['PENDING_FINAL','PENDING_FINAL_MISSING','PENDING'] %}<form method="post" action="/admin/overtime/{{ claim.id }}/review" class="stack-form"><input type="hidden" name="csrf" value="{{ csrf_token }}"><label>Supervisor-approved end time</label><input type="time" name="approved_time_out" value="{% if claim.actual_time_out_utc %}{{ utc_to_time_input(claim.actual_time_out_utc, f.timezone_name) }}{% elif claim.claimed_time_out_utc %}{{ utc_to_time_input(claim.claimed_time_out_utc, f.timezone_name) }}{% endif %}"><label>Or approved minutes</label><input type="number" name="approved_minutes" value="{{ claim.potential_minutes_snapshot or claim.requested_minutes }}" min="0" max="{{ policy.max_approved_overtime_per_day }}"><input name="reason" minlength="5" required placeholder="Verification notes / evidence checked"><div class="action-row"><button class="small primary" name="decision" value="APPROVE_FINAL">Approve Final Credit</button><button class="small secondary" name="decision" value="REJECT">{{ t('Reject') }}</button></div></form>{% elif claim.status=='PLAN_APPROVED' %}<span class="status warning">Waiting for member to submit actual OT</span>{% else %}<strong>{{ claim.status }}</strong><br>Approved {{ claim.approved_minutes }} min<br>Credited {{ claim.comp_leave_minutes_earned }} min<br>{{ claim.review_reason or '' }}{% endif %}</td></tr>{% endfor %}</tbody></table>{% if not claims %}<div class="empty-state"><p>No overtime applications found.</p></div>{% endif %}</section>
+<section class="content-card ot-approval-register">
+  <div class="section-heading"><div><span class="eyebrow">{{ t('TWO-STAGE APPROVAL') }}</span><h1>{{ t('Overtime Approval Center') }}</h1><p>{{ t('Compare planned overtime with the verified actual duration before granting compensatory credit.') }}</p></div></div>
+  {% if claims %}
+  <div class="ot-approval-list">
+  {% for claim in claims %}
+    {% set f = freelancers[claim.freelancer_id] %}
+    {% set record = attendance.get((claim.freelancer_id, claim.attendance_date)) %}
+    {% set actual_minutes = claim.potential_minutes_snapshot or claim.requested_minutes or 0 %}
+    <article class="ot-approval-card">
+      <header class="ot-approval-card-head">
+        <div><span class="eyebrow">{{ claim.attendance_date }}</span><h3>{{ f.full_name }}</h3><small>{{ f.freelancer_code }}</small></div>
+        <span class="badge {{ 'warning' if claim.status in ['PENDING_PLAN','PENDING_FINAL','PENDING_FINAL_MISSING','PENDING'] else 'good' }}">{{ t(claim.status.replace('_',' ').title()) }}</span>
+      </header>
+      <div class="ot-comparison-grid">
+        <section class="ot-time-block planned"><span>{{ t('PLANNED OT') }}</span>{% if claim.planned_start_utc %}<strong>{{ format_local_datetime(claim.planned_start_utc, f.timezone_name) }}–{{ format_local_datetime(claim.planned_end_utc, f.timezone_name) }}</strong><b>{{ claim.requested_minutes }} {{ t('minutes') }}</b>{% else %}<strong>{{ t('Previous claim') }}</strong><b>{{ claim.requested_minutes }} {{ t('minutes') }}</b>{% endif %}</section>
+        <section class="ot-time-block actual"><span>{{ t('VERIFIED ACTUAL') }}</span><strong>{% if claim.actual_time_out_utc %}{{ format_local_datetime(claim.actual_time_out_utc, f.timezone_name) }}{% elif claim.claimed_time_out_utc %}{{ format_local_datetime(claim.claimed_time_out_utc, f.timezone_name) }}{% elif record and record.time_out_utc %}{{ format_local_datetime(record.time_out_utc, f.timezone_name) }}{% else %}{{ t('Missing') }}{% endif %}</strong><b>{{ actual_minutes }} {{ t('minutes') }}</b></section>
+        <section class="ot-time-block variance"><span>{{ t('DIFFERENCE FROM PLAN') }}</span><strong class="{{ 'positive' if actual_minutes > claim.requested_minutes else '' }}">{{ '+' if actual_minutes > claim.requested_minutes else '' }}{{ actual_minutes - claim.requested_minutes }} {{ t('minutes') }}</strong><small>{{ t('Actual verified duration compared with the approved plan.') }}</small></section>
+      </div>
+      <div class="ot-work-evidence"><strong>{{ t('Work and Evidence') }}</strong><p>{{ claim.work_description }}</p>{% if claim.missing_time_out_reason %}<small><b>{{ t('Missing logout explanation') }}:</b> {{ claim.missing_time_out_reason }}</small>{% endif %}</div>
+      <div class="ot-decision-panel">
+      {% if not can(Permission.OVERTIME_APPROVE) and claim.status in ['PENDING_PLAN','PENDING_FINAL','PENDING_FINAL_MISSING','PENDING'] %}
+        <span class="badge warning">{{ t('Pending · Read only') }}</span>
+      {% elif claim.status=='PENDING_PLAN' %}
+        <form method="post" action="/admin/overtime/{{ claim.id }}/review" class="stack-form"><input type="hidden" name="csrf" value="{{ csrf_token }}"><input name="reason" minlength="5" required placeholder="{{ t('Planning approval reason') }}"><div class="action-row"><button class="button primary" name="decision" value="APPROVE_PLAN">{{ t('Approve Plan') }}</button><button class="button secondary" name="decision" value="REJECT">{{ t('Reject') }}</button></div></form>
+      {% elif claim.status in ['PENDING_FINAL','PENDING_FINAL_MISSING','PENDING'] %}
+        <form method="post" action="/admin/overtime/{{ claim.id }}/review" class="ot-final-form" data-ot-final-form data-planned-start="{{ utc_to_time_input(claim.planned_start_utc, f.timezone_name) if claim.planned_start_utc else '' }}" data-planned-minutes="{{ claim.requested_minutes }}">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}">
+          <label>{{ t('Verified actual end time') }}<input type="time" name="approved_time_out" data-approved-end value="{% if claim.actual_time_out_utc %}{{ utc_to_time_input(claim.actual_time_out_utc, f.timezone_name) }}{% elif claim.claimed_time_out_utc %}{{ utc_to_time_input(claim.claimed_time_out_utc, f.timezone_name) }}{% endif %}"></label>
+          <label>{{ t('Approved OT minutes') }}<input type="number" name="approved_minutes" data-approved-minutes value="{{ actual_minutes }}" min="0" max="{{ policy.max_approved_overtime_per_day }}"></label>
+          <div class="ot-live-summary"><span>{{ t('Approved duration') }}</span><strong data-approved-summary>{{ actual_minutes }} {{ t('minutes') }}</strong><small data-day-note></small></div>
+          <label class="wide">{{ t('Approval reason / evidence checked') }}<input name="reason" minlength="5" required placeholder="{{ t('Explain any reduction from the verified actual duration.') }}"></label>
+          <div class="action-row"><button class="button primary" name="decision" value="APPROVE_FINAL">{{ t('Approve Verified OT') }}</button><button class="button secondary" name="decision" value="REJECT">{{ t('Reject') }}</button></div>
+        </form>
+      {% elif claim.status=='PLAN_APPROVED' %}
+        <span class="status warning">{{ t('Waiting for member to submit actual OT') }}</span>
+      {% else %}
+        <div class="ot-approved-result"><strong>{{ t(claim.status) }}</strong><span>{{ t('Approved') }}: {{ claim.approved_minutes }} {{ t('minutes') }}</span><span>{{ t('Comp Credit') }}: {{ claim.comp_leave_minutes_earned }} {{ t('minutes') }}</span><small>{{ claim.review_reason or '' }}</small></div>
+      {% endif %}
+      </div>
+    </article>
+  {% endfor %}
+  </div>
+  {% else %}<div class="empty-state"><p>{{ t('No overtime applications found.') }}</p></div>{% endif %}
+</section>
+<script src="{{ url_for('static', path='/js/overtime-approval.js') }}?v={{ app_version }}"></script>
 {% endblock %}

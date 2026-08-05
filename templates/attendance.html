@@ -1,191 +1,28 @@
 {% extends "base.html" %}
-{% block title %}Attendance · {{ app_name }}
-<section class="panel">
-  <div class="section-heading"><div><span class="eyebrow">{{ t('PREVIOUS ATTENDANCE') }}</span><h2>{{ t('Request Attendance Correction') }}</h2><p>{{ t('Request an edit for a previous day. An Administrator must approve it before the official record changes.') }}</p></div></div>
-  <form method="post" action="/attendance/correction-request" class="filter-grid">
-    <input type="hidden" name="csrf" value="{{ csrf_token }}">
-    <div><label>{{ t('Attendance Date') }}</label><input type="date" name="attendance_date" required></div>
-    <div><label>{{ t('Requested Time In') }}</label><input type="time" name="time_in"></div>
-    <div><label>{{ t('Requested Time Out') }}</label><input type="time" name="time_out"></div>
-    <div class="wide"><label>{{ t('Reason') }}</label><textarea name="reason" minlength="5" required></textarea></div>
-    <div class="filter-action"><button class="primary" type="submit">{{ t('Submit Request') }}</button></div>
-  </form>
-  {% if correction_requests %}<div class="compact-request-list">{% for item in correction_requests %}<article><strong>{{ item.attendance_date }} · {{ t(item.status) }}</strong><span>{{ item.reason }}</span></article>{% endfor %}</div>{% endif %}
-</section>
-{% endblock %}
+{% block title %}{{ t("Today's Attendance") }} · {{ app_name }}{% endblock %}
 {% block content %}
-<div class="member-page-heading freelancer-dashboard-heading">
-  <div>
-    <span class="eyebrow">{{ t('MY WORKSPACE') }}</span>
-    <h1>{{ t('Good day') }}, {{ account.freelancer.full_name }}</h1>
-    <p class="muted">{{ t('Record today’s attendance and review your current assignments.') }}</p>
+<section class="freelancer-welcome-hero">
+  <div class="welcome-copy"><span class="eyebrow">{{ t('MY WORKSPACE') }}</span><h1>{{ t('Good day') }}, {{ account.freelancer.full_name }}</h1><p>{{ t('Welcome back. Record your attendance, review your work, and start the day with clarity.') }}</p><div class="welcome-meta"><span>{{ attendance_date }}</span><span>{{ t('Server time') }} {{ server_time }}</span><span>{{ account.freelancer.timezone_name }}</span></div></div>
+  <div class="welcome-profile"><div class="welcome-avatar">{{ account.freelancer.full_name[:1]|upper }}</div><div><small>{{ t('FREELANCER ACCOUNT') }}</small><strong>{{ account.freelancer.full_name }}</strong><span>{{ account.freelancer.freelancer_code }}{% if account.freelancer.join_date %} · {{ t('Joined') }} {{ account.freelancer.join_date.isoformat() }}{% endif %}</span></div><i></i></div>
+</section>
+
+<section class="attendance-command-card state-{{ attendance.state|lower }}">
+  <div class="attendance-command-head"><div><span class="eyebrow">{{ t('OFFICIAL SERVER ATTENDANCE') }}</span><h2>{{ t(attendance.status_label) }}</h2><p>{{ t('The server records the official timestamp when you press a button. Your computer clock is not used.') }}</p></div><div class="attendance-state-orb"><span></span><strong>{{ t(attendance.state.replace('_',' ').title()) }}</strong></div></div>
+  <div class="attendance-time-display"><article><span>{{ t('Time In') }}</span><strong>{{ attendance.time_in }}</strong><small>{{ t('Official server record') }}</small></article><div class="attendance-time-line"><i></i></div><article><span>{{ t('Time Out') }}</span><strong>{{ attendance.time_out }}</strong><small>{{ t('Official server record') }}</small></article></div>
+  <div class="attendance-primary-actions">
+    <form method="post" action="/attendance/time-in"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="attendance-action time-in" type="submit" {% if not attendance.can_time_in %}disabled{% endif %}><span>↘</span><strong>{{ t('TIME IN') }}</strong><small>{{ t('Begin today’s official attendance') }}</small></button></form>
+    <form method="post" action="/attendance/time-out"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="attendance-action time-out" type="submit" {% if not attendance.can_time_out %}disabled{% endif %}><span>↗</span><strong>{{ t('TIME OUT') }}</strong><small>{{ t('Complete today’s official attendance') }}</small></button></form>
   </div>
-  <article class="freelancer-profile-card">
-    <div class="freelancer-profile-avatar">{{ account.freelancer.full_name[:1]|upper }}</div>
-    <div class="freelancer-profile-copy">
-      <span>{{ t('FREELANCER ACCOUNT') }}</span>
-      <strong>{{ account.freelancer.full_name }}</strong>
-      <small>{{ account.freelancer.freelancer_code }}{% if account.freelancer.join_date %} · {{ t('Joined') }} {{ account.freelancer.join_date.isoformat() }}{% endif %}</small>
-    </div>
-    <div class="freelancer-profile-status">
-      <span><i></i>{{ t('Account Active') }}</span>
-      <small>{{ account.freelancer.timezone_name }}</small>
-    </div>
-  </article>
-</div>
-<section class="attendance-card freelancer-attendance-card">
-    <span class="eyebrow">OFFICIAL SERVER ATTENDANCE</span>
-    <h2>{{ attendance.status_label }}</h2>
-
-    <div class="official-time">
-        <div>
-            <span>Attendance Date</span>
-            <strong>{{ attendance_date }}</strong>
-        </div>
-        <div>
-            <span>Server Time at Page Load</span>
-            <strong>{{ server_time }}</strong>
-        </div>
-    </div>
-
-    <p class="muted">
-        The HR server generates the official timestamp when a button
-        is pressed. The freelancer's computer clock is not used.
-    </p>
-
-    <div class="today-record">
-        <div>
-            <span>Time In</span>
-            <strong>{{ attendance.time_in }}</strong>
-        </div>
-        <div>
-            <span>Time Out</span>
-            <strong>{{ attendance.time_out }}</strong>
-        </div>
-    </div>
-
-    {% if attendance.state == "COMPLETE" %}
-    <div class="calculation-grid">
-        <div><span>Gross Elapsed</span><strong>{{ calculation.gross }}</strong></div>
-        <div><span>Break Applied</span><strong>{{ calculation.break }}</strong></div>
-        <div><span>Net Rendered</span><strong>{{ calculation.rendered }}</strong></div>
-        <div><span>Late</span><strong>{{ calculation.late }}</strong></div>
-        <div><span>Undertime</span><strong>{{ calculation.undertime }}</strong></div>
-        <div><span>Potential Overtime</span><strong>{{ calculation.overtime }}</strong></div>
-    </div>
-    <p class="muted small-note">
-        Potential overtime is for HR review and is not automatically approved
-        or credited as compensatory leave.
-    </p>
-    {% endif %}
-
-    <div class="punch-grid">
-        <form method="post" action="/attendance/time-in">
-            <input type="hidden" name="csrf" value="{{ csrf_token }}">
-            <button class="punch" type="submit"
-                    {% if not attendance.can_time_in %}disabled{% endif %}>
-                TIME IN
-            </button>
-        </form>
-
-        <form method="post" action="/attendance/time-out">
-            <input type="hidden" name="csrf" value="{{ csrf_token }}">
-            <button class="punch outline" type="submit"
-                    {% if not attendance.can_time_out %}disabled{% endif %}>
-                TIME OUT
-            </button>
-        </form>
-    </div>
-
-    {% if attendance.state == "COMPLETE" %}
-    <div class="completion-note">
-        Today's attendance is complete. Additional punches are blocked
-        automatically.
-    </div>
-    {% endif %}
+  {% if attendance.state == "COMPLETE" %}
+  <div class="attendance-result-grid"><article><span>{{ t('Gross Elapsed') }}</span><strong>{{ calculation.gross }}</strong></article><article><span>{{ t('Break Applied') }}</span><strong>{{ calculation.break }}</strong></article><article class="featured"><span>{{ t('Net Rendered') }}</span><strong>{{ calculation.rendered }}</strong></article><article><span>{{ t('Late') }}</span><strong>{{ calculation.late }}</strong></article><article><span>{{ t('Undertime') }}</span><strong>{{ calculation.undertime }}</strong></article><article><span>{{ t('Potential Overtime') }}</span><strong>{{ calculation.overtime }}</strong></article></div>
+  <div class="attendance-complete-banner">✓ {{ t("Today's attendance is complete. Additional punches are blocked automatically.") }}</div>
+  {% endif %}
 </section>
 
-<section class="panel member-monthly-summary">
-    <div class="section-heading">
-        <div>
-            <span class="eyebrow">MONTHLY ATTENDANCE AND LEAVE SUMMARY</span>
-            <h2>{{ monthly_summary_month }}</h2>
-            <p class="muted">Read-only monthly summary. Working days are retained while leave coverage and deductions are calculated in hours.</p>
-        </div>
-        {% if monthly_dtr_status %}<span class="badge {{ 'good' if monthly_dtr_status in ['REVIEWED','FINALIZED'] else 'warning' }}">{{ monthly_dtr_status.replace('_',' ').title() }}</span>{% endif %}
-    </div>
+<section class="panel member-monthly-summary"><div class="section-heading"><div><span class="eyebrow">{{ t('MONTHLY ATTENDANCE AND LEAVE SUMMARY') }}</span><h2>{{ monthly_summary_month }}</h2><p class="muted">{{ t('Your current monthly attendance, leave, and compensatory-credit overview.') }}</p></div>{% if monthly_dtr_status %}<span class="badge {{ 'good' if monthly_dtr_status in ['REVIEWED','FINALIZED'] else 'warning' }}">{{ t(monthly_dtr_status.replace('_',' ').title()) }}</span>{% endif %}</div>
+{% if monthly_summary %}<div class="member-monthly-grid"><article class="member-summary-card worked"><span>{{ t('DAYS PHYSICALLY WORKED') }}</span><strong>{{ monthly_summary.worked_days|int }}</strong><small>{{ t('Days physically rendered') }}</small></article><article class="member-summary-card leave"><span>{{ t('APPROVED LEAVE TAKEN') }}</span><strong>{{ monthly_summary.regular_leave_taken_days|int }} {{ t('day(s)') }}</strong><small>{{ monthly_summary.approved_leave_hours }} {{ t('leave hour(s)') }}</small></article><article class="member-summary-card comp"><span>{{ t('OT CREDIT APPLIED') }}</span><strong>{{ monthly_summary.comp_credit_hours_applied }}h</strong><small>{{ t('Applied hour-for-hour to leave') }}</small></article><article class="member-summary-card payable"><span>{{ t('UNPAID LEAVE') }}</span><strong>{{ monthly_summary.effective_unpaid_leave_hours }}h</strong><small>{{ t('Leave hours not covered by OT credit') }}</small></article></div><div class="member-credit-strip"><div><span>{{ t('Comp Credits Earned from Approved OT') }}</span><strong>{{ monthly_summary.earned_comp_label }}</strong></div><div><span>{{ t('Comp Credits Used') }}</span><strong>{{ monthly_summary.used_comp_label }}</strong></div><div><span>{{ t('Remaining Comp Credits') }}</span><strong>{{ monthly_summary.closing_comp_label }}</strong></div></div>{% else %}<div class="empty-state compact-empty"><h3>{{ t('No monthly DTR summary is available yet.') }}</h3></div>{% endif %}</section>
 
-    {% if monthly_summary %}
-    <div class="member-monthly-grid">
-        <article class="member-summary-card worked"><span>DAYS PHYSICALLY WORKED</span><strong>{{ monthly_summary.worked_days|int }}</strong><small>Days physically rendered</small></article>
-        <article class="member-summary-card leave"><span>APPROVED LEAVE TAKEN</span><strong>{{ monthly_summary.regular_leave_taken_days|int }} day(s)</strong><small>{{ monthly_summary.approved_leave_hours }} leave hour(s)</small></article>
-        <article class="member-summary-card comp"><span>OT CREDIT APPLIED</span><strong>{{ monthly_summary.comp_credit_hours_applied }}h</strong><small>Applied hour-for-hour to leave</small></article>
-        <article class="member-summary-card payable"><span>UNPAID LEAVE</span><strong>{{ monthly_summary.effective_unpaid_leave_hours }}h</strong><small>Leave hours not covered by OT credit</small></article>
-    </div>
-    <div class="member-credit-strip">
-        <div><span>Comp Credits Earned from Approved OT</span><strong>{{ monthly_summary.earned_comp_label }}</strong></div>
-        <div><span>Comp Credits Used</span><strong>{{ monthly_summary.used_comp_label }}</strong></div>
-        <div><span>Remaining Comp Credits</span><strong>{{ monthly_summary.closing_comp_label }}</strong></div>
-    </div>
-    <p class="muted small-note">Approved overtime credit is applied to approved leave hour-for-hour. Working-day counts remain visible and partial credit balances carry forward.</p>
-    {% else %}
-    <div class="empty-state compact-empty">
-        <h3>No monthly DTR summary is available yet.</h3>
-        <p>Management generates this read-only summary during DTR review.</p>
-    </div>
-    {% endif %}
-</section>
+<section class="panel"><div class="section-heading assignment-section-heading"><div><span class="eyebrow">{{ t('CURRENT PROJECT ASSIGNMENTS') }}</span><h2>{{ t('My Assigned Tasks') }}</h2><p class="muted">{{ t('Your active assignments and upcoming deadlines.') }}</p></div><a class="button secondary" href="/projects">{{ t('View All Assignments') }}</a></div>{% if assigned_tasks %}<div class="compact-assignment-list">{% for task in assigned_tasks %}<article class="compact-assignment"><div><strong>{{ task.project_name }}</strong><p>{{ task.task_description }}</p><small>{{ t(task.status) }} · {{ task.progress }}% · {{ t('Deadline') }} {{ task.deadline }}</small></div><a class="button small primary" href="/tasks?project_task_id={{ task.id }}">{{ t('Daily Report') }}</a></article>{% endfor %}</div>{% else %}<div class="empty-state compact-empty"><p>{{ t('No active project tasks are currently assigned to your account.') }}</p></div>{% endif %}</section>
 
-<section class="panel">
-    <div class="section-heading assignment-section-heading">
-        <div>
-            <span class="eyebrow">CURRENT PROJECT ASSIGNMENTS</span>
-            <h2>My Assigned Tasks</h2>
-            <p class="muted">
-                Current project assignments
-            </p>
-        </div>
-        <a class="button secondary" href="/projects">View All Assignments</a>
-    </div>
-
-    {% if assigned_tasks %}
-    <div class="compact-assignment-list">
-        {% for task in assigned_tasks %}
-        <article class="compact-assignment">
-            <div>
-                <strong>{{ task.project_name }}</strong>
-                <p>{{ task.task_description }}</p>
-                <small>
-                    {{ task.status }} · {{ task.progress }}% ·
-                    Deadline {{ task.deadline }}
-                </small>
-            </div>
-            <a class="button small primary"
-               href="/tasks?project_task_id={{ task.id }}">
-                Daily Report
-            </a>
-        </article>
-        {% endfor %}
-    </div>
-    {% else %}
-    <div class="empty-state compact-empty">
-        <p>
-            No active project tasks are currently assigned to your account.
-        </p>
-    </div>
-    {% endif %}
-</section>
-
-<section class="panel">
-  <div class="section-heading"><div><span class="eyebrow">{{ t('PREVIOUS ATTENDANCE') }}</span><h2>{{ t('Request Attendance Correction') }}</h2><p>{{ t('Request an edit for a previous day. An Administrator must approve it before the official record changes.') }}</p></div></div>
-  <form method="post" action="/attendance/correction-request" class="filter-grid">
-    <input type="hidden" name="csrf" value="{{ csrf_token }}">
-    <div><label>{{ t('Attendance Date') }}</label><input type="date" name="attendance_date" required></div>
-    <div><label>{{ t('Requested Time In') }}</label><input type="time" name="time_in"></div>
-    <div><label>{{ t('Requested Time Out') }}</label><input type="time" name="time_out"></div>
-    <div class="wide"><label>{{ t('Reason') }}</label><textarea name="reason" minlength="5" required></textarea></div>
-    <div class="filter-action"><button class="primary" type="submit">{{ t('Submit Request') }}</button></div>
-  </form>
-  {% if correction_requests %}<div class="compact-request-list">{% for item in correction_requests %}<article><strong>{{ item.attendance_date }} · {{ t(item.status) }}</strong><span>{{ item.reason }}</span></article>{% endfor %}</div>{% endif %}
-</section>
+<section class="panel"><div class="section-heading"><div><span class="eyebrow">{{ t('PREVIOUS ATTENDANCE') }}</span><h2>{{ t('Request Attendance Correction') }}</h2><p>{{ t('Request an edit for a previous day. An Administrator must approve it before the official record changes.') }}</p></div></div><form method="post" action="/attendance/correction-request" class="filter-grid"><input type="hidden" name="csrf" value="{{ csrf_token }}"><div><label>{{ t('Attendance Date') }}</label><input type="date" name="attendance_date" required></div><div><label>{{ t('Requested Time In') }}</label><input type="time" name="time_in"></div><div><label>{{ t('Requested Time Out') }}</label><input type="time" name="time_out"></div><div class="wide"><label>{{ t('Reason') }}</label><textarea name="reason" minlength="5" required></textarea></div><div class="filter-action"><button class="primary" type="submit">{{ t('Submit Request') }}</button></div></form>{% if correction_requests %}<div class="compact-request-list">{% for item in correction_requests %}<article><strong>{{ item.attendance_date }} · {{ t(item.status) }}</strong><span>{{ item.reason }}</span></article>{% endfor %}</div>{% endif %}</section>
 {% endblock %}

@@ -115,11 +115,12 @@
   {% if member_rows %}
   <div class="modern-table-wrap">
     <table class="modern-table smart-table" data-card-table>
-      <thead><tr><th>HR Freelancer</th><th>Projects</th><th>Active Tasks</th><th>Completed Tasks</th><th>Overdue</th><th>Assignment Status</th></tr></thead>
+      <thead><tr><th>HR Freelancer</th><th>{{ t('Join Date') }}</th><th>Projects</th><th>Active Tasks</th><th>Completed Tasks</th><th>Overdue</th><th>Assignment Status</th></tr></thead>
       <tbody>
       {% for row in member_rows %}
         <tr>
           <td><div class="person-cell"><span class="person-avatar">{{ row.name[:1]|upper }}</span><div><strong>{{ row.name }}</strong><small>{{ row.code }}</small></div></div></td>
+          <td><strong>{{ row.join_date }}</strong></td>
           <td><strong>{{ row.project_count }}</strong></td>
           <td><strong>{{ row.active_task_count }}</strong></td>
           <td>{{ row.completed_task_count }}</td>
