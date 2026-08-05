@@ -198,6 +198,124 @@ def configure_overtime_routes(legacy_namespace: dict[str, object]) -> APIRouter:
         return RedirectResponse(target, 303)
 
 
+    @router.get("/admin/overtime/credits", response_class=HTMLResponse)
+    def overtime_credit_balances(request: Request):
+        with SessionLocal() as database:
+            admin = get_current_admin(request, database)
+            if admin is None:
+                return RedirectResponse("/admin/login", 303)
+            members = get_active_freelancers(database)
+            transactions = list(database.scalars(
+                select(CompLeaveTransaction).where(
+                    CompLeaveTransaction.freelancer_id.in_([member.id for member in members])
+                ).order_by(
+                    CompLeaveTransaction.transaction_date.desc(),
+                    CompLeaveTransaction.id.desc(),
+                )
+            ).all()) if members else []
+            grouped = {member.id: [] for member in members}
+            for transaction in transactions:
+                grouped.setdefault(transaction.freelancer_id, []).append(transaction)
+            rows = []
+            for member in members:
+                member_transactions = grouped.get(member.id, [])
+                earned = sum(max(0, int(tx.amount_minutes or 0)) for tx in member_transactions)
+                used = sum(abs(min(0, int(tx.amount_minutes or 0))) for tx in member_transactions)
+                available = comp_balance(database, member.id)
+                latest = member_transactions[0] if member_transactions else None
+                rows.append({
+                    "member": member,
+                    "earned_minutes": earned,
+                    "used_minutes": used,
+                    "available_minutes": available,
+                    "available_label": minutes_label(available),
+                    "whole_days": whole_comp_days(available),
+                    "remainder_minutes": comp_remainder_minutes(available),
+                    "latest_transaction": latest,
+                })
+            rows.sort(key=lambda row: (-row["available_minutes"], row["member"].full_name.lower()))
+            return templates.TemplateResponse(
+                request=request,
+                name="admin_overtime_credits.html",
+                context=template_context(
+                    request,
+                    admin=admin,
+                    rows=rows,
+                    comp_day_minutes=COMP_LEAVE_DAY_MINUTES,
+                ),
+            )
+
+    @router.post("/admin/overtime/{claim_id}/adjust")
+    def adjust_approved_overtime(
+        claim_id: int,
+        request: Request,
+        csrf: str = Form(...),
+        approved_time_out: str = Form(""),
+        approved_minutes: str = Form("0"),
+        reason: str = Form(...),
+    ):
+        if not validate_csrf(request, csrf):
+            return RedirectResponse("/admin/overtime", 303)
+        with SessionLocal() as database:
+            admin = get_current_admin(request, database)
+            if admin is None:
+                return RedirectResponse("/admin/login", 303)
+            claim = database.get(OvertimeClaim, claim_id)
+            if claim is None:
+                set_flash(request, "Overtime application not found.", "error")
+                return RedirectResponse("/admin/overtime", 303)
+            freelancer = database.get(Freelancer, claim.freelancer_id)
+            try:
+                verified_minutes = int(approved_minutes or 0)
+                if approved_time_out.strip():
+                    approved_end = local_time_to_utc(
+                        claim.attendance_date,
+                        approved_time_out,
+                        freelancer.timezone_name,
+                    )
+                    if claim.planned_start_utc and approved_end <= claim.planned_start_utc:
+                        approved_end = local_time_to_utc(
+                            claim.attendance_date + timedelta(days=1),
+                            approved_time_out,
+                            freelancer.timezone_name,
+                        )
+                    if claim.planned_start_utc is None or approved_end <= claim.planned_start_utc:
+                        raise ValueError("Approved end time must be later than planned OT start.")
+                    claim.approved_time_out_utc = approved_end
+                    verified_minutes = int((approved_end - claim.planned_start_utc).total_seconds() // 60)
+                    claim.potential_minutes_snapshot = verified_minutes
+                adjust_approved_overtime_claim(
+                    database,
+                    claim=claim,
+                    approved_minutes=verified_minutes,
+                    admin_id=admin.id,
+                    reason=reason,
+                )
+                write_audit(
+                    database,
+                    actor_type="HR_ADMIN",
+                    actor_id=admin.id,
+                    action="ADJUST_APPROVED_OVERTIME",
+                    request=request,
+                    target_type="OVERTIME_CLAIM",
+                    target_id=claim.id,
+                    details=f"Approved OT adjusted to {claim.approved_minutes} minutes. {reason.strip()}",
+                )
+                database.commit()
+            except (ValueError, IntegrityError) as exc:
+                database.rollback()
+                set_flash(request, str(exc), "error")
+                return RedirectResponse(
+                    f"/admin/overtime?month={claim.attendance_date.strftime('%Y-%m')}&status=ALL",
+                    303,
+                )
+        set_flash(request, "Approved overtime and compensatory credit updated.", "success")
+        return RedirectResponse(
+            f"/admin/overtime?month={claim.attendance_date.strftime('%Y-%m')}&status=ALL",
+            303,
+        )
+
+
     @router.post("/admin/overtime/historical")
     def add_historical_overtime(
         request: Request, csrf: str=Form(...), freelancer_id: int=Form(...),

@@ -105,6 +105,7 @@ from app.dtr_service import (
 from app.hr_workflow import (
     approve_leave_request,
     approve_overtime_claim,
+    adjust_approved_overtime_claim,
     comp_balance,
     whole_comp_days,
     comp_remainder_minutes,

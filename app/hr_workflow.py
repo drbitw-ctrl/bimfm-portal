@@ -163,9 +163,11 @@ def approve_overtime_claim(
     if claim.status not in {"PENDING", "PENDING_FINAL", "PENDING_FINAL_MISSING"}:
         raise ValueError("Only overtime claims pending final verification can be approved.")
     approved = max(0, int(approved_minutes))
+    # Final approval is based on the verified actual duration, not only the
+    # originally planned duration. The requested/planned minutes remain visible
+    # for comparison, but verified overtime may legitimately extend past plan.
     approved = min(
         approved,
-        claim.requested_minutes,
         claim.potential_minutes_snapshot,
         policy.max_approved_overtime_per_day,
     )
@@ -199,6 +201,72 @@ def approve_overtime_claim(
             created_by_admin_id=admin_id,
         )
     )
+
+
+def adjust_approved_overtime_claim(
+    database: Session,
+    *,
+    claim: OvertimeClaim,
+    approved_minutes: int,
+    admin_id: int,
+    reason: str,
+) -> None:
+    """Correct an already-approved OT claim and its comp-credit ledger entry.
+
+    This is intentionally administrator-only at the router layer. It updates the
+    existing source transaction instead of adding a duplicate credit.
+    """
+    policy = get_policy(database)
+    reason = reason.strip()
+    if len(reason) < 5:
+        raise ValueError("An adjustment reason of at least 5 characters is required.")
+    if claim.status != "APPROVED":
+        raise ValueError("Only an approved overtime claim can be adjusted.")
+
+    approved = max(0, int(approved_minutes))
+    approved = min(
+        approved,
+        claim.potential_minutes_snapshot,
+        policy.max_approved_overtime_per_day,
+    )
+    approved = rounded_down(approved, policy.overtime_rounding_minutes)
+    if approved < policy.overtime_minimum_minutes:
+        raise ValueError("Adjusted overtime is below the policy minimum.")
+
+    earned = comp_minutes_from_overtime(approved, policy)
+    if earned <= 0:
+        raise ValueError("The overtime adjustment does not earn compensatory leave.")
+
+    source_key = f"OVERTIME_CLAIM:{claim.id}"
+    transaction = database.scalar(
+        select(CompLeaveTransaction).where(CompLeaveTransaction.source_key == source_key)
+    )
+    if transaction is None:
+        transaction = CompLeaveTransaction(
+            freelancer_id=claim.freelancer_id,
+            transaction_date=claim.attendance_date,
+            transaction_type="EARNED_OVERTIME",
+            amount_minutes=earned,
+            source_key=source_key,
+            description="",
+            created_by_admin_id=admin_id,
+        )
+        database.add(transaction)
+    else:
+        transaction.amount_minutes = earned
+        transaction.created_by_admin_id = admin_id
+
+    transaction.description = (
+        f"Adjusted approved overtime to {approved} minutes; "
+        f"compensatory-leave credit is {earned} minutes. Reason: {reason}"
+    )
+
+    claim.approved_minutes = approved
+    claim.comp_leave_minutes_earned = earned
+    claim.reviewed_by_admin_id = admin_id
+    claim.reviewed_at = utc_now()
+    claim.review_reason = reason
+    invalidate_dtr(database, claim.freelancer_id, claim.attendance_date.strftime("%Y-%m"))
 
 
 def reject_overtime_claim(
