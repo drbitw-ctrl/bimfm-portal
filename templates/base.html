@@ -124,30 +124,32 @@
   </aside>
 
   <div class="app-main">
-    <header class="modern-topbar">
+    <header class="modern-topbar premium-topbar">
       <button class="nav-toggle" type="button" aria-label="{{ t('Toggle navigation') }}" data-nav-toggle><span></span><span></span><span></span></button>
-      <div class="topbar-title">
-        <span class="topbar-kicker">{{ t('Unified Workspace') }}</span>
-        <strong>{{ t('BIM Portal') }}</strong>
+      <div class="topbar-welcome">
+        <span>{{ t('Welcome back') }},</span>
+        <strong>{{ current_staff.display_name if current_staff else current_freelancer.name }} <b aria-hidden="true">👋</b></strong>
+        <small>{{ t('Unified Workspace') }}</small>
       </div>
       <div class="topbar-spacer"></div>
-      <div class="topbar-date" data-live-date aria-hidden="true"></div>
-      {% if not current_staff or can(Permission.LEAVE_VIEW_ALL) %}<a class="topbar-icon-button topbar-shortcut" href="{{ '/admin/leave-requests' if current_staff else '/leave' }}" title="{{ t('Open requests') }}" aria-label="{{ t('Open requests') }}"><span>⌁</span><em>{{ t('Requests') }}</em></a>{% endif %}
+      <div class="topbar-info-card topbar-calendar-card"><span class="topbar-info-icon" aria-hidden="true">□</span><div><small>{{ t('Today') }}</small><strong data-live-date></strong></div></div>
+      <div class="topbar-info-card topbar-clock-card"><span class="topbar-info-icon" aria-hidden="true">◷</span><div><small>{{ t('System online') }}</small><strong data-live-time></strong></div></div>
+      {% if not current_staff or can(Permission.LEAVE_VIEW_ALL) %}<a class="topbar-info-card topbar-requests-card" href="{{ '/admin/leave-requests' if current_staff else '/leave' }}" title="{{ t('Open requests') }}" aria-label="{{ t('Open requests') }}"><span class="topbar-info-icon" aria-hidden="true">♧</span><div><small>{{ t('Requests') }}</small><strong>{{ t('Needs your review') if current_staff else t('Open requests') }}</strong></div></a>{% endif %}
       {% if not current_staff %}<a class="topbar-icon-button reminder-shortcut" href="/reminders" title="{{ t('Reminders') }}" aria-label="{{ t('Reminders') }}"><span>✉</span>{% if unread_reminder_count %}<b>{{ unread_reminder_count }}</b>{% endif %}</a>{% endif %}
-      <button class="topbar-icon-button theme-toggle" type="button" data-theme-toggle aria-label="{{ t('Toggle theme') }}" title="{{ t('Toggle theme') }}"><span class="theme-icon-light">☀</span><span class="theme-icon-dark">☾</span></button>
-      <form class="language-switcher" method="post" action="/language" data-readonly-allowed><input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="next_url" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button name="locale" value="en" class="lang-button {{ 'active' if locale == 'en' else '' }}" type="submit">EN</button><span>/</span><button name="locale" value="zh_TW" class="lang-button {{ 'active' if locale == 'zh_TW' else '' }}" type="submit">繁中</button></form>
-      <div class="user-menu user-profile-panel">
-        <span class="user-avatar user-avatar-enhanced" aria-hidden="true">{{ (current_staff.display_name if current_staff else current_freelancer.name)[:1]|upper }}<i></i></span>
-        <div class="user-profile-copy">
-          <span class="user-profile-eyebrow">{{ t('Signed in as') }}</span>
-          <strong>{{ current_staff.display_name if current_staff else current_freelancer.name }}</strong>
-          <span class="user-role-chip">{% if current_staff %}{{ t('Finance Head · DTR access') if current_staff_role == 'FINANCE' else (t('Supervisor · Read only') if current_staff_role == 'SUPERVISOR' else t('System Administrator')) }}{% else %}{{ t('Freelancer account') }}{% endif %}</span>
+      <button class="topbar-icon-button theme-toggle premium-theme-toggle" type="button" data-theme-toggle aria-label="{{ t('Toggle theme') }}" title="{{ t('Toggle theme') }}"><span class="theme-icon-light">☀</span><span class="theme-icon-dark">☾</span></button>
+      <form class="language-switcher premium-language-switch" method="post" action="/language" data-readonly-allowed><input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="next_url" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"><button name="locale" value="en" class="lang-button {{ 'active' if locale == 'en' else '' }}" type="submit">EN</button><button name="locale" value="zh_TW" class="lang-button {{ 'active' if locale == 'zh_TW' else '' }}" type="submit">繁中</button></form>
+      <details class="user-menu user-profile-panel premium-user-menu">
+        <summary>
+          <span class="user-avatar user-avatar-enhanced premium-user-avatar" aria-hidden="true">{{ (current_staff.display_name if current_staff else current_freelancer.name)[:2]|upper }}<i></i></span>
+          <span class="premium-user-copy"><strong>{{ current_staff.display_name if current_staff else current_freelancer.name }}</strong><small>{% if current_staff %}{{ t('Finance Head · DTR access') if current_staff_role == 'FINANCE' else (t('Supervisor · Read only') if current_staff_role == 'SUPERVISOR' else t('System Administrator')) }}{% else %}{{ t('Freelancer account') }}{% endif %}</small></span>
+          <span class="premium-user-chevron" aria-hidden="true">⌄</span>
+        </summary>
+        <div class="premium-user-dropdown">
+          <div class="premium-user-dropdown-head"><span class="user-avatar premium-user-avatar large" aria-hidden="true">{{ (current_staff.display_name if current_staff else current_freelancer.name)[:2]|upper }}</span><div><strong>{{ current_staff.display_name if current_staff else current_freelancer.name }}</strong><small>{% if current_staff %}{{ t('System Administrator') if current_staff_role == 'ADMIN' else current_staff_role|title }}{% else %}{{ t('Freelancer account') }}{% endif %}</small></div></div>
+          <a href="{{ '/admin/change-password' if current_staff else '/change-password' }}"><span aria-hidden="true">⚿</span>{{ t('Change Password') }}</a>
+          <form method="post" action="{{ '/admin/logout' if current_staff else '/logout' }}" data-readonly-allowed><input type="hidden" name="csrf" value="{{ csrf_token }}"><button type="submit"><span aria-hidden="true">↪</span>{{ t('Log out') }}</button></form>
         </div>
-        <div class="user-profile-actions">
-          <a class="profile-action-button" href="{{ '/admin/change-password' if current_staff else '/change-password' }}" title="{{ t('Change Password') }}" aria-label="{{ t('Change Password') }}"><span aria-hidden="true">⚿</span></a>
-          <form method="post" action="{{ '/admin/logout' if current_staff else '/logout' }}" data-readonly-allowed><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="profile-action-button profile-logout-button" type="submit" title="{{ t('Log out') }}" aria-label="{{ t('Log out') }}"><span aria-hidden="true">↪</span></button></form>
-        </div>
-      </div>
+      </details>
     </header>
 
     <main class="page-shell">

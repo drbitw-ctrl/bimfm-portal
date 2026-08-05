@@ -2,8 +2,8 @@ import os
 from pathlib import Path
 
 APP_NAME = "BIM Portal"
-APP_VERSION = "3.0.21-release21.21-workspace-profile-refresh"
-APP_VERSION_NUMBER = "3.0.21"
+APP_VERSION = "v3.0.21.1-release21.21.1-premium-workspace-header"
+APP_VERSION_NUMBER = "3.0.21.1"
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"

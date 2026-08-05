@@ -75,14 +75,29 @@
   }
 
   const liveDate = document.querySelector('[data-live-date]');
-  if (liveDate) {
+  const liveTime = document.querySelector('[data-live-time]');
+  const updateTopbarClock = () => {
     const locale = root.lang === 'zh-Hant-TW' ? 'zh-TW' : 'en-PH';
-    liveDate.textContent = new Intl.DateTimeFormat(locale, {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    }).format(new Date());
+    const now = new Date();
+    if (liveDate) {
+      liveDate.textContent = new Intl.DateTimeFormat(locale, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }).format(now);
+    }
+    if (liveTime) {
+      liveTime.textContent = new Intl.DateTimeFormat(locale, {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      }).format(now);
+    }
+  };
+  if (liveDate || liveTime) {
+    updateTopbarClock();
+    window.setInterval(updateTopbarClock, 30000);
   }
 
   function prepareTableFilter(toolbar) {

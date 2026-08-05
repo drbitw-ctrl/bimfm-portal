@@ -1,0 +1,9 @@
+Release 21.21.1 validation
+
+Python compilation: PASS
+Jinja template parsing: PASS
+Executable regression tests: 27 PASS
+Failures: 0
+Errors: 0
+Language selector retained as EN / 繁中 switch bar: PASS
+No database migration: PASS
