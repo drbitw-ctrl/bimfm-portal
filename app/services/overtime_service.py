@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, Callable
 
 from sqlalchemy.exc import IntegrityError
@@ -197,6 +197,22 @@ class OvertimeService:
                     approved_end = self.deps.local_time_to_utc(
                         claim.attendance_date, approved_time_out, freelancer.timezone_name
                     )
+
+                    # A time-only value such as 02:30 can represent the following day
+                    # when the planned overtime started the previous evening. First try
+                    # the attendance date, then roll forward one calendar day when that
+                    # value would otherwise be before (or equal to) the planned OT start.
+                    if (
+                        claim.planned_start_utc is not None
+                        and approved_end is not None
+                        and approved_end <= claim.planned_start_utc
+                    ):
+                        approved_end = self.deps.local_time_to_utc(
+                            claim.attendance_date + timedelta(days=1),
+                            approved_time_out,
+                            freelancer.timezone_name,
+                        )
+
                     if (
                         claim.planned_start_utc is None
                         or approved_end is None
