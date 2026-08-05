@@ -1,0 +1,18 @@
+Release 21.21.2 validation
+
+Result: PASS
+
+- Python compilation: PASS
+- Jinja templates parsed: 51 PASS
+- Executable regression tests: 30 PASS
+- Failures: 0
+- Errors: 0
+- Database migration: none
+- Data changes: none
+
+Validated specifically:
+- Clearly labelled Log out button remains visible at the far right of the header
+- EN / 繁中 language selector remains a segmented switch bar
+- Dark dashboard groups and member cards use balanced dark surfaces
+- Dark header controls maintain readable contrast
+- Existing Release 21.21 workspace/profile tests continue to pass

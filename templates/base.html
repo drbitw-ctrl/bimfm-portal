@@ -147,9 +147,9 @@
         <div class="premium-user-dropdown">
           <div class="premium-user-dropdown-head"><span class="user-avatar premium-user-avatar large" aria-hidden="true">{{ (current_staff.display_name if current_staff else current_freelancer.name)[:2]|upper }}</span><div><strong>{{ current_staff.display_name if current_staff else current_freelancer.name }}</strong><small>{% if current_staff %}{{ t('System Administrator') if current_staff_role == 'ADMIN' else current_staff_role|title }}{% else %}{{ t('Freelancer account') }}{% endif %}</small></div></div>
           <a href="{{ '/admin/change-password' if current_staff else '/change-password' }}"><span aria-hidden="true">⚿</span>{{ t('Change Password') }}</a>
-          <form method="post" action="{{ '/admin/logout' if current_staff else '/logout' }}" data-readonly-allowed><input type="hidden" name="csrf" value="{{ csrf_token }}"><button type="submit"><span aria-hidden="true">↪</span>{{ t('Log out') }}</button></form>
         </div>
       </details>
+      <form class="topbar-logout-form" method="post" action="{{ '/admin/logout' if current_staff else '/logout' }}" data-readonly-allowed><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="topbar-logout-button" type="submit"><span aria-hidden="true">↪</span><strong>{{ t('Log out') }}</strong></button></form>
     </header>
 
     <main class="page-shell">
