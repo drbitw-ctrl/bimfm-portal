@@ -381,7 +381,7 @@
         ? `<a class="button secondary small" href="/portal/tasks/${encodeURIComponent(row.task_id)}/reminder">✉ ${escapeHtml(tr('Send Reminder'))}</a>`
         : '';
       return `<article class="live-work-card priority-${escapeHtml(String(row.priority || 'normal').toLowerCase())}" data-session-id="${escapeHtml(row.session_id)}">
-        <div class="live-work-member"><span class="person-avatar">${escapeHtml(String(row.member_name || '?').slice(0, 1).toUpperCase())}</span><div><strong>${escapeHtml(row.member_name)}</strong><small>${escapeHtml(row.member_code)}</small></div><span class="live-badge">${escapeHtml(tr('LIVE'))}</span></div>
+        <div class="live-work-member"><span class="person-avatar privacy-member-avatar" aria-hidden="true">${escapeHtml(String(row.member_name || '?').slice(0, 1).toUpperCase())}</span><div><strong class="privacy-member-name" data-hidden-label="${escapeHtml(tr('Hidden member'))}">${escapeHtml(row.member_name)}</strong><small>${escapeHtml(row.member_code)}</small></div><span class="live-badge">${escapeHtml(tr('LIVE'))}</span></div>
         <h3>${escapeHtml(row.task_title)}</h3><p>${escapeHtml(row.project_name)}${discipline}</p>
         <div class="live-work-meta"><span><small>${escapeHtml(tr('Started'))}</small><strong>${escapeHtml(new Date(row.started_at).toLocaleString())}</strong></span><span><small>${escapeHtml(tr('Elapsed'))}</small><strong data-live-elapsed data-started-at="${escapeHtml(row.started_at)}">${escapeHtml(elapsedClock(row.started_at))}</strong></span><span><small>${escapeHtml(tr('Progress'))}</small><strong>${escapeHtml(row.progress)}%</strong></span></div>
         <div class="live-work-actions">${remind}<a class="text-link" href="/portal/tasks?view=active">${escapeHtml(tr('View task'))} →</a></div>
@@ -415,6 +415,23 @@
       // Preserve the last known server-rendered state when connectivity is lost.
     }
   }
+
+  const dashboardPrivacyScopes = Array.from(document.querySelectorAll('[data-dashboard-privacy]'));
+  dashboardPrivacyScopes.forEach((scope) => {
+    const toggle = scope.querySelector('[data-member-visibility-toggle]');
+    if (!toggle) return;
+    const label = toggle.querySelector('[data-member-visibility-label]');
+    const icon = toggle.querySelector('.member-visibility-icon');
+    const update = (hidden) => {
+      scope.classList.toggle('member-names-hidden', hidden);
+      toggle.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+      if (label) label.textContent = hidden ? toggle.dataset.showLabel : toggle.dataset.hideLabel;
+      if (icon) icon.textContent = hidden ? '○' : '◉';
+    };
+    // Privacy is intentionally page-local. Every fresh load defaults to names shown.
+    update(false);
+    toggle.addEventListener('click', () => update(!scope.classList.contains('member-names-hidden')));
+  });
 
   const liveWorkBoards = Array.from(document.querySelectorAll('[data-live-work-board]'));
   liveWorkBoards.forEach((board) => {

@@ -1,0 +1,18 @@
+BIM Portal Release 21.21.3 Validation Report
+
+Python compilation: PASS
+JavaScript syntax: PASS
+Jinja template parsing: 51 PASS
+Executable regression tests: 34 PASS
+Failures: 0
+Errors: 0
+
+Validated behavior:
+- Dashboard control is present and defaults to member names shown.
+- Hidden state is not persisted in browser storage.
+- Fresh page load explicitly restores visible names.
+- Dashboard member names and avatar initials use presentation-only privacy markers.
+- Dynamically refreshed Live Work Order member names follow the same visibility state.
+- English and Traditional Chinese labels are present.
+- Existing API authorization, attendance, overtime, header, localization, and UI regression tests remain passing.
+- No database migration is included.

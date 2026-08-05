@@ -1,6 +1,8 @@
 {% extends "base.html" %}
-{% block title %}{{ t('Team Command Center') }} · {{ app_name }}{% endblock %}
+{% block title %}{{ t('Team Command Center') }} · {{ app_name }}</div>
+{% endblock %}
 {% block content %}
+<div class="dashboard-privacy-scope" data-dashboard-privacy>
 {% macro availability_cards(rows, state, empty_message) -%}
   {% if rows %}
   <div class="availability-state-grid">
@@ -8,9 +10,9 @@
     {% set card_state = row.work_state if row.work_state else state %}
     <article class="member-availability-card state-{{ card_state }}{% if card_state == 'overdue' %} has-overdue{% endif %}">
       <div class="member-card-head">
-        <span class="person-avatar member-command-avatar">{{ row.name[:1]|upper }}</span>
+        <span class="person-avatar member-command-avatar privacy-member-avatar" aria-hidden="true">{{ row.name[:1]|upper }}</span>
         <div class="member-card-identity">
-          <strong>{{ row.name }}</strong>
+          <strong class="privacy-member-name" data-hidden-label="{{ t('Hidden member') }}">{{ row.name }}</strong>
           <small>{{ row.code }}{% if row.join_date and row.join_date != '—' %} · {{ t('Joined') }} {{ row.join_date }}{% endif %}</small>
         </div>
         <span class="availability-badge {{ card_state }}"><i></i>{{ t('Available') if card_state == 'available' else (t('Working Now') if card_state == 'working' else (t('Assigned') if card_state == 'assigned' else t('Overdue'))) }}</span>
@@ -63,11 +65,17 @@
 <section class="dashboard-panel team-command-panel">
   <div class="panel-heading-modern team-command-heading">
     <div><span class="eyebrow">{{ t('LIVE TEAM AVAILABILITY') }}</span><h2>{{ t('Availability and current assignments') }}</h2><p>{{ member_workload_count }} {{ t('active members') }} · {{ t('updated from the task register') }}</p></div>
-    <div class="team-command-legend" aria-label="{{ t('Availability legend') }}">
+    <div class="team-command-heading-actions">
+      <button type="button" class="member-visibility-toggle" data-member-visibility-toggle aria-pressed="false" data-hide-label="{{ t('Hide member names') }}" data-show-label="{{ t('Show member names') }}" title="{{ t('Member names are shown by default.') }}">
+        <span class="member-visibility-icon" aria-hidden="true">◉</span>
+        <span data-member-visibility-label>{{ t('Hide member names') }}</span>
+      </button>
+      <div class="team-command-legend" aria-label="{{ t('Availability legend') }}">
       <span class="availability-legend available"><i></i>{{ t('Available') }}</span>
       <span class="availability-legend working"><i></i>{{ t('Working Now') }}</span>
       <span class="availability-legend assigned"><i></i>{{ t('Assigned') }}</span>
       <span class="availability-legend overdue"><i></i>{{ t('Overdue') }}</span>
+      </div>
     </div>
   </div>
   <div class="team-command-stats team-command-stats-five">
@@ -115,7 +123,7 @@
     {% if live_work_rows %}
       {% for row in live_work_rows %}
       <article class="live-work-card priority-{{ row.priority|lower }}" data-session-id="{{ row.session_id }}">
-        <div class="live-work-member"><span class="person-avatar">{{ row.member_name[:1]|upper }}</span><div><strong>{{ row.member_name }}</strong><small>{{ row.member_code }}</small></div><span class="live-badge">{{ t('LIVE') }}</span></div>
+        <div class="live-work-member"><span class="person-avatar privacy-member-avatar" aria-hidden="true">{{ row.member_name[:1]|upper }}</span><div><strong class="privacy-member-name" data-hidden-label="{{ t('Hidden member') }}">{{ row.member_name }}</strong><small>{{ row.member_code }}</small></div><span class="live-badge">{{ t('LIVE') }}</span></div>
         <h3>{{ row.task_title }}</h3><p>{{ row.project_name }}{% if row.discipline %} · {{ discipline_label(row.discipline) }}{% endif %}</p>
         <div class="live-work-meta"><span><small>{{ t('Started') }}</small><strong>{{ row.started_at }}</strong></span><span><small>{{ t('Elapsed') }}</small><strong data-live-elapsed data-started-at="{{ row.started_at_iso }}">{{ duration_label(row.elapsed_minutes) }}</strong></span><span><small>{{ t('Progress') }}</small><strong>{{ row.progress }}%</strong></span></div>
         <div class="live-work-actions">{% if row.task_id and can(Permission.TASK_REMINDER_SEND) %}<a class="button secondary small" href="/portal/tasks/{{ row.task_id }}/reminder">✉ {{ t('Send Reminder') }}</a>{% endif %}<a class="text-link" href="/portal/tasks?view=active">{{ t('View task') }} →</a></div>
@@ -138,7 +146,7 @@
         <tbody>
         {% for row in workforce_rows %}
           <tr>
-            <td><div class="person-cell"><span class="person-avatar">{{ row.name[:1]|upper }}</span><div><strong>{{ row.name }}</strong></div></div></td>
+            <td><div class="person-cell"><span class="person-avatar privacy-member-avatar" aria-hidden="true">{{ row.name[:1]|upper }}</span><div><strong class="privacy-member-name" data-hidden-label="{{ t('Hidden member') }}">{{ row.name }}</strong></div></div></td>
             <td><span class="status-chip status-{{ row.status|lower|replace(' ', '-') }}">{{ t(row.status) }}</span></td>
             <td><strong class="table-value">{{ row.time_in }}</strong></td>
             <td><span class="task-count">{{ row.active_tasks }}</span></td>
