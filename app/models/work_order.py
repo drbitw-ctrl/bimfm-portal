@@ -57,6 +57,8 @@ class TaskWorkSession(Base):
     )
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    missed_stop_flag: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    exception_flagged_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now
     )

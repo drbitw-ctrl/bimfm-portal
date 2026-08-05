@@ -95,9 +95,33 @@ class DailyAttendance(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now
     )
+    missed_time_out_flag: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    missed_work_order_stop_flag: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    overtime_unavailable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    exception_flagged_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now
     )
+
+class AttendanceCorrectionRequest(Base):
+    __tablename__ = "attendance_correction_requests"
+    __table_args__ = (
+        Index("ix_attendance_correction_requests_status", "status", "requested_at"),
+        Index("ix_attendance_correction_requests_member_date", "freelancer_id", "attendance_date"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    freelancer_id: Mapped[int] = mapped_column(ForeignKey("freelancers.id", ondelete="RESTRICT"), nullable=False)
+    daily_attendance_id: Mapped[Optional[int]] = mapped_column(ForeignKey("daily_attendance.id", ondelete="SET NULL"), nullable=True)
+    attendance_date: Mapped[date] = mapped_column(Date, nullable=False)
+    requested_time_in_utc: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    requested_time_out_utc: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING")
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+    reviewed_by_admin_id: Mapped[Optional[int]] = mapped_column(ForeignKey("hr_admin_accounts.id", ondelete="RESTRICT"), nullable=True)
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    review_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
 class AttendanceCorrection(Base):
     __tablename__ = "attendance_corrections"

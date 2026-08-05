@@ -121,6 +121,8 @@ class OvertimeService:
 
         record = self.deps.get_daily_attendance(database, freelancer_id, claim.attendance_date)
         freelancer = repository.get_freelancer(freelancer_id)
+        if record is not None and bool(getattr(record, "overtime_unavailable", False)):
+            return ServiceResult.failure("Overtime is unavailable until an Administrator corrects the missed overnight attendance.", month_key)
         actual_end = record.time_out_utc if record else None
         if actual_end is None:
             clean_reason = missing_time_out_reason.strip()

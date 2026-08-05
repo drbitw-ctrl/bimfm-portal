@@ -47,6 +47,7 @@ from app.database import (
 from app.models import (
     AttendanceCalculation,
     AttendanceCorrection,
+    AttendanceCorrectionRequest,
     AttendanceEvent,
     AttendanceMonthLock,
     AuditLog,
@@ -123,6 +124,7 @@ from app.work_order_service import (
     start_work_session,
     stop_work_session,
     auto_stop_active_work_session,
+    repair_flagged_work_session,
     freelancer_work_order_view,
     live_work_rows,
     unread_reminder_count,

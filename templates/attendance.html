@@ -1,5 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Attendance · {{ app_name }}{% endblock %}
+{% block title %}Attendance · {{ app_name }}
+<section class="panel">
+  <div class="section-heading"><div><span class="eyebrow">{{ t('PREVIOUS ATTENDANCE') }}</span><h2>{{ t('Request Attendance Correction') }}</h2><p>{{ t('Request an edit for a previous day. An Administrator must approve it before the official record changes.') }}</p></div></div>
+  <form method="post" action="/attendance/correction-request" class="filter-grid">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <div><label>{{ t('Attendance Date') }}</label><input type="date" name="attendance_date" required></div>
+    <div><label>{{ t('Requested Time In') }}</label><input type="time" name="time_in"></div>
+    <div><label>{{ t('Requested Time Out') }}</label><input type="time" name="time_out"></div>
+    <div class="wide"><label>{{ t('Reason') }}</label><textarea name="reason" minlength="5" required></textarea></div>
+    <div class="filter-action"><button class="primary" type="submit">{{ t('Submit Request') }}</button></div>
+  </form>
+  {% if correction_requests %}<div class="compact-request-list">{% for item in correction_requests %}<article><strong>{{ item.attendance_date }} · {{ t(item.status) }}</strong><span>{{ item.reason }}</span></article>{% endfor %}</div>{% endif %}
+</section>
+{% endblock %}
 {% block content %}
 <div class="member-page-heading freelancer-dashboard-heading">
   <div>
@@ -161,5 +174,18 @@
         </p>
     </div>
     {% endif %}
+</section>
+
+<section class="panel">
+  <div class="section-heading"><div><span class="eyebrow">{{ t('PREVIOUS ATTENDANCE') }}</span><h2>{{ t('Request Attendance Correction') }}</h2><p>{{ t('Request an edit for a previous day. An Administrator must approve it before the official record changes.') }}</p></div></div>
+  <form method="post" action="/attendance/correction-request" class="filter-grid">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <div><label>{{ t('Attendance Date') }}</label><input type="date" name="attendance_date" required></div>
+    <div><label>{{ t('Requested Time In') }}</label><input type="time" name="time_in"></div>
+    <div><label>{{ t('Requested Time Out') }}</label><input type="time" name="time_out"></div>
+    <div class="wide"><label>{{ t('Reason') }}</label><textarea name="reason" minlength="5" required></textarea></div>
+    <div class="filter-action"><button class="primary" type="submit">{{ t('Submit Request') }}</button></div>
+  </form>
+  {% if correction_requests %}<div class="compact-request-list">{% for item in correction_requests %}<article><strong>{{ item.attendance_date }} · {{ t(item.status) }}</strong><span>{{ item.reason }}</span></article>{% endfor %}</div>{% endif %}
 </section>
 {% endblock %}

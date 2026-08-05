@@ -219,6 +219,39 @@ def auto_stop_active_work_session(
     )
 
 
+def repair_flagged_work_session(
+    database: Session,
+    *,
+    freelancer: Freelancer,
+    attendance_date: date,
+    corrected_stop: datetime,
+    notes: str,
+) -> Optional[tuple[TaskWorkSession, DailyTask]]:
+    """Finalize a 06:00-flagged Work Order using an Administrator-verified stop."""
+    candidates = list(database.scalars(
+        select(TaskWorkSession).where(
+            TaskWorkSession.freelancer_id == freelancer.id,
+            TaskWorkSession.status == "FLAGGED_MISSED_STOP",
+            TaskWorkSession.missed_stop_flag.is_(True),
+            TaskWorkSession.daily_task_id.is_(None),
+        ).order_by(TaskWorkSession.started_at.desc())
+    ).all())
+    for session in candidates:
+        if _local_date(session.started_at, freelancer.timezone_name) != attendance_date:
+            continue
+        session.status = ACTIVE_SESSION_STATUS
+        session.stopped_at = None
+        session.missed_stop_flag = False
+        result = _complete_work_session(
+            database, freelancer=freelancer, session=session,
+            stopped_at=_aware(corrected_stop), notes=notes,
+            require_activity_report=False,
+        )
+        session.exception_flagged_at = None
+        return result
+    return None
+
+
 def reconcile_stale_work_sessions(
     database: Session,
     *,

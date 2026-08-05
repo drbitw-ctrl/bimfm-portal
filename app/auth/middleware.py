@@ -21,6 +21,7 @@ from app.config import WORK_ORDER_RECONCILE_INTERVAL_SECONDS
 from app.database import SessionLocal
 from app.models import FreelancerAccount, HRAdminAccount
 from app.work_order_service import reconcile_stale_work_sessions
+from app.overnight_exception_service import reconcile_overnight_exceptions
 
 
 @dataclass(frozen=True)
@@ -68,8 +69,9 @@ def _run_work_order_safeguard_if_due() -> None:
             return
         with SessionLocal() as database:
             try:
+                flagged = reconcile_overnight_exceptions(database)
                 closed = reconcile_stale_work_sessions(database)
-                if closed:
+                if flagged or closed:
                     database.commit()
                 else:
                     database.rollback()

@@ -386,17 +386,10 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                 )
                 return RedirectResponse(redirect_path, status_code=303)
 
-            if (
-                corrected_time_in is not None
-                and corrected_time_out is not None
-                and corrected_time_out <= corrected_time_in
-            ):
-                set_flash(
-                    request,
-                    "Corrected Time Out must be later than Time In.",
-                    "error",
+            if corrected_time_in is not None and corrected_time_out is not None and corrected_time_out <= corrected_time_in:
+                corrected_time_out = local_time_to_utc(
+                    attendance_date + timedelta(days=1), time_out, freelancer.timezone_name
                 )
-                return RedirectResponse(redirect_path, status_code=303)
 
             record = get_daily_attendance(database, freelancer_id, attendance_date)
             if record is None and corrected_time_in is None:
@@ -442,6 +435,18 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                 source="ADMIN_CORRECTION",
                 admin_id=admin.id,
             )
+            if corrected_time_out is not None:
+                repaired = repair_flagged_work_session(
+                    database, freelancer=freelancer, attendance_date=attendance_date,
+                    corrected_stop=corrected_time_out, notes=f"Administrator correction: {reason}",
+                )
+                if repaired is not None:
+                    _, repaired_task = repaired
+                    invalidate_task_review(database, freelancer.id, repaired_task.task_date.strftime("%Y-%m"))
+            record.missed_time_out_flag = False
+            record.missed_work_order_stop_flag = False
+            record.overtime_unavailable = False
+            record.exception_flagged_at = None
 
             correction = AttendanceCorrection(
                 daily_attendance_id=record.id,
@@ -1290,6 +1295,7 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                     monthly_summary=monthly_summary,
                     monthly_summary_month=summary_month,
                     monthly_dtr_status=(monthly_dtr.status if monthly_dtr else None),
+                    correction_requests=list(database.scalars(select(AttendanceCorrectionRequest).where(AttendanceCorrectionRequest.freelancer_id == account.freelancer_id).order_by(AttendanceCorrectionRequest.requested_at.desc()).limit(20)).all()),
                 ),
             )
 
@@ -1491,6 +1497,13 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                 account.freelancer_id,
                 attendance_date,
             )
+            local_now = official_utc.astimezone(freelancer_zone(timezone_name))
+            if (record is None or record.time_in_utc is None) and local_now.hour < 6:
+                previous_date = attendance_date - timedelta(days=1)
+                previous_record = get_daily_attendance(database, account.freelancer_id, previous_date)
+                if previous_record is not None and previous_record.time_in_utc is not None and previous_record.time_out_utc is None:
+                    record = previous_record
+                    attendance_date = previous_date
 
             if record is None or record.time_in_utc is None:
                 set_flash(
@@ -1719,5 +1732,94 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
     )
 
 
+
+
+    @router.post("/attendance/correction-request")
+    def request_previous_attendance_correction(
+        request: Request, csrf: str = Form(...), attendance_date: str = Form(...),
+        time_in: str = Form(""), time_out: str = Form(""), reason: str = Form(...),
+    ):
+        if not validate_csrf(request, csrf):
+            return RedirectResponse("/attendance", 303)
+        try:
+            requested_date = date.fromisoformat(attendance_date)
+        except ValueError:
+            set_flash(request, "Invalid attendance date.", "error")
+            return RedirectResponse("/attendance", 303)
+        with SessionLocal() as database:
+            account = get_current_freelancer_account(request, database)
+            if account is None: return RedirectResponse("/login", 303)
+            today = current_attendance_date(account.freelancer.timezone_name)
+            if requested_date >= today:
+                set_flash(request, "Only previous attendance dates can be requested.", "error")
+                return RedirectResponse("/attendance", 303)
+            if len(reason.strip()) < 5:
+                set_flash(request, "Enter a reason of at least 5 characters.", "error")
+                return RedirectResponse("/attendance", 303)
+            existing = database.scalar(select(AttendanceCorrectionRequest).where(AttendanceCorrectionRequest.freelancer_id==account.freelancer_id, AttendanceCorrectionRequest.attendance_date==requested_date, AttendanceCorrectionRequest.status=="PENDING"))
+            if existing:
+                set_flash(request, "A pending request already exists for this date.", "error")
+                return RedirectResponse("/attendance", 303)
+            try:
+                requested_in = local_time_to_utc(requested_date, time_in, account.freelancer.timezone_name)
+                requested_out = local_time_to_utc(requested_date, time_out, account.freelancer.timezone_name)
+            except ValueError as exc:
+                set_flash(request, str(exc), "error"); return RedirectResponse("/attendance", 303)
+            if requested_out and not requested_in:
+                set_flash(request, "Time Out cannot exist without Time In.", "error"); return RedirectResponse("/attendance", 303)
+            if requested_in and requested_out and requested_out <= requested_in:
+                requested_out = local_time_to_utc(requested_date + timedelta(days=1), time_out, account.freelancer.timezone_name)
+            record = get_daily_attendance(database, account.freelancer_id, requested_date)
+            row = AttendanceCorrectionRequest(freelancer_id=account.freelancer_id, daily_attendance_id=record.id if record else None, attendance_date=requested_date, requested_time_in_utc=requested_in, requested_time_out_utc=requested_out, reason=reason.strip(), status="PENDING")
+            database.add(row); database.flush()
+            write_audit(database, actor_type="FREELANCER", actor_id=account.freelancer_id, action="REQUEST_ATTENDANCE_CORRECTION", request=request, target_type="ATTENDANCE_CORRECTION_REQUEST", target_id=row.id, details=f"Date {requested_date.isoformat()}; reason: {reason.strip()}")
+            database.commit()
+        set_flash(request, "Attendance correction request submitted.", "success")
+        return RedirectResponse("/attendance", 303)
+
+    @router.get("/admin/attendance/correction-requests", response_class=HTMLResponse)
+    def attendance_correction_requests_admin(request: Request):
+        with SessionLocal() as database:
+            admin = get_current_admin(request, database)
+            if admin is None: return RedirectResponse("/admin/login", 303)
+            requests = list(database.scalars(select(AttendanceCorrectionRequest).order_by(AttendanceCorrectionRequest.status, AttendanceCorrectionRequest.requested_at.desc())).all())
+            freelancers = {f.id:f for f in database.scalars(select(Freelancer)).all()}
+            return templates.TemplateResponse(request=request, name="admin_attendance_requests.html", context=template_context(request, admin=admin, requests=requests, freelancers=freelancers, format_local_datetime=format_local_datetime))
+
+    @router.post("/admin/attendance/correction-requests/{request_id}/review")
+    def review_attendance_correction_request(request_id: int, request: Request, csrf: str=Form(...), decision: str=Form(...), review_reason: str=Form(...)):
+        if not validate_csrf(request, csrf): return RedirectResponse("/admin/attendance/correction-requests", 303)
+        with SessionLocal() as database:
+            admin=get_current_admin(request,database)
+            if admin is None: return RedirectResponse("/admin/login",303)
+            item=database.get(AttendanceCorrectionRequest,request_id)
+            if item is None or item.status!="PENDING":
+                set_flash(request,"Correction request is no longer pending.","error"); return RedirectResponse("/admin/attendance/correction-requests",303)
+            if len(review_reason.strip())<5:
+                set_flash(request,"Enter review notes of at least 5 characters.","error"); return RedirectResponse("/admin/attendance/correction-requests",303)
+            item.reviewed_by_admin_id=admin.id; item.reviewed_at=utc_now(); item.review_reason=review_reason.strip()
+            if decision.upper()=="APPROVE":
+                freelancer=database.get(Freelancer,item.freelancer_id)
+                record=get_daily_attendance(database,item.freelancer_id,item.attendance_date)
+                if record is None:
+                    record=DailyAttendance(freelancer_id=item.freelancer_id,attendance_date=item.attendance_date); database.add(record); database.flush()
+                original_in, original_out=record.time_in_utc,record.time_out_utc
+                record.time_in_utc=item.requested_time_in_utc; record.time_out_utc=item.requested_time_out_utc
+                record.status="COMPLETE" if item.requested_time_out_utc else ("PRESENT" if item.requested_time_in_utc else "NO_RECORD")
+                record.review_status="CORRECTED"; record.missed_time_out_flag=False; record.missed_work_order_stop_flag=False; record.overtime_unavailable=False; record.exception_flagged_at=None
+                calculate_attendance_record(database,record,freelancer,source="APPROVED_CORRECTION_REQUEST",admin_id=admin.id)
+                if item.requested_time_out_utc is not None:
+                    repaired = repair_flagged_work_session(database, freelancer=freelancer, attendance_date=item.attendance_date, corrected_stop=item.requested_time_out_utc, notes=f"Approved attendance request: {item.reason}")
+                    if repaired is not None:
+                        _, repaired_task = repaired
+                        invalidate_task_review(database, freelancer.id, repaired_task.task_date.strftime("%Y-%m"))
+                correction=AttendanceCorrection(daily_attendance_id=record.id,freelancer_id=item.freelancer_id,attendance_date=item.attendance_date,original_time_in_utc=original_in,original_time_out_utc=original_out,corrected_time_in_utc=item.requested_time_in_utc,corrected_time_out_utc=item.requested_time_out_utc,reason=f"Approved request: {item.reason}; review: {review_reason.strip()}",corrected_by_admin_id=admin.id)
+                database.add(correction); item.status="APPROVED"; invalidate_dtr(database,item.freelancer_id,item.attendance_date.strftime("%Y-%m"))
+            else:
+                item.status="REJECTED"
+            write_audit(database,actor_type="HR_ADMIN",actor_id=admin.id,action=f"{item.status}_ATTENDANCE_CORRECTION_REQUEST",request=request,target_type="ATTENDANCE_CORRECTION_REQUEST",target_id=item.id,details=review_reason.strip())
+            database.commit()
+        set_flash(request,"Attendance correction request reviewed.","success")
+        return RedirectResponse("/admin/attendance/correction-requests",303)
 
     return router

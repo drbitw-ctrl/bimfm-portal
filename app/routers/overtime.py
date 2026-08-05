@@ -194,4 +194,40 @@ def configure_overtime_routes(legacy_namespace: dict[str, object]) -> APIRouter:
         )
         return RedirectResponse(target, 303)
 
+
+    @router.post("/admin/overtime/historical")
+    def add_historical_overtime(
+        request: Request, csrf: str=Form(...), freelancer_id: int=Form(...),
+        attendance_date: str=Form(...), start_time: str=Form(...), end_time: str=Form(...),
+        work_description: str=Form(...), reason: str=Form(...),
+    ):
+        if not validate_csrf(request, csrf): return RedirectResponse("/admin/overtime",303)
+        with SessionLocal() as database:
+            admin=get_current_admin(request,database)
+            if admin is None: return RedirectResponse("/admin/login",303)
+            freelancer=database.get(Freelancer,freelancer_id)
+            try:
+                work_date=date.fromisoformat(attendance_date)
+                start_utc=local_time_to_utc(work_date,start_time,freelancer.timezone_name)
+                end_date=work_date + timedelta(days=1) if end_time <= start_time else work_date
+                end_utc=local_time_to_utc(end_date,end_time,freelancer.timezone_name)
+            except Exception as exc:
+                set_flash(request,str(exc),"error"); return RedirectResponse("/admin/overtime",303)
+            minutes=int((end_utc-start_utc).total_seconds()//60)
+            policy=get_policy(database)
+            if minutes < policy.overtime_minimum_minutes or minutes > policy.max_approved_overtime_per_day:
+                set_flash(request,"Historical overtime is outside the allowed policy range.","error"); return RedirectResponse("/admin/overtime",303)
+            if len(work_description.strip())<5 or len(reason.strip())<5:
+                set_flash(request,"Work description and reason must each contain at least 5 characters.","error"); return RedirectResponse("/admin/overtime",303)
+            existing=database.scalar(select(OvertimeClaim).where(OvertimeClaim.freelancer_id==freelancer_id,OvertimeClaim.attendance_date==work_date))
+            if existing:
+                set_flash(request,"An overtime record already exists for this member and date.","error"); return RedirectResponse("/admin/overtime",303)
+            claim=OvertimeClaim(freelancer_id=freelancer_id,attendance_date=work_date,potential_minutes_snapshot=minutes,requested_minutes=minutes,work_description=work_description.strip(),planned_start_utc=start_utc,planned_end_utc=end_utc,actual_time_out_utc=end_utc,approved_time_out_utc=end_utc,status="PENDING_FINAL",submitted_at=utc_now())
+            database.add(claim); database.flush()
+            approve_overtime_claim(database,claim=claim,approved_minutes=minutes,admin_id=admin.id,reason=f"Historical OT entry: {reason.strip()}")
+            write_audit(database,actor_type="HR_ADMIN",actor_id=admin.id,action="CREATE_HISTORICAL_OVERTIME",request=request,target_type="OVERTIME_CLAIM",target_id=claim.id,details=f"{freelancer.full_name}; {work_date.isoformat()}; {minutes} minutes; {reason.strip()}")
+            database.commit()
+        set_flash(request,"Historical overtime added and credited.","success")
+        return RedirectResponse(f"/admin/overtime?month={attendance_date[:7]}&status=ALL",303)
+
     return router

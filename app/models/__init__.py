@@ -4,7 +4,7 @@ Public imports remain compatible with ``from app.models import ModelName``.
 """
 from app.models.common import utc_now
 from app.models.identity import HRAdminAccount, Freelancer, FreelancerAccount
-from app.models.attendance import AttendanceEvent, DailyAttendance, AttendanceCorrection, AttendanceMonthLock, WorkSchedule, AttendanceCalculation
+from app.models.attendance import AttendanceEvent, DailyAttendance, AttendanceCorrectionRequest, AttendanceCorrection, AttendanceMonthLock, WorkSchedule, AttendanceCalculation
 from app.models.leave import Holiday, LeaveRecord, LeaveRequest, CompLeaveTransaction, MonthlyCompLeaveBalance
 from app.models.dtr import MonthlyDTR, DTRDailyLine, DTRTaskLine, DTRCompLine, DTRLeaveLine
 from app.models.policy import HRPolicy
@@ -24,6 +24,7 @@ __all__ = [
     "FreelancerAccount",
     "AttendanceEvent",
     "DailyAttendance",
+    "AttendanceCorrectionRequest",
     "AttendanceCorrection",
     "AttendanceMonthLock",
     "WorkSchedule",
