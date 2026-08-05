@@ -1,0 +1,57 @@
+BIM PORTAL RELEASE 21.19.1 VALIDATION REPORT
+============================================
+
+Version: v3.0.19.1
+Result: PASSED
+Failures: 0
+Errors: 0
+
+SECURITY REGRESSION TESTS
+-------------------------
+[PASS] Directly assigned project remains visible to the freelancer
+[PASS] Directly assigned task remains visible to the freelancer
+[PASS] Active project-membership-only project remains visible
+[PASS] Active legacy-member-mapped project remains visible
+[PASS] Active legacy-member-mapped task remains visible
+[PASS] Unrelated project is excluded from freelancer API results
+[PASS] Unrelated task is excluded from freelancer API results
+[PASS] project_id query cannot bypass task assignment scope
+[PASS] Status filtering remains compatible with assignment scope
+[PASS] Assignment-scoped queries compile for the PostgreSQL dialect
+[PASS] A second freelancer receives only that freelancer's assignment
+[PASS] Administrator retains organization-wide project/task visibility
+[PASS] Misconfigured staff EMPLOYEE role fails closed
+
+HTTP AUTHORIZATION TESTS
+------------------------
+[PASS] Freelancer login completed through the real login route
+[PASS] GET /api/v1/projects returned only the signed-in freelancer's project
+[PASS] GET /api/v1/tasks returned only the signed-in freelancer's task
+[PASS] GET /api/v1/tasks?project_id=<unrelated> returned no records
+[PASS] Administrator login retained access to all test projects and tasks
+
+APPLICATION CHECKS
+------------------
+[PASS] Python source compilation
+[PASS] 126 FastAPI application routes loaded
+[PASS] 49 Jinja templates parsed
+[PASS] 3 JavaScript files passed syntax validation
+[PASS] 2,110 English localization keys loaded
+[PASS] 2,110 Traditional Chinese localization keys loaded
+[PASS] English and Traditional Chinese localization-key parity
+[PASS] Application and API health endpoints returned HTTP 200
+
+DATABASE CHECKS
+---------------
+[PASS] Fresh isolated migration chain completed
+[PASS] Alembic head remains 20260804_0015
+[PASS] No new migration file
+[PASS] No table, column, index, or constraint change in this hotfix
+[PASS] No production database was accessed during validation
+
+PACKAGE CHECKS
+--------------
+[PASS] Patch is based on the supplied Release 21.19 package
+[PASS] No .env or database file is included
+[PASS] Only query authorization and version metadata changed in application code
+[PASS] Regression tests and release documentation added

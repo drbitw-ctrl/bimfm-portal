@@ -1,0 +1,120 @@
+--- /mnt/data/release_21_19_review/BIMFM_PORTAL_RELEASE_21_19_RENDER/app/api/v1/router.py	2026-08-01 12:24:22.000000000 +0000
++++ /mnt/data/release_21_19_patch/BIMFM_PORTAL_RELEASE_21_19_1_RENDER/app/api/v1/router.py	2026-08-05 02:01:08.017674270 +0000
+@@ -2,15 +2,19 @@
+ from __future__ import annotations
+ 
+ from fastapi import APIRouter, Depends, Query, Request
+-from sqlalchemy import func, select
++from sqlalchemy import exists, false, func, or_, select
+ from sqlalchemy.orm import Session
+ 
+ from app import config
+ from app.api.v1.dependencies import get_database, require_api_permission
+ from app.auth.dependencies import Principal, require_authenticated_user
+-from app.auth.permissions import Permission, has_permission, permissions_for_role
++from app.auth.permissions import Permission, Role, has_permission, permissions_for_role
+ from app.database import database_is_available
+-from app.models import Freelancer, LeaveRequest, OvertimeClaim, PortalProject, PortalTask
++from app.models import (
++    Freelancer, LeaveRequest, OvertimeClaim, PortalProject, PortalProjectMember,
++    PortalTask, PortalTaskAssignment,
++)
++from app.portal_project_service import resolved_assignment_ids
+ from app.schemas.api import (
+     ApiMeta, ApiResponse, FreelancerRead, HealthData, LeaveRequestRead,
+     OvertimeClaimRead, PaginationMeta, PrincipalRead, ProjectRead, TaskRead,
+@@ -37,6 +41,66 @@
+     return getattr(principal.account, "freelancer_id", None)
+ 
+ 
++def _is_assignment_scoped(principal: Principal) -> bool:
++    """Return whether project API access must be limited to assignments."""
++    return principal.kind == "employee" or principal.role == Role.EMPLOYEE
++
++
++def _employee_assignment_ids(database: Session, principal: Principal) -> tuple[int, ...]:
++    """Return every project-side identity mapped to the signed-in freelancer.
++
++    Management roles keep their existing organization-wide visibility. Employee
++    access fails closed when the account has no freelancer mapping, including a
++    staff account that was accidentally assigned the EMPLOYEE role.
++    """
++    if not _is_assignment_scoped(principal):
++        return ()
++    freelancer_id = _freelancer_id(principal)
++    if freelancer_id is None:
++        return ()
++    return tuple(sorted(resolved_assignment_ids(database, freelancer_id=freelancer_id)))
++
++
++def _employee_project_scope(database: Session, principal: Principal):
++    """SQL condition limiting employees to assigned projects only."""
++    if not _is_assignment_scoped(principal):
++        return None
++    assignment_ids = _employee_assignment_ids(database, principal)
++    if not assignment_ids:
++        return false()
++    active_membership = exists(
++        select(PortalProjectMember.id).where(
++            PortalProjectMember.project_id == PortalProject.id,
++            PortalProjectMember.freelancer_id.in_(assignment_ids),
++            PortalProjectMember.is_active.is_(True),
++        )
++    )
++    assigned_task = exists(
++        select(PortalTaskAssignment.id)
++        .join(PortalTask, PortalTask.id == PortalTaskAssignment.task_id)
++        .where(
++            PortalTask.project_id == PortalProject.id,
++            PortalTaskAssignment.freelancer_id.in_(assignment_ids),
++        )
++    )
++    return or_(active_membership, assigned_task)
++
++
++def _employee_task_scope(database: Session, principal: Principal):
++    """SQL condition limiting employees to tasks assigned to their identities."""
++    if not _is_assignment_scoped(principal):
++        return None
++    assignment_ids = _employee_assignment_ids(database, principal)
++    if not assignment_ids:
++        return false()
++    return exists(
++        select(PortalTaskAssignment.id).where(
++            PortalTaskAssignment.task_id == PortalTask.id,
++            PortalTaskAssignment.freelancer_id.in_(assignment_ids),
++        )
++    )
++
++
+ @router.get("/health", response_model=ApiResponse[HealthData], summary="API liveness and database health")
+ def health(request: Request):
+     database_ok = database_is_available()
+@@ -135,8 +199,10 @@
+     database: Session = Depends(get_database),
+     principal: Principal = Depends(require_api_permission(Permission.PROJECT_VIEW)),
+ ):
+-    del principal
+     filters = [PortalProject.status == status.strip().upper()] if status else []
++    employee_scope = _employee_project_scope(database, principal)
++    if employee_scope is not None:
++        filters.append(employee_scope)
+     total = int(database.scalar(select(func.count(PortalProject.id)).where(*filters)) or 0)
+     records = list(database.scalars(select(PortalProject).where(*filters).order_by(PortalProject.updated_at.desc()).limit(limit).offset(offset)))
+     return ApiResponse(data=[ProjectRead.model_validate(item) for item in records], meta=_pagination(request, limit=limit, offset=offset, count=len(records), total=total))
+@@ -152,12 +218,14 @@
+     database: Session = Depends(get_database),
+     principal: Principal = Depends(require_api_permission(Permission.PROJECT_VIEW)),
+ ):
+-    del principal
+     filters = []
+     if project_id is not None:
+         filters.append(PortalTask.project_id == project_id)
+     if status:
+         filters.append(PortalTask.status == status.strip().upper())
++    employee_scope = _employee_task_scope(database, principal)
++    if employee_scope is not None:
++        filters.append(employee_scope)
+     total = int(database.scalar(select(func.count(PortalTask.id)).where(*filters)) or 0)
+     records = list(database.scalars(select(PortalTask).where(*filters).order_by(PortalTask.updated_at.desc()).limit(limit).offset(offset)))
+     return ApiResponse(data=[TaskRead.model_validate(item) for item in records], meta=_pagination(request, limit=limit, offset=offset, count=len(records), total=total))

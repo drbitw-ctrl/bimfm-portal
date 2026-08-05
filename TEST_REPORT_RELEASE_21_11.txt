@@ -1,0 +1,38 @@
+BIMFM PORTAL RELEASE 21.11 TEST REPORT
+======================================
+
+Scope
+-----
+All Live Work Orders Dashboard visibility hotfix.
+
+Results
+-------
+Result: PASSED
+Failures: 0
+Errors: 0
+
+Validation completed
+--------------------
+- Python compilation: PASS
+- Application import: PASS
+- Application routes: 125
+- Jinja templates parsed: 49
+- JavaScript syntax: PASS
+- English localization keys: 1,881
+- Traditional Chinese localization keys: 1,881
+- Localization catalog parity: PASS
+- Four simultaneously active freelancer Work Orders returned: PASS
+- Four unique active members displayed by service data: PASS
+- Inactive freelancer session excluded: PASS
+- One row per active freelancer: PASS
+- Live endpoint no-store headers present: PASS
+- Browser fetch cache disabled: PASS
+- Immediate Dashboard refresh on page load: PASS
+- Refresh after returning to browser tab: PASS
+- Responsive all-member grid rules present: PASS
+- Application version: 3.0.11-release21.11-all-live-work-orders
+- Alembic migration required: NO
+
+Test database
+-------------
+An isolated in-memory database was used. Production data was not accessed or modified.

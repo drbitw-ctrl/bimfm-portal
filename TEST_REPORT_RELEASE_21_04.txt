@@ -1,0 +1,26 @@
+BIMFM Portal Release 21.04 Validation Report
+============================================
+
+Result: PASSED
+Failures: 0
+Errors: 0
+
+Validated areas
+---------------
+- Python application compilation
+- Application import
+- 46 Jinja templates parsed
+- JavaScript syntax: ui.js
+- JavaScript syntax: i18n.js
+- JavaScript syntax: reporting.js
+- Six enabled real freelancer accounts included
+- Seven active legacy placeholders excluded
+- Disabled freelancer account excluded
+- Daily attendance table population filtered correctly
+- Monthly attendance totals filtered correctly
+- Monthly DTR generated totals filtered correctly
+- DTR missing count calculated from eligible accounts only
+- Empty eligible-population case handled correctly
+- No new Alembic migration
+
+Production PostgreSQL was not modified during validation.

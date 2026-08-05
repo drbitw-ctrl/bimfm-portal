@@ -379,7 +379,13 @@
     const endpoint = board.dataset.liveWorkEndpoint;
     if (!endpoint || document.hidden) return;
     try {
-      const response = await fetch(endpoint, { headers: { Accept: 'application/json' } });
+      const url = new URL(endpoint, window.location.origin);
+      url.searchParams.set('_live', String(Date.now()));
+      const response = await fetch(url.toString(), {
+        cache: 'no-store',
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json', 'Cache-Control': 'no-cache' },
+      });
       if (!response.ok) return;
       const payload = await response.json();
       renderLiveWorkRows(board, Array.isArray(payload.rows) ? payload.rows : []);
@@ -395,8 +401,13 @@
     }
   }
 
-  document.querySelectorAll('[data-live-work-board]').forEach((board) => {
+  const liveWorkBoards = Array.from(document.querySelectorAll('[data-live-work-board]'));
+  liveWorkBoards.forEach((board) => {
+    refreshLiveWorkBoard(board);
     window.setInterval(() => refreshLiveWorkBoard(board), 15000);
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) liveWorkBoards.forEach((board) => refreshLiveWorkBoard(board));
   });
 
 }());
