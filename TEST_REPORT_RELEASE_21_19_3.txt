@@ -1,0 +1,20 @@
+BIMFM Portal Release 21.19.3 Test Report
+
+Result: PASS
+Failures: 0
+Errors: 0
+
+Python compilation: PASS
+Existing API authorization tests: 9 PASS
+Release 21.19.2 attendance/overnight tests: 3 PASS
+Release 21.19.3 active-member selector tests: 3 PASS
+Total executable tests: 15 PASS
+
+Validated:
+- Active account-linked freelancers appear.
+- Unmapped legacy-only freelancer rows are excluded.
+- Inactive freelancer profiles are excluded.
+- Disabled freelancer accounts are excluded.
+- Results are alphabetically sorted.
+- Historical OT submission rejects inactive/unmapped member IDs.
+- No database migration is introduced.

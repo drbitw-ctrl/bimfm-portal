@@ -7,6 +7,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.services.overtime_service import OvertimeService, OvertimeServiceDependencies
+from app.member_directory import get_active_freelancer, get_active_freelancers
 
 
 def create_overtime_router(legacy_namespace: dict[str, object]) -> APIRouter:
@@ -143,7 +144,7 @@ def configure_overtime_routes(legacy_namespace: dict[str, object]) -> APIRouter:
             elif status and status != "ALL":
                 query = query.where(OvertimeClaim.status == status)
             claims = list(database.scalars(query.order_by(OvertimeClaim.attendance_date, OvertimeClaim.id)).all())
-            freelancers = {f.id: f for f in database.scalars(select(Freelancer)).all()}
+            freelancers = {f.id: f for f in get_active_freelancers(database)}
             attendance = {(r.freelancer_id, r.attendance_date): r for r in database.scalars(select(DailyAttendance).where(
                 DailyAttendance.attendance_date >= first,
                 DailyAttendance.attendance_date < next_month,
@@ -205,7 +206,10 @@ def configure_overtime_routes(legacy_namespace: dict[str, object]) -> APIRouter:
         with SessionLocal() as database:
             admin=get_current_admin(request,database)
             if admin is None: return RedirectResponse("/admin/login",303)
-            freelancer=database.get(Freelancer,freelancer_id)
+            freelancer=get_active_freelancer(database,freelancer_id)
+            if freelancer is None:
+                set_flash(request,"Select an active portal member.","error")
+                return RedirectResponse("/admin/overtime",303)
             try:
                 work_date=date.fromisoformat(attendance_date)
                 start_utc=local_time_to_utc(work_date,start_time,freelancer.timezone_name)
