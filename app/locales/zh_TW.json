@@ -2164,5 +2164,8 @@
   "An adjustment reason of at least 5 characters is required.": "更正原因至少需要 5 個字元。",
   "Only an approved overtime claim can be adjusted.": "只能更正已核准的加班申請。",
   "Adjusted overtime is below the policy minimum.": "更正後的加班時間低於政策最低標準。",
-  "The overtime adjustment does not earn compensatory leave.": "此加班更正不會產生補休點數。"
+  "The overtime adjustment does not earn compensatory leave.": "此加班更正不會產生補休點數。",
+  "Unified Workspace": "整合工作空間",
+  "Signed in as": "目前登入身分",
+  "System Administrator": "系統管理員"
 }

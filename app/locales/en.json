@@ -2164,5 +2164,8 @@
   "An adjustment reason of at least 5 characters is required.": "An adjustment reason of at least 5 characters is required.",
   "Only an approved overtime claim can be adjusted.": "Only an approved overtime claim can be adjusted.",
   "Adjusted overtime is below the policy minimum.": "Adjusted overtime is below the policy minimum.",
-  "The overtime adjustment does not earn compensatory leave.": "The overtime adjustment does not earn compensatory leave."
+  "The overtime adjustment does not earn compensatory leave.": "The overtime adjustment does not earn compensatory leave.",
+  "Unified Workspace": "Unified Workspace",
+  "Signed in as": "Signed in as",
+  "System Administrator": "System Administrator"
 }

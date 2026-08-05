@@ -1,0 +1,18 @@
+BIM Portal Release 21.21 Validation
+
+Python compilation: PASS
+Jinja templates parsed: 51 PASS
+Existing regression tests: 24 PASS
+Release 21.21 UI tests: 3 PASS
+Total executable tests: 27 PASS
+Failures: 0
+Errors: 0
+
+Validated:
+- BIM Portal name retained
+- Unified Workspace subtitle
+- No BIMFM company name or logo added
+- English / Traditional Chinese switch bar retained
+- Enhanced user avatar and online status
+- Responsive profile panel
+- No database migration
