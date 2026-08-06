@@ -647,7 +647,6 @@ def create_portal_router(
             "quality_score": quality_score,
             "task_description": task_description,
         }
-        previous_status = str(task.status or "").upper()
         try:
             (
                 form_values,

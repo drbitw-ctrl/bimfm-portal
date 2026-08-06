@@ -23,7 +23,7 @@ class Release21216Tests(unittest.TestCase):
 
     def test_release_version(self):
         text = (ROOT / "app/config.py").read_text(encoding="utf-8")
-        self.assertIn("v3.0.21.6-release21.21.6-task-assignment-deadline-fix", text)
+        self.assertIn("v3.0.21.8-release21.21.8-task-creation-admin-assignment-hotfix", text)
 
 
 if __name__ == "__main__":

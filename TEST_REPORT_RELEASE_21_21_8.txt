@@ -1,0 +1,8 @@
+Release 21.21.8 validation
+
+- Python compilation: PASS
+- New task creation regression test: PASS
+- Administrator assignment compatibility regression test: PASS
+- Existing executable test suite: 45 PASS
+- Database migrations added: NONE
+- Schema changes: NONE

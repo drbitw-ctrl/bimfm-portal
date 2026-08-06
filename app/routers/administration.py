@@ -509,20 +509,16 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
         return RedirectResponse("/admin/staff-accounts", status_code=303)
 
     def _enable_task_assignment_for_account(request: Request, database, admin, target):
-        mapped = (
-            database.get(Freelancer, int(target.task_freelancer_id))
-            if target.task_freelancer_id is not None
-            else None
+        # Code-only compatibility path: do not depend on the optional
+        # HRAdminAccount.task_freelancer_id ORM attribute. Some deployed
+        # releases have the database column but an older loaded model class.
+        # A deterministic task-supervisor code lets us safely find or create
+        # the same assignable member without changing the schema.
+        member_code = f"TS-{int(target.id):03d}"
+        mapped = database.scalar(
+            select(Freelancer).where(Freelancer.freelancer_code == member_code)
         )
         if mapped is None:
-            base_code = f"TS-{int(target.id):03d}"
-            member_code = base_code
-            suffix = 2
-            while database.scalar(
-                select(Freelancer.id).where(Freelancer.freelancer_code == member_code)
-            ) is not None:
-                member_code = f"{base_code}-{suffix}"
-                suffix += 1
             mapped = Freelancer(
                 freelancer_code=member_code,
                 full_name=str(target.display_name or target.username),
@@ -532,7 +528,6 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
             )
             database.add(mapped)
             database.flush()
-            target.task_freelancer_id = mapped.id
         else:
             mapped.full_name = str(target.display_name or target.username)
             mapped.is_active = bool(target.is_active)
@@ -631,10 +626,12 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                 set_flash(request, "You cannot disable your own signed-in account.", "error")
             else:
                 target.is_active = not target.is_active
-                if target.task_freelancer_id is not None:
-                    mapped_member = database.get(Freelancer, int(target.task_freelancer_id))
-                    if mapped_member is not None:
-                        mapped_member.is_active = bool(target.is_active)
+                member_code = f"TS-{int(target.id):03d}"
+                mapped_member = database.scalar(
+                    select(Freelancer).where(Freelancer.freelancer_code == member_code)
+                )
+                if mapped_member is not None:
+                    mapped_member.is_active = bool(target.is_active)
                 write_audit(database, actor_type="HR_ADMIN", actor_id=admin.id, action="TOGGLE_STAFF_ACCOUNT", request=request, target_type="HR_ADMIN", target_id=target.id, details=f"Active={target.is_active}")
                 database.commit()
                 set_flash(request, "Staff account status updated.", "success")
