@@ -2,8 +2,8 @@ import os
 from pathlib import Path
 
 APP_NAME = "BIM Portal"
-APP_VERSION = "v3.0.21.3-release21.21.3-dashboard-name-visibility"
-APP_VERSION_NUMBER = "3.0.21.3"
+APP_VERSION = "v3.0.21.4-release21.21.4-utilization-task-supervisor"
+APP_VERSION_NUMBER = "3.0.21.4"
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"

@@ -2171,5 +2171,19 @@
   "— Keep unmapped —": "— Keep unmapped —",
   "“Days Physically Worked” and “Payable Workday Equivalents” are separate from monthly salary calendar coverage.": "“Days Physically Worked” and “Payable Workday Equivalents” are separate from monthly salary calendar coverage.",
   "− Comp Leave Applied": "− Comp Leave Applied",
-  "− Effective Deduction": "− Effective Deduction"
+  "− Effective Deduction": "− Effective Deduction",
+  "Task Assignment": "Task Assignment",
+  "Assignable Task Supervisor": "Assignable Task Supervisor",
+  "Enable Task Assignment": "Enable Task Assignment",
+  "Task Supervisor profile enabled. This staff member can now be assigned tasks.": "Task Supervisor profile enabled. This staff member can now be assigned tasks.",
+  "Recorded hours plus completion-date estimates": "Recorded hours plus completion-date estimates",
+  "Review every project’s all-time hours and see whether each task uses recorded time or a Start-to-Completion estimate.": "Review every project’s all-time hours and see whether each task uses recorded time or a Start-to-Completion estimate.",
+  "How planned and actual time are selected": "How planned and actual time are selected",
+  "When no actual hours exist, completed tasks estimate actual time from Start Date through Completion Date.": "When no actual hours exist, completed tasks estimate actual time from Start Date through Completion Date.",
+  "Every project is shown. Totals combine recorded hours with clearly identified Start-to-Completion estimates.": "Every project is shown. Totals combine recorded hours with clearly identified Start-to-Completion estimates.",
+  "using completion-date estimate": "using completion-date estimate",
+  "Start-to-Completion estimate used": "Start-to-Completion estimate used",
+  "Completion estimate": "Completion estimate",
+  "Start-to-Completion estimate used because no actual hours exist": "Start-to-Completion estimate used because no actual hours exist",
+  "Completion-date estimate used as actual": "Completion-date estimate used as actual"
 }

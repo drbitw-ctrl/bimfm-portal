@@ -2171,5 +2171,19 @@
   "— Keep unmapped —": "— 保持未對應 —",
   "“Days Physically Worked” and “Payable Workday Equivalents” are separate from monthly salary calendar coverage.": "「實際工作日數」與「可計薪工作日當量」和月薪日曆涵蓋範圍分開計算。",
   "− Comp Leave Applied": "− 已套用補休",
-  "− Effective Deduction": "− 實際扣除"
+  "− Effective Deduction": "− 實際扣除",
+  "Task Assignment": "任務指派",
+  "Assignable Task Supervisor": "可指派任務主管",
+  "Enable Task Assignment": "啟用任務指派",
+  "Task Supervisor profile enabled. This staff member can now be assigned tasks.": "已啟用任務主管身分，此人員現在可被指派任務。",
+  "Recorded hours plus completion-date estimates": "實際記錄工時加完工日期估算工時",
+  "Review every project’s all-time hours and see whether each task uses recorded time or a Start-to-Completion estimate.": "檢視每個專案的全部累計工時，並確認各任務使用實際記錄工時或開始日至完工日估算。",
+  "How planned and actual time are selected": "計畫與實際工時的選取方式",
+  "When no actual hours exist, completed tasks estimate actual time from Start Date through Completion Date.": "若沒有實際工時，已完成任務會以開始日至完工日估算實際工時。",
+  "Every project is shown. Totals combine recorded hours with clearly identified Start-to-Completion estimates.": "顯示所有專案，總工時包含實際記錄工時與清楚標示的開始日至完工日估算。",
+  "using completion-date estimate": "項使用完工日期估算",
+  "Start-to-Completion estimate used": "使用開始日至完工日估算",
+  "Completion estimate": "完工估算",
+  "Start-to-Completion estimate used because no actual hours exist": "因無實際工時，使用開始日至完工日估算",
+  "Completion-date estimate used as actual": "以完工日期估算作為實際工時"
 }
