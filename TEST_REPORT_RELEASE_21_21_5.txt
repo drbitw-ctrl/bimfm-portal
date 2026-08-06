@@ -1,0 +1,8 @@
+Release 21.21.5 validation
+- Python compilation
+- Jinja template parsing
+- Localization parity
+- Existing regression tests
+- Utilization overrun presentation
+- Administrator task-assignment action visibility
+- Task completion notification integration

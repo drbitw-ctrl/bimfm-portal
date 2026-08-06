@@ -2185,5 +2185,15 @@
   "Start-to-Completion estimate used": "Start-to-Completion estimate used",
   "Completion estimate": "Completion estimate",
   "Start-to-Completion estimate used because no actual hours exist": "Start-to-Completion estimate used because no actual hours exist",
-  "Completion-date estimate used as actual": "Completion-date estimate used as actual"
+  "Completion-date estimate used as actual": "Completion-date estimate used as actual",
+  "MY TASK ASSIGNMENT": "MY TASK ASSIGNMENT",
+  "Assign tasks to my administrator account": "Assign tasks to my administrator account",
+  "Create a linked Task Supervisor identity for your current administrator account. Your administrator login and permissions remain unchanged.": "Create a linked Task Supervisor identity for your current administrator account. Your administrator login and permissions remain unchanged.",
+  "Task assignment is enabled for this account": "Task assignment is enabled for this account",
+  "Enable Task Assignment for Me": "Enable Task Assignment for Me",
+  "Over plan": "Over plan",
+  "Utilization can exceed 100%": "Utilization can exceed 100%",
+  "100% means actual time matched the plan. Values above 100% show how much more time the project consumed than planned.": "100% means actual time matched the plan. Values above 100% show how much more time the project consumed than planned.",
+  "Task marked as finished": "Task marked as finished",
+  "An administrator marked this assigned task as finished. Open the task to review its final status.": "An administrator marked this assigned task as finished. Open the task to review its final status."
 }

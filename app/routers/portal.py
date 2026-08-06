@@ -172,6 +172,27 @@ def _task_reminder_recipients(database: Session, task_id: int) -> list[Freelance
     )
 
 
+def _notify_task_marked_finished(
+    database: Session,
+    *,
+    task: PortalTask,
+    sender: HRAdminAccount,
+) -> int:
+    """Notify each mapped freelancer once when an administrator finishes a task."""
+    created = 0
+    for freelancer in _task_reminder_recipients(database, int(task.id)):
+        create_task_reminder(
+            database,
+            task=task,
+            freelancer=freelancer,
+            sender=sender,
+            subject="Task marked as finished",
+            message="An administrator marked this assigned task as finished. Open the task to review its final status.",
+        )
+        created += 1
+    return created
+
+
 def create_portal_router(
     *,
     templates: Jinja2Templates,
@@ -626,6 +647,7 @@ def create_portal_router(
             "quality_score": quality_score,
             "task_description": task_description,
         }
+        previous_status = str(task.status or "").upper()
         try:
             (
                 form_values,
@@ -689,7 +711,7 @@ def create_portal_router(
                 details=(
                     f"project={project.name}; category={project.project_category or 'none'}; title={task.title}; status={task.status}; "
                     f"progress={task.progress}; quality={task.quality_score or 'not rated'}; "
-                    f"assigned_member={assigned_member_name}"
+                    f"assigned_member={assigned_member_name}; completion_notifications={completion_notifications}"
                 ),
             )
             database.commit()
@@ -855,6 +877,11 @@ def create_portal_router(
                 project_member_id=int(form_values["project_member_id"]),
                 status=str(form_values["status"]),
             )
+            completion_notifications = 0
+            if previous_status != "COMPLETED" and str(task.status or "").upper() == "COMPLETED":
+                completion_notifications = _notify_task_marked_finished(
+                    database, task=task, sender=account
+                )
             write_audit(
                 database,
                 actor_type="HR_ADMIN",
@@ -939,6 +966,7 @@ def create_portal_router(
                 status_code=404,
             )
 
+        previous_status = str(task.status or "").upper()
         normalized_field = str(field or "").strip()
         editable_fields = {"status", "progress", "quality_score", "completion_date"}
         if normalized_field not in editable_fields:
@@ -1007,6 +1035,15 @@ def create_portal_router(
                 )
                 updates["completion_date"] = parsed.isoformat()
 
+            completion_notifications = 0
+            if (
+                normalized_field == "status"
+                and previous_status != "COMPLETED"
+                and str(task.status or "").upper() == "COMPLETED"
+            ):
+                completion_notifications = _notify_task_marked_finished(
+                    database, task=task, sender=account
+                )
             new_display = str(updates.get(normalized_field, value or ""))
             write_audit(
                 database,
@@ -1016,7 +1053,10 @@ def create_portal_router(
                 request=request,
                 target_type="PORTAL_TASK",
                 target_id=task.id,
-                details=f"field={normalized_field}; from={old_display}; to={new_display}",
+                details=(
+                    f"field={normalized_field}; from={old_display}; to={new_display}; "
+                    f"completion_notifications={completion_notifications}"
+                ),
             )
             database.commit()
         except ValueError as exc:

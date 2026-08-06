@@ -5971,3 +5971,13 @@ body.dark-mode .member-visibility-toggle[aria-pressed="true"] {
 @media (max-width: 920px) {
   .team-command-heading-actions { width: 100%; justify-content: flex-start; }
 }
+
+/* Release 21.21.5 */
+.staff-task-assignment-callout{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:22px;border:1px solid color-mix(in srgb,var(--accent) 28%,var(--border));background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 8%,var(--surface)),var(--surface));}
+.staff-task-assignment-callout h2{margin:.25rem 0 .45rem;}
+.utilization-scale-note{display:flex;gap:14px;align-items:flex-start;margin-top:14px;padding:12px 14px;border-radius:12px;background:color-mix(in srgb,#ef4444 8%,var(--surface));border:1px solid color-mix(in srgb,#ef4444 24%,var(--border));}
+.utilization-scale-note strong{color:#dc2626;white-space:nowrap;}
+.project-utilization-bar,.time-utilization-track{position:relative;overflow:hidden;}
+.project-utilization-bar::after,.time-utilization-track::after{content:"100% plan";position:absolute;left:50%;top:0;bottom:0;border-left:2px dashed color-mix(in srgb,#ef4444 55%,transparent);font-size:10px;color:var(--muted);padding-left:5px;display:flex;align-items:center;pointer-events:none;}
+.project-utilization-bar i.over-target,.time-utilization-track i.over-target{background:linear-gradient(90deg,#2563eb 0 50%,#f59e0b 50% 78%,#ef4444 78% 100%);}
+@media(max-width:760px){.staff-task-assignment-callout{align-items:stretch;flex-direction:column;}.staff-task-assignment-callout form,.staff-task-assignment-callout .button{width:100%;}}

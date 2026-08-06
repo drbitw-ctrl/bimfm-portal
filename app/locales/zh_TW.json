@@ -2185,5 +2185,15 @@
   "Start-to-Completion estimate used": "使用開始日至完工日估算",
   "Completion estimate": "完工估算",
   "Start-to-Completion estimate used because no actual hours exist": "因無實際工時，使用開始日至完工日估算",
-  "Completion-date estimate used as actual": "以完工日期估算作為實際工時"
+  "Completion-date estimate used as actual": "以完工日期估算作為實際工時",
+  "MY TASK ASSIGNMENT": "我的任務指派",
+  "Assign tasks to my administrator account": "將任務指派給我的管理員帳號",
+  "Create a linked Task Supervisor identity for your current administrator account. Your administrator login and permissions remain unchanged.": "為目前的管理員帳號建立連結的任務主管身分。管理員登入與權限維持不變。",
+  "Task assignment is enabled for this account": "此帳號已啟用任務指派",
+  "Enable Task Assignment for Me": "為我啟用任務指派",
+  "Over plan": "超出計畫",
+  "Utilization can exceed 100%": "使用率可超過 100%",
+  "100% means actual time matched the plan. Values above 100% show how much more time the project consumed than planned.": "100% 代表實際時間與計畫相符；高於 100% 表示專案實際耗時超出原計畫。",
+  "Task marked as finished": "任務已標記完成",
+  "An administrator marked this assigned task as finished. Open the task to review its final status.": "管理員已將此指派任務標記為完成。請開啟任務查看最終狀態。"
 }
