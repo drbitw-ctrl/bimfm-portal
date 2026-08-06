@@ -13,7 +13,7 @@ from sqlalchemy.orm import joinedload
 from app.auth.permissions import Permission, has_permission, normalize_role
 from app.calendar_board import build_reminder_calendar
 from app.database import Base
-from app.portal_project_service import unassigned_task_overview_rows
+from app.portal_project_service import ensure_hr_project_members, unassigned_task_overview_rows
 from app.models import (
     AttendanceCalculation,
     AttendanceCorrection,
@@ -508,6 +508,85 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
         set_flash(request, "Staff account created successfully.", "success")
         return RedirectResponse("/admin/staff-accounts", status_code=303)
 
+    @router.get("/admin/staff-accounts/{account_id}/enable-task-member")
+    def enable_staff_task_member_get(request: Request, account_id: int):
+        """Gracefully handle bookmarked/manual GET requests for the POST action."""
+        with SessionLocal() as database:
+            admin = get_current_admin(request, database)
+            if admin is None:
+                return RedirectResponse("/admin/login", status_code=303)
+            if str(getattr(admin, "role", "ADMIN")).upper() != "ADMIN":
+                return RedirectResponse("/admin?access=readonly", status_code=303)
+        set_flash(
+            request,
+            "Use the Enable Task Assignment button on Staff Access to confirm this action.",
+            "info",
+        )
+        return RedirectResponse("/admin/staff-accounts", status_code=303)
+
+    @router.post("/admin/staff-accounts/{account_id}/enable-task-member")
+    def enable_staff_task_member(request: Request, account_id: int, csrf: str = Form(...)):
+        if not validate_csrf(request, csrf):
+            set_flash(request, "Invalid form token.", "error")
+            return RedirectResponse("/admin/staff-accounts", status_code=303)
+        with SessionLocal() as database:
+            admin = get_current_admin(request, database)
+            if admin is None:
+                return RedirectResponse("/admin/login", status_code=303)
+            if str(getattr(admin, "role", "ADMIN")).upper() != "ADMIN":
+                return RedirectResponse("/admin?access=readonly", status_code=303)
+            target = database.get(HRAdminAccount, account_id)
+            if target is None:
+                set_flash(request, "Account not found.", "error")
+                return RedirectResponse("/admin/staff-accounts", status_code=303)
+
+            mapped = (
+                database.get(Freelancer, int(target.task_freelancer_id))
+                if target.task_freelancer_id is not None
+                else None
+            )
+            if mapped is None:
+                base_code = f"TS-{int(target.id):03d}"
+                member_code = base_code
+                suffix = 2
+                while database.scalar(
+                    select(Freelancer.id).where(Freelancer.freelancer_code == member_code)
+                ) is not None:
+                    member_code = f"{base_code}-{suffix}"
+                    suffix += 1
+                mapped = Freelancer(
+                    freelancer_code=member_code,
+                    full_name=str(target.display_name or target.username),
+                    email=None,
+                    join_date=None,
+                    is_active=bool(target.is_active),
+                )
+                database.add(mapped)
+                database.flush()
+                target.task_freelancer_id = mapped.id
+            else:
+                mapped.full_name = str(target.display_name or target.username)
+                mapped.is_active = bool(target.is_active)
+
+            ensure_hr_project_members(
+                database,
+                admin_id=int(admin.id),
+                freelancer_ids={int(mapped.id)},
+            )
+            write_audit(
+                database,
+                actor_type="HR_ADMIN",
+                actor_id=admin.id,
+                action="ENABLE_STAFF_TASK_MEMBER",
+                request=request,
+                target_type="HR_ADMIN",
+                target_id=target.id,
+                details=f"Enabled task assignment profile {mapped.freelancer_code} for {target.username}.",
+            )
+            database.commit()
+        set_flash(request, "Task Supervisor profile enabled. This staff member can now be assigned tasks.", "success")
+        return RedirectResponse("/admin/staff-accounts", status_code=303)
+
     @router.post("/admin/staff-accounts/{account_id}/toggle")
     def toggle_staff_account(request: Request, account_id: int, csrf: str = Form(...)):
         if not validate_csrf(request, csrf):
@@ -525,6 +604,10 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                 set_flash(request, "You cannot disable your own signed-in account.", "error")
             else:
                 target.is_active = not target.is_active
+                if target.task_freelancer_id is not None:
+                    mapped_member = database.get(Freelancer, int(target.task_freelancer_id))
+                    if mapped_member is not None:
+                        mapped_member.is_active = bool(target.is_active)
                 write_audit(database, actor_type="HR_ADMIN", actor_id=admin.id, action="TOGGLE_STAFF_ACCOUNT", request=request, target_type="HR_ADMIN", target_id=target.id, details=f"Active={target.is_active}")
                 database.commit()
                 set_flash(request, "Staff account status updated.", "success")

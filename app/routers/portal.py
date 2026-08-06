@@ -814,6 +814,11 @@ def create_portal_router(
             set_flash(request, "Task not found.", "error")
             return RedirectResponse("/portal/tasks", status_code=303)
 
+        # Capture the original status before applying form changes.  This is
+        # required for completion-notification decisions and prevents an
+        # undefined-variable failure when editing dates such as the deadline.
+        previous_status = str(task.status or "").upper()
+
         form_values: dict[str, Any] = {
             "existing_project_id": existing_project_id,
             "project_name": "",

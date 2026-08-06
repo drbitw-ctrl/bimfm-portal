@@ -1,0 +1,16 @@
+BIM Portal Release 21.21.6 validation
+
+Python compilation: PASS
+Application regression suite: PASS
+Executable tests: 43
+Failures: 0
+Errors: 0
+
+New checks:
+- Task-assignment POST route exists
+- Safe GET fallback exists
+- Full task edit captures previous status before mutation
+- Completion transition logic remains intact
+- Release version updated
+
+No production service or production PostgreSQL database was accessed.
