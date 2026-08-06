@@ -699,6 +699,11 @@ def create_portal_router(
                 project_member_id=int(form_values["project_member_id"]),
                 status=str(form_values["status"]),
             )
+            completion_notifications = 0
+            if str(task.status or "").upper() == "COMPLETED":
+                completion_notifications = _notify_task_marked_finished(
+                    database, task=task, sender=account
+                )
             write_audit(
                 database,
                 actor_type="HR_ADMIN",

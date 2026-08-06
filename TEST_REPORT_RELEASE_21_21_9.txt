@@ -1,0 +1,9 @@
+BIM Portal Release 21.21.9 Test Report
+
+Python compilation: PASS
+Release 21.21.8 regression tests: PASS
+Release 21.21.9 save-task tests: PASS
+Targeted executable tests: 5 PASS
+Failures: 0
+Errors: 0
+Database migration: NONE
