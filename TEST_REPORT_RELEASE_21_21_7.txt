@@ -1,0 +1,5 @@
+Release 21.21.7 validation
+- Python compilation: PASS
+- Static GET route registered: PASS
+- Static POST route registered: PASS
+- Staff Access form points to static route: PASS

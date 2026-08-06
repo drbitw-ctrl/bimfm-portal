@@ -508,6 +508,77 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
         set_flash(request, "Staff account created successfully.", "success")
         return RedirectResponse("/admin/staff-accounts", status_code=303)
 
+    def _enable_task_assignment_for_account(request: Request, database, admin, target):
+        mapped = (
+            database.get(Freelancer, int(target.task_freelancer_id))
+            if target.task_freelancer_id is not None
+            else None
+        )
+        if mapped is None:
+            base_code = f"TS-{int(target.id):03d}"
+            member_code = base_code
+            suffix = 2
+            while database.scalar(
+                select(Freelancer.id).where(Freelancer.freelancer_code == member_code)
+            ) is not None:
+                member_code = f"{base_code}-{suffix}"
+                suffix += 1
+            mapped = Freelancer(
+                freelancer_code=member_code,
+                full_name=str(target.display_name or target.username),
+                email=None,
+                join_date=None,
+                is_active=bool(target.is_active),
+            )
+            database.add(mapped)
+            database.flush()
+            target.task_freelancer_id = mapped.id
+        else:
+            mapped.full_name = str(target.display_name or target.username)
+            mapped.is_active = bool(target.is_active)
+
+        ensure_hr_project_members(
+            database,
+            admin_id=int(admin.id),
+            freelancer_ids={int(mapped.id)},
+        )
+        write_audit(
+            database,
+            actor_type="HR_ADMIN",
+            actor_id=admin.id,
+            action="ENABLE_STAFF_TASK_MEMBER",
+            request=request,
+            target_type="HR_ADMIN",
+            target_id=target.id,
+            details=f"Enabled task assignment profile {mapped.freelancer_code} for {target.username}.",
+        )
+        database.commit()
+        return mapped
+
+    @router.get("/admin/task-assignment/enable")
+    def enable_current_admin_task_assignment_get(request: Request):
+        set_flash(request, "Use the Enable Task Assignment for Me button on Staff Access.", "info")
+        return RedirectResponse("/admin/staff-accounts", status_code=303)
+
+    @router.post("/admin/task-assignment/enable")
+    def enable_current_admin_task_assignment(request: Request, csrf: str = Form(...)):
+        if not validate_csrf(request, csrf):
+            set_flash(request, "Invalid form token.", "error")
+            return RedirectResponse("/admin/staff-accounts", status_code=303)
+        with SessionLocal() as database:
+            admin = get_current_admin(request, database)
+            if admin is None:
+                return RedirectResponse("/admin/login", status_code=303)
+            if str(getattr(admin, "role", "ADMIN")).upper() != "ADMIN":
+                return RedirectResponse("/admin?access=readonly", status_code=303)
+            target = database.get(HRAdminAccount, int(admin.id))
+            if target is None:
+                set_flash(request, "Account not found.", "error")
+                return RedirectResponse("/admin/staff-accounts", status_code=303)
+            _enable_task_assignment_for_account(request, database, admin, target)
+        set_flash(request, "Task assignment is enabled for your administrator account.", "success")
+        return RedirectResponse("/admin/staff-accounts", status_code=303)
+
     @router.get("/admin/staff-accounts/{account_id}/enable-task-member")
     def enable_staff_task_member_get(request: Request, account_id: int):
         """Gracefully handle bookmarked/manual GET requests for the POST action."""
@@ -539,51 +610,7 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
             if target is None:
                 set_flash(request, "Account not found.", "error")
                 return RedirectResponse("/admin/staff-accounts", status_code=303)
-
-            mapped = (
-                database.get(Freelancer, int(target.task_freelancer_id))
-                if target.task_freelancer_id is not None
-                else None
-            )
-            if mapped is None:
-                base_code = f"TS-{int(target.id):03d}"
-                member_code = base_code
-                suffix = 2
-                while database.scalar(
-                    select(Freelancer.id).where(Freelancer.freelancer_code == member_code)
-                ) is not None:
-                    member_code = f"{base_code}-{suffix}"
-                    suffix += 1
-                mapped = Freelancer(
-                    freelancer_code=member_code,
-                    full_name=str(target.display_name or target.username),
-                    email=None,
-                    join_date=None,
-                    is_active=bool(target.is_active),
-                )
-                database.add(mapped)
-                database.flush()
-                target.task_freelancer_id = mapped.id
-            else:
-                mapped.full_name = str(target.display_name or target.username)
-                mapped.is_active = bool(target.is_active)
-
-            ensure_hr_project_members(
-                database,
-                admin_id=int(admin.id),
-                freelancer_ids={int(mapped.id)},
-            )
-            write_audit(
-                database,
-                actor_type="HR_ADMIN",
-                actor_id=admin.id,
-                action="ENABLE_STAFF_TASK_MEMBER",
-                request=request,
-                target_type="HR_ADMIN",
-                target_id=target.id,
-                details=f"Enabled task assignment profile {mapped.freelancer_code} for {target.username}.",
-            )
-            database.commit()
+            _enable_task_assignment_for_account(request, database, admin, target)
         set_flash(request, "Task Supervisor profile enabled. This staff member can now be assigned tasks.", "success")
         return RedirectResponse("/admin/staff-accounts", status_code=303)
 

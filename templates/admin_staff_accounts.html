@@ -20,7 +20,7 @@
   {% if admin.task_freelancer_id %}
     <span class="badge good">{{ t('Task assignment is enabled for this account') }}</span>
   {% else %}
-    <form method="post" action="/admin/staff-accounts/{{ admin.id }}/enable-task-member">
+    <form method="post" action="/admin/task-assignment/enable">
       <input type="hidden" name="csrf" value="{{ csrf_token }}">
       <button class="button primary" type="submit">{{ t('Enable Task Assignment for Me') }}</button>
     </form>
