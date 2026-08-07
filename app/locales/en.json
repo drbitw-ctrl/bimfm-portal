@@ -2231,5 +2231,15 @@
   "Task-Hourly": "Task-Hourly",
   "Not required": "Not required",
   "See Work Orders": "See Work Orders",
-  "Attendance correction is not required for this task-hourly account.": "Attendance correction is not required for this task-hourly account."
+  "Attendance correction is not required for this task-hourly account.": "Attendance correction is not required for this task-hourly account.",
+  "Last 1 Week": "Last 1 Week",
+  "Last 2 Weeks": "Last 2 Weeks",
+  "Last 3 Weeks": "Last 3 Weeks",
+  "Last 30 Days": "Last 30 Days",
+  "This Month": "This Month",
+  "Last Month": "Last Month",
+  "Last 3 Months": "Last 3 Months",
+  "Last 6 Months": "Last 6 Months",
+  "All Completed Tasks": "All Completed Tasks",
+  "Freelancer Account": "Freelancer Account"
 }

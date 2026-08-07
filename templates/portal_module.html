@@ -38,6 +38,21 @@
 
   {% if module_name in ['tasks', 'calendar'] %}{% include "_task_status_legend.html" %}{% elif module_name == 'team-workload' %}<div class="availability-table-legend" role="note"><span><i class="legend-swatch availability-available"></i>{{ t('Available') }}</span><span><i class="legend-swatch availability-working"></i>{{ t('Working Now') }}</span><span><i class="legend-swatch availability-assigned"></i>{{ t('Assigned') }}</span><span><i class="legend-swatch availability-overdue"></i>{{ t('Overdue') }}</span></div>{% endif %}
 
+  {% if module_name == 'tasks' and task_view == 'completed' %}
+  <form method="get" action="/portal/tasks" class="completed-task-period-filter">
+    <input type="hidden" name="view" value="completed">
+    <label>
+      <span>{{ t('Completed period') }}</span>
+      <select name="period" onchange="this.form.submit()">
+        {% for option in completed_period_options %}
+        <option value="{{ option.value }}"{% if option.value == selected_completed_period %} selected{% endif %}>{{ t(option.label) }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <noscript><button class="button secondary" type="submit">{{ t('Apply') }}</button></noscript>
+  </form>
+  {% endif %}
+
   {% if rows %}
   <div class="table-toolbar {% if module_name == 'tasks' %}task-register-toolbar{% endif %}"
        data-table-toolbar

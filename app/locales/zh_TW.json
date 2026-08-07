@@ -2231,5 +2231,15 @@
   "Task-Hourly": "任務計時",
   "Not required": "不需要",
   "See Work Orders": "請查看工作單",
-  "Attendance correction is not required for this task-hourly account.": "此任務計時帳號不需要出勤更正。"
+  "Attendance correction is not required for this task-hourly account.": "此任務計時帳號不需要出勤更正。",
+  "Last 1 Week": "最近 1 週",
+  "Last 2 Weeks": "最近 2 週",
+  "Last 3 Weeks": "最近 3 週",
+  "Last 30 Days": "最近 30 天",
+  "This Month": "本月",
+  "Last Month": "上個月",
+  "Last 3 Months": "最近 3 個月",
+  "Last 6 Months": "最近 6 個月",
+  "All Completed Tasks": "所有已完成任務",
+  "Freelancer Account": "自由工作者帳號"
 }

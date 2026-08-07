@@ -3,7 +3,7 @@
 {% block content %}
 <section class="freelancer-welcome-hero">
   <div class="welcome-copy"><span class="eyebrow">{{ t('MY WORKSPACE') }}</span><h1>{{ t('Good day') }}, {{ account.freelancer.full_name }}</h1><p>{% if task_hourly_mode %}{{ t('Welcome back. Your work time is recorded from task Work Orders instead of attendance punches.') }}{% else %}{{ t('Welcome back. Record your attendance, review your work, and start the day with clarity.') }}{% endif %}</p><div class="welcome-meta"><span>{{ attendance_date }}</span><span>{{ t('Server time') }} {{ server_time }}</span><span>{{ account.freelancer.timezone_name }}</span></div></div>
-  <div class="welcome-profile"><div class="welcome-avatar">{{ account.freelancer.full_name[:1]|upper }}</div><div><small>{{ t('FREELANCER ACCOUNT') }}</small><strong>{{ account.freelancer.full_name }}</strong><span>{{ account.freelancer.freelancer_code }}{% if account.freelancer.join_date %} · {{ t('Joined') }} {{ account.freelancer.join_date.isoformat() }}{% endif %}</span></div><i></i></div>
+  <div class="welcome-profile"><div class="welcome-avatar">{{ account.freelancer.full_name[:1]|upper }}</div><div><small>{{ t('FREELANCER ACCOUNT') }}</small><strong>{{ account.freelancer.full_name }}</strong><span>{% if account.freelancer.join_date %}{{ t('Joined') }} {{ account.freelancer.join_date.isoformat() }}{% else %}{{ t('Freelancer Account') }}{% endif %}</span></div><i></i></div>
 </section>
 
 {% if task_hourly_mode %}

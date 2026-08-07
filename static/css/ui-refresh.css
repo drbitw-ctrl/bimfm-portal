@@ -6027,3 +6027,30 @@ body.dark-mode .member-visibility-toggle[aria-pressed="true"] {
 @media (max-width: 760px) {
   .task-hourly-summary-grid { grid-template-columns: 1fr; }
 }
+
+/* Release 21.22.2 — recently completed task period selector */
+.completed-task-period-filter {
+  display: flex;
+  justify-content: flex-end;
+  margin: 14px 0 16px;
+}
+.completed-task-period-filter label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  color: var(--text, #17324d);
+}
+.completed-task-period-filter select {
+  min-width: 190px;
+  border: 1px solid var(--border, #d7e3ee);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  color: inherit;
+  padding: 10px 34px 10px 12px;
+}
+@media (max-width: 720px) {
+  .completed-task-period-filter { justify-content: stretch; }
+  .completed-task-period-filter label { width: 100%; align-items: stretch; flex-direction: column; }
+  .completed-task-period-filter select { width: 100%; }
+}

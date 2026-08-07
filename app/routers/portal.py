@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 import hashlib
-from datetime import date, datetime, time as clock_time, timezone
+from datetime import date, datetime, timedelta, time as clock_time, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, Form, Request
@@ -1489,6 +1489,53 @@ def create_portal_router(
         elif module_name == "tasks":
             normalized_view = view if view in {"active", "completed", "unassigned"} else "all"
             source_rows = task_overview_rows(database, status_mode=normalized_view, limit=1000)
+            selected_completed_period = "all"
+            completed_period_options = [
+                {"value": "7d", "label": "Last 1 Week"},
+                {"value": "14d", "label": "Last 2 Weeks"},
+                {"value": "21d", "label": "Last 3 Weeks"},
+                {"value": "30d", "label": "Last 30 Days"},
+                {"value": "this_month", "label": "This Month"},
+                {"value": "last_month", "label": "Last Month"},
+                {"value": "3m", "label": "Last 3 Months"},
+                {"value": "6m", "label": "Last 6 Months"},
+                {"value": "all", "label": "All Completed Tasks"},
+            ]
+            if normalized_view == "completed":
+                requested_period = str(request.query_params.get("period", "all") or "all").strip().lower()
+                allowed_periods = {option["value"] for option in completed_period_options}
+                selected_completed_period = requested_period if requested_period in allowed_periods else "all"
+                today = date.today()
+                period_start = None
+                period_end = today
+                if selected_completed_period in {"7d", "14d", "21d", "30d"}:
+                    days = int(selected_completed_period[:-1])
+                    period_start = today - timedelta(days=days - 1)
+                elif selected_completed_period == "this_month":
+                    period_start = today.replace(day=1)
+                elif selected_completed_period == "last_month":
+                    this_month_start = today.replace(day=1)
+                    period_end = this_month_start - timedelta(days=1)
+                    period_start = period_end.replace(day=1)
+                elif selected_completed_period in {"3m", "6m"}:
+                    months_back = int(selected_completed_period[:-1])
+                    month_index = (today.year * 12 + today.month - 1) - (months_back - 1)
+                    start_year, start_month_zero = divmod(month_index, 12)
+                    period_start = date(start_year, start_month_zero + 1, 1)
+
+                if period_start is not None:
+                    filtered_rows = []
+                    for completed_row in source_rows:
+                        raw_completed = completed_row.get("completion_date")
+                        if not raw_completed or raw_completed == "—":
+                            continue
+                        try:
+                            completed_on = date.fromisoformat(str(raw_completed)[:10])
+                        except (TypeError, ValueError):
+                            continue
+                        if period_start <= completed_on <= period_end:
+                            filtered_rows.append(completed_row)
+                    source_rows = filtered_rows
             if normalized_view == "active":
                 page_title = "Active Tasks"
                 description = "Open project tasks that still require action."
@@ -1664,6 +1711,8 @@ def create_portal_router(
                 module_name=module_name,
                 task_view=view if view in {"active", "completed", "unassigned"} else "all",
                 task_filters=task_filters,
+                selected_completed_period=(selected_completed_period if module_name == "tasks" and view == "completed" else "all"),
+                completed_period_options=(completed_period_options if module_name == "tasks" and view == "completed" else []),
                 can_create_task=can_edit_tasks,
                 can_edit_tasks=can_edit_tasks,
                 can_remind_tasks=can_remind_tasks,
