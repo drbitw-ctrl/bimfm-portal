@@ -10,6 +10,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.auth.permissions import Permission, has_permission, normalize_role
+from app.task_hourly_mode import is_task_hourly_member, task_hourly_month_ledger
 
 
 def create_attendance_router(legacy_namespace: dict[str, object]) -> APIRouter:
@@ -56,15 +57,19 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                             )
                         ) or 0
                     )
-                rows.append(
-                    build_admin_attendance_row(
-                        freelancer,
-                        record,
-                        local_date,
-                        correction_count,
-                        get_calculation(database, record.id) if record else None,
-                    )
+                attendance_row = build_admin_attendance_row(
+                    freelancer,
+                    record,
+                    local_date,
+                    correction_count,
+                    get_calculation(database, record.id) if record else None,
                 )
+                if is_task_hourly_member(freelancer):
+                    attendance_row["status"] = "Task-Hourly"
+                    attendance_row["time_in"] = "Not required"
+                    attendance_row["time_out"] = "Not required"
+                    attendance_row["elapsed"] = "See Work Orders"
+                rows.append(attendance_row)
 
             summary = {
                 "complete": sum(row["status"] == "Complete" for row in rows),
@@ -978,9 +983,14 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
             )
             names = admin_name_map(database)
             review_allowed, review_message = dtr_can_be_reviewed(dtr)
+            task_hourly_mode = is_task_hourly_member(freelancer)
+            task_hourly_ledger = (
+                task_hourly_month_ledger(database, freelancer=freelancer, month_key=dtr.month_key)
+                if task_hourly_mode else None
+            )
             return templates.TemplateResponse(
                 request=request,
-                name="admin_dtr_detail.html",
+                name=("admin_dtr_task_hourly.html" if task_hourly_mode else "admin_dtr_detail.html"),
                 context=template_context(
                     request,
                     admin=admin,
@@ -994,6 +1004,8 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                     review_message=review_message,
                     compact=compact_dtr_metrics(database, dtr),
                     month_locked=month_is_locked(database, dtr.month_key),
+                    task_hourly_mode=task_hourly_mode,
+                    task_hourly_ledger=task_hourly_ledger,
                 ),
             )
 
@@ -1025,15 +1037,28 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
             leave_lines = list(database.scalars(
                 select(DTRLeaveLine).where(DTRLeaveLine.monthly_dtr_id == dtr.id).order_by(DTRLeaveLine.leave_date, DTRLeaveLine.id)
             ).all())
+            task_hourly_mode = is_task_hourly_member(freelancer)
+            task_hourly_ledger = (
+                task_hourly_month_ledger(database, freelancer=freelancer, month_key=dtr.month_key)
+                if task_hourly_mode else None
+            )
             return templates.TemplateResponse(
                 request=request,
-                name="admin_dtr_details.html",
+                name=("admin_dtr_task_hourly.html" if task_hourly_mode else "admin_dtr_details.html"),
                 context=template_context(
                     request, admin=admin, dtr=dtr, freelancer=freelancer,
                     lines=[dtr_line_row(line, dtr.timezone_name) for line in attendance],
                     overtime=[dtr_line_row(line, dtr.timezone_name) for line in overtime],
                     tasks=tasks, comp_lines=comp_lines, leave_lines=leave_lines,
                     compact=compact_dtr_metrics(database, dtr),
+                    task_hourly_mode=task_hourly_mode,
+                    task_hourly_ledger=task_hourly_ledger,
+                    generated_by="HR Administrator",
+                    reviewed_by=None,
+                    finalized_by=None,
+                    review_allowed=True,
+                    review_message="",
+                    month_locked=month_is_locked(database, dtr.month_key),
                 ),
             )
 
@@ -1264,6 +1289,13 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                 for row in assigned_tasks
             ]
             summary_month = attendance_date.strftime("%Y-%m")
+            task_hourly_mode = is_task_hourly_member(account.freelancer)
+            task_hourly_ledger = (
+                task_hourly_month_ledger(
+                    database, freelancer=account.freelancer, month_key=summary_month
+                )
+                if task_hourly_mode else None
+            )
             monthly_dtr = get_monthly_dtr(
                 database,
                 account.freelancer_id,
@@ -1295,7 +1327,9 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                     monthly_summary=monthly_summary,
                     monthly_summary_month=summary_month,
                     monthly_dtr_status=(monthly_dtr.status if monthly_dtr else None),
-                    correction_requests=list(database.scalars(select(AttendanceCorrectionRequest).where(AttendanceCorrectionRequest.freelancer_id == account.freelancer_id).order_by(AttendanceCorrectionRequest.requested_at.desc()).limit(20)).all()),
+                    task_hourly_mode=task_hourly_mode,
+                    task_hourly_ledger=task_hourly_ledger,
+                    correction_requests=([] if task_hourly_mode else list(database.scalars(select(AttendanceCorrectionRequest).where(AttendanceCorrectionRequest.freelancer_id == account.freelancer_id).order_by(AttendanceCorrectionRequest.requested_at.desc()).limit(20)).all())),
                 ),
             )
 
@@ -1332,6 +1366,14 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                     "/change-password",
                     status_code=303,
                 )
+
+            if is_task_hourly_member(account.freelancer):
+                set_flash(
+                    request,
+                    "This member uses task-hourly work records and does not use Time In or Time Out.",
+                    "info",
+                )
+                return RedirectResponse("/attendance", status_code=303)
 
             official_utc = utc_now()
             timezone_name = account.freelancer.timezone_name
@@ -1477,6 +1519,14 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                     "/change-password",
                     status_code=303,
                 )
+
+            if is_task_hourly_member(account.freelancer):
+                set_flash(
+                    request,
+                    "This member uses task-hourly work records and does not use Time In or Time Out.",
+                    "info",
+                )
+                return RedirectResponse("/attendance", status_code=303)
 
             official_utc = utc_now()
             timezone_name = account.freelancer.timezone_name
@@ -1749,6 +1799,9 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
         with SessionLocal() as database:
             account = get_current_freelancer_account(request, database)
             if account is None: return RedirectResponse("/login", 303)
+            if is_task_hourly_member(account.freelancer):
+                set_flash(request, "Attendance correction is not required for this task-hourly account.", "info")
+                return RedirectResponse("/attendance", 303)
             today = current_attendance_date(account.freelancer.timezone_name)
             if requested_date >= today:
                 set_flash(request, "Only previous attendance dates can be requested.", "error")

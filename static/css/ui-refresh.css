@@ -5981,3 +5981,49 @@ body.dark-mode .member-visibility-toggle[aria-pressed="true"] {
 .project-utilization-bar::after,.time-utilization-track::after{content:"100% plan";position:absolute;left:50%;top:0;bottom:0;border-left:2px dashed color-mix(in srgb,#ef4444 55%,transparent);font-size:10px;color:var(--muted);padding-left:5px;display:flex;align-items:center;pointer-events:none;}
 .project-utilization-bar i.over-target,.time-utilization-track i.over-target{background:linear-gradient(90deg,#2563eb 0 50%,#f59e0b 50% 78%,#ef4444 78% 100%);}
 @media(max-width:760px){.staff-task-assignment-callout{align-items:stretch;flex-direction:column;}.staff-task-assignment-callout form,.staff-task-assignment-callout .button{width:100%;}}
+
+/* Release 21.22 — task-hourly member mode and attendance action colors. */
+.attendance-action.time-in {
+  background: linear-gradient(135deg, #15803d, #22a65a);
+  box-shadow: 0 10px 24px rgba(21, 128, 61, .18);
+}
+.attendance-action.time-out {
+  background: linear-gradient(135deg, #b42318, #dc3b30);
+  box-shadow: 0 10px 24px rgba(180, 35, 24, .18);
+}
+.attendance-action.time-in:not(:disabled):hover { background: linear-gradient(135deg, #116b34, #1d914d); }
+.attendance-action.time-out:not(:disabled):hover { background: linear-gradient(135deg, #982018, #c62f27); }
+.attendance-action:disabled { filter: saturate(.65); opacity: .42; }
+
+.task-hourly-command-card {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--ui-surface) 94%, #e9f7ff), var(--ui-surface));
+  border-color: color-mix(in srgb, var(--ui-info) 32%, var(--ui-border));
+}
+.attendance-state-orb.task-hourly { background: var(--ui-info-soft); color: var(--ui-info); }
+.attendance-state-orb.task-hourly span { background: var(--ui-info); }
+.task-hourly-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 22px;
+}
+.task-hourly-summary-grid article {
+  padding: 18px;
+  border: 1px solid var(--ui-border);
+  border-radius: 18px;
+  background: var(--ui-surface-soft);
+}
+.task-hourly-summary-grid article span,
+.task-hourly-summary-grid article small { display: block; color: var(--ui-muted); }
+.task-hourly-summary-grid article span { font-size: .69rem; font-weight: 850; text-transform: uppercase; letter-spacing: .04em; }
+.task-hourly-summary-grid article strong { display: block; margin-top: 7px; font-size: 1.55rem; color: var(--ui-text); }
+.task-hourly-summary-grid article.featured { background: color-mix(in srgb, var(--ui-info-soft) 78%, var(--ui-surface)); border-color: color-mix(in srgb, var(--ui-info) 35%, var(--ui-border)); }
+.task-hourly-note { background: var(--ui-info-soft); color: var(--ui-info); }
+.task-hourly-ledger td small { display: block; margin-top: 3px; color: var(--ui-muted); }
+.task-hourly-ledger th:nth-last-child(-n+4),
+.task-hourly-ledger td:nth-last-child(-n+4) { text-align: right; white-space: nowrap; }
+.task-hourly-ledger tfoot th { border-top: 2px solid var(--ui-border); background: var(--ui-surface-soft); }
+
+@media (max-width: 760px) {
+  .task-hourly-summary-grid { grid-template-columns: 1fr; }
+}

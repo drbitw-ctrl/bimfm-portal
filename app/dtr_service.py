@@ -20,6 +20,7 @@ from app.hr_workflow import (
     pending_counts,
 )
 from app.finance_service import sync_finance_summary
+from app.task_hourly_mode import is_task_hourly_member
 from app.models import (
     AttendanceCalculation,
     CompLeaveTransaction,
@@ -127,6 +128,7 @@ def generate_monthly_dtr(
     month_end = next_month - timedelta(days=1)
     schedule = get_active_schedule(database)
     policy = get_policy(database)
+    task_hourly_mode = is_task_hourly_member(freelancer)
 
     dtr = get_monthly_dtr(database, freelancer.id, month_key)
     if dtr is not None and dtr.status == "FINALIZED":
@@ -265,16 +267,24 @@ def generate_monthly_dtr(
                     admin_id=admin_id, schedule=schedule,
                 )
 
-        day_type, status, notes = _status_for_day(
-            attendance_date=attendance_date, record=record, calculation=calculation,
-            holiday=holiday, leave=leave, is_workday=workday, today=today,
-            standard_day_minutes=policy.standard_leave_day_minutes,
-        )
-
-        rendered = calculation.rendered_minutes if calculation else 0
-        late = calculation.late_minutes if calculation else 0
-        undertime = calculation.undertime_minutes if calculation else 0
-        potential_ot = calculation.overtime_minutes if calculation else 0
+        if task_hourly_mode:
+            day_type = "TASK_HOURLY"
+            status = "TASK_HOURS" if tasks_by_date.get(attendance_date) else "NO_TASK_HOURS"
+            notes = "Task-hourly member; attendance punches are not required."
+            rendered = sum(task.minutes_spent for task in tasks_by_date.get(attendance_date, []))
+            late = 0
+            undertime = 0
+            potential_ot = 0
+        else:
+            day_type, status, notes = _status_for_day(
+                attendance_date=attendance_date, record=record, calculation=calculation,
+                holiday=holiday, leave=leave, is_workday=workday, today=today,
+                standard_day_minutes=policy.standard_leave_day_minutes,
+            )
+            rendered = calculation.rendered_minutes if calculation else 0
+            late = calculation.late_minutes if calculation else 0
+            undertime = calculation.undertime_minutes if calculation else 0
+            potential_ot = calculation.overtime_minutes if calculation else 0
         day_claims = claims_by_date.get(attendance_date, [])
         approved_ot = sum(int(claim.approved_minutes or 0) for claim in day_claims)
 
@@ -302,7 +312,10 @@ def generate_monthly_dtr(
             task_summary = f"{task_summary}; +{len(day_tasks) - 3} more"
         task_variance = abs(rendered - task_minutes) if rendered and task_minutes else 0
         attendance_worked = bool(record and record.time_in_utc and record.time_out_utc)
-        missing_task = policy.require_daily_task_for_dtr and attendance_worked and not day_tasks
+        missing_task = (
+            False if task_hourly_mode else
+            policy.require_daily_task_for_dtr and attendance_worked and not day_tasks
+        )
         variance_warning = (
             attendance_worked and bool(day_tasks)
             and task_variance > policy.task_variance_warning_minutes
@@ -335,9 +348,9 @@ def generate_monthly_dtr(
         ))
 
         summary["calendar_days"] += 1
-        if workday and not holiday and not leave:
+        if (not task_hourly_mode) and workday and not holiday and not leave:
             summary["scheduled_workdays"] += 1
-        if status in {"PRESENT", "HOLIDAY_WORK", "REST_DAY_WORK", "WORKED_ON_LEAVE", "PARTIAL_LEAVE_WORK"}:
+        if status in {"PRESENT", "HOLIDAY_WORK", "REST_DAY_WORK", "WORKED_ON_LEAVE", "PARTIAL_LEAVE_WORK", "TASK_HOURS"}:
             summary["present_days"] += 1
         elif status == "LATE":
             summary["present_days"] += 1; summary["late_days"] += 1
@@ -390,7 +403,9 @@ def generate_monthly_dtr(
     dtr.comp_leave_closing_balance_minutes = comp_balance(
         database, freelancer.id, month_end
     )
-    if not policy.require_daily_task_for_dtr or (summary["present_days"] == 0 and not tasks):
+    if task_hourly_mode:
+        dtr.task_review_status = "NOT_REQUIRED"
+    elif not policy.require_daily_task_for_dtr or (summary["present_days"] == 0 and not tasks):
         dtr.task_review_status = "NOT_REQUIRED"
     else:
         dtr.task_review_status = task_review.status if task_review else "UNREVIEWED"

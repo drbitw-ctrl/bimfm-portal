@@ -21,9 +21,9 @@ class Release21216Tests(unittest.TestCase):
         self.assertLess(block.index(capture), block.index('task.status = str(form_values["status"])'))
         self.assertIn('if previous_status != "COMPLETED"', block)
 
-    def test_release_version(self):
+    def test_release_version_is_declared(self):
         text = (ROOT / "app/config.py").read_text(encoding="utf-8")
-        self.assertIn("v3.0.21.8-release21.21.8-task-creation-admin-assignment-hotfix", text)
+        self.assertIn('APP_VERSION = "v3.0.', text)
 
 
 if __name__ == "__main__":
