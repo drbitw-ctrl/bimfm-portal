@@ -26,23 +26,23 @@
   <article class="stat-card"><span>{{ t('Freelancers') }}</span><strong>{{ totals.employees }}</strong><small>{{ t('Included in this review') }}</small></article>
   <article class="stat-card good-card"><span>{{ t('Full-rate Members') }}</span><strong>{{ totals.full_month_count }}</strong><small>{{ t('No unpaid leave or absence deductions') }}</small></article>
   <article class="stat-card"><span>{{ t('Days Physically Worked') }}</span><strong>{{ totals.worked_days }}</strong><small>{{ totals.worked_hours }} {{ t('recorded hours') }}</small></article>
-  <article class="stat-card credit-card"><span>{{ t('OT Credit Applied') }}</span><strong>{{ totals.comp_credit_hours_applied }}h</strong><small>{{ t('Applied hour-for-hour to approved leave') }}</small></article>
+  <article class="stat-card credit-card"><span>{{ t('OT Credit Applied') }}</span><strong>{{ totals.comp_credit_hours_applied }}h</strong><small>{{ t('Applied to approved leave and absence') }}</small></article>
   <article class="stat-card warning-card"><span>{{ t('Unpaid Leave') }}</span><strong>{{ totals.effective_unpaid_leave_hours }}h</strong><small>{{ t('Approved leave not covered by OT credit') }}</small></article>
-  <article class="stat-card warning-card"><span>{{ t('Absent') }}</span><strong>{{ totals.absent_days }} {{ t('days') }}</strong><small>{{ totals.absent_hours }}h {{ t('direct deduction') }}</small></article>
+  <article class="stat-card warning-card"><span>{{ t('Absent') }}</span><strong>{{ totals.absent_days }} {{ t('days') }}</strong><small>{{ totals.effective_absent_hours }}h {{ t('uncovered after comp credit') }}</small></article>
 </section>
 
 <section class="payroll-formula-banner hourly-payroll-rule" aria-label="Hourly payroll rule">
   <div class="formula-copy">
     <span class="eyebrow">{{ t('PAYROLL RULE') }}</span>
     <h2>{{ t('Hourly leave deduction with working-day reporting') }}</h2>
-    <p>{{ t('Approved overtime credit offsets approved leave minute-for-minute. Absence is a direct deduction and cannot be cancelled by overtime credit.') }}</p>
+    <p>{{ t('Approved compensatory credit offsets approved leave first, then can cover absence. Only uncovered leave or absence reduces salary coverage.') }}</p>
   </div>
   <div class="formula-visual hourly-payroll-formula">
     <div><span>{{ t('Approved Leave Hours') }}</span><strong>− {{ t('OT Credit Hours') }}</strong></div>
     <span class="formula-equals">=</span>
     <div><span>{{ t('Unpaid Leave Hours') }}</span><strong>{{ t('Hourly deduction') }}</strong></div>
     <span class="formula-equals">+</span>
-    <div><span>{{ t('Absent Hours') }}</span><strong>{{ t('Direct deduction') }}</strong></div>
+    <div><span>{{ t('Absent Hours') }}</span><strong>{{ t('Less approved comp credit') }}</strong></div>
     <span class="formula-equals">→</span>
     <div class="formula-result"><span>{{ t('Salary Coverage') }}</span><strong>{{ t('Monthly basis hours − total deduction hours') }}</strong></div>
   </div>
@@ -65,7 +65,7 @@
           <td class="number-cell">{{ row.approved_leave_hours }}h</td>
           <td class="number-cell credit-value">{{ row.comp_credit_hours_applied }}h</td>
           <td class="number-cell deduction-value"><strong>{{ row.effective_unpaid_leave_hours }}h</strong></td>
-          <td class="number-cell deduction-value"><strong>{{ row.absent_days }}</strong><small>{{ row.absent_hours }}h</small></td>
+          <td class="number-cell deduction-value"><strong>{{ row.absent_days }}</strong><small>{{ row.effective_absent_hours }}h {{ t('uncovered') }}</small></td>
           <td class="number-cell deduction-value"><strong>{{ row.total_deduction_hours }}h</strong></td>
           <td class="treatment-cell"><strong>{{ row.payroll_percentage_display }}</strong><small>{{ row.payroll_treatment_display }}</small></td>
           <td><span class="badge {{ 'good' if row.status == 'READY' else 'warning' }}">{{ 'READY' if row.status == 'READY' else 'REVIEW' }}</span></td>

@@ -2254,5 +2254,13 @@
   "Cannot be offset by OT credit": "Cannot be offset by OT credit",
   "unpaid leave": "unpaid leave",
   "absence": "absence",
-  "Absence": "Absence"
+  "Absence": "Absence",
+  "Applied to approved leave and absence": "Applied to approved leave and absence",
+  "uncovered after comp credit": "uncovered after comp credit",
+  "Approved compensatory credit offsets approved leave first, then can cover absence. Only uncovered leave or absence reduces salary coverage.": "Approved compensatory credit offsets approved leave first, then can cover absence. Only uncovered leave or absence reduces salary coverage.",
+  "Less approved comp credit": "Less approved comp credit",
+  "uncovered": "uncovered",
+  "Can be offset by approved comp credit": "Can be offset by approved comp credit",
+  "uncovered absence": "uncovered absence",
+  "Uncovered Absence": "Uncovered Absence"
 }

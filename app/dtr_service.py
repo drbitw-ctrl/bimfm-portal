@@ -223,6 +223,76 @@ def generate_monthly_dtr(
     claims_by_date: dict[date, list[OvertimeClaim]] = {}
     for claim in approved_claims:
         claims_by_date.setdefault(claim.attendance_date, []).append(claim)
+
+    # Reconcile automatic compensatory-credit coverage for ABSENT days.
+    # This uses only already-approved credit in the existing ledger, consumes
+    # that credit through one auditable monthly debit transaction, and is
+    # idempotent when the DTR is regenerated. No schema change is required.
+    auto_absence_source = f"AUTO_ABSENCE_COMP:{freelancer.id}:{month_key}"
+    existing_auto_absence = database.scalar(
+        select(CompLeaveTransaction).where(
+            CompLeaveTransaction.source_key == auto_absence_source
+        )
+    )
+    base_month_end_balance = comp_balance(database, freelancer.id, month_end)
+    if existing_auto_absence is not None:
+        # Add the prior negative debit back before recalculating the desired use.
+        base_month_end_balance -= int(existing_auto_absence.amount_minutes or 0)
+
+    absence_dates: list[date] = []
+    today_for_absence = local_today(freelancer.timezone_name)
+    if not task_hourly_mode:
+        days_in_month_for_absence = monthrange(first_day.year, first_day.month)[1]
+        for day_number in range(1, days_in_month_for_absence + 1):
+            attendance_date = date(first_day.year, first_day.month, day_number)
+            record = records.get(attendance_date)
+            holiday = holidays.get(attendance_date)
+            leave = leaves.get(attendance_date)
+            workday = is_scheduled_workday(schedule, attendance_date)
+            calculation = None
+            if record is not None:
+                calculation = get_calculation(database, record.id)
+                if calculation is None:
+                    calculation = calculate_attendance_record(
+                        database, record, freelancer, source="DTR_GENERATION",
+                        admin_id=admin_id, schedule=schedule,
+                    )
+            _day_type, status, _notes = _status_for_day(
+                attendance_date=attendance_date, record=record, calculation=calculation,
+                holiday=holiday, leave=leave, is_workday=workday,
+                today=today_for_absence,
+                standard_day_minutes=policy.standard_leave_day_minutes,
+            )
+            if status == "ABSENT":
+                absence_dates.append(attendance_date)
+
+    absence_minutes_required = len(absence_dates) * int(policy.standard_leave_day_minutes or 480)
+    desired_absence_comp = min(max(0, base_month_end_balance), absence_minutes_required)
+    if desired_absence_comp > 0:
+        if existing_auto_absence is None:
+            existing_auto_absence = CompLeaveTransaction(
+                freelancer_id=freelancer.id,
+                transaction_date=month_end,
+                transaction_type="USED_ABSENCE",
+                amount_minutes=-desired_absence_comp,
+                source_key=auto_absence_source,
+                description="",
+                created_by_admin_id=admin_id,
+            )
+            database.add(existing_auto_absence)
+        else:
+            existing_auto_absence.transaction_date = month_end
+            existing_auto_absence.transaction_type = "USED_ABSENCE"
+            existing_auto_absence.amount_minutes = -desired_absence_comp
+            existing_auto_absence.created_by_admin_id = admin_id
+        existing_auto_absence.description = (
+            f"Automatically applied {desired_absence_comp} approved compensatory-credit "
+            f"minutes to {len(absence_dates)} ABSENT day(s) in {month_key}."
+        )
+    elif existing_auto_absence is not None:
+        database.delete(existing_auto_absence)
+    database.flush()
+
     transactions = list(
         database.scalars(
             select(CompLeaveTransaction).where(

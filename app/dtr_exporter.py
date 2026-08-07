@@ -142,7 +142,7 @@ def build_dtr_workbook(
     payroll = calculate_payroll_multiplier(
         calendar_days=int(dtr.calendar_days or 0),
         approved_leave_minutes=approved_leave_minutes,
-        comp_credit_minutes_available=comp_leave_taken_minutes,
+        comp_credit_minutes_available=max(comp_leave_taken_minutes, int(dtr.comp_leave_used_minutes or 0)),
         standard_day_minutes=COMP_LEAVE_DAY_MINUTES,
         absent_days=int(dtr.absent_days or 0),
     )

@@ -1,0 +1,17 @@
+BIM Portal Release 21.22.4 Test Report
+
+Python test suite: PASS
+68 tests passed
+Failures: 0
+Errors: 0
+
+Specific coverage:
+- Absence still deducts payroll when no comp credit exists
+- Approved comp credit can fully cover an absence
+- Approved leave is covered before absence
+- Partial remaining comp credit partially covers absence
+- Existing no-absence calculation remains unchanged
+- DTR auto-absence transaction is deterministic/idempotent by source key
+- Finance calculation uses total DTR comp usage including absence coverage
+
+Database migration: NONE

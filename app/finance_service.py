@@ -166,21 +166,26 @@ def finance_rows(database: Session, month_key: str) -> list[dict]:
         approved_leave_minutes = sum(
             max(0, int(line.duration_minutes or 0)) for line in leave_lines
         )
-        comp_applied_minutes = sum(
+        leave_comp_applied_minutes = sum(
             max(0, int(line.comp_leave_minutes_used or 0)) for line in leave_lines
+        )
+        # Monthly DTR comp usage includes leave use plus any auditable automatic
+        # ABSENT-day coverage created during DTR generation.
+        total_comp_applied_minutes = max(
+            leave_comp_applied_minutes, int(dtr.comp_leave_used_minutes or 0)
         )
 
         payroll = calculate_payroll_multiplier(
             calendar_days=int(dtr.calendar_days or 0),
             approved_leave_minutes=approved_leave_minutes,
-            comp_credit_minutes_available=comp_applied_minutes,
+            comp_credit_minutes_available=total_comp_applied_minutes,
             standard_day_minutes=standard_day_minutes,
             absent_days=int(dtr.absent_days or 0),
         )
 
         payable_days = worked_days + payroll.comp_credit_days_applied
-        non_payable_days = payroll.effective_unpaid_leave_days + int(
-            dtr.absent_days or 0
+        non_payable_days = (
+            payroll.effective_unpaid_leave_days + payroll.effective_absent_days
         )
         rows.append(
             {
@@ -209,6 +214,10 @@ def finance_rows(database: Session, month_key: str) -> list[dict]:
                 "absent_days": int(dtr.absent_days or 0),
                 "absent_minutes": payroll.absent_minutes,
                 "absent_hours": round(payroll.absent_hours, 2),
+                "absence_comp_credit_minutes_applied": payroll.absence_comp_credit_minutes_applied,
+                "absence_comp_credit_hours_applied": round(payroll.absence_comp_credit_hours_applied, 2),
+                "effective_absent_minutes": payroll.effective_absent_minutes,
+                "effective_absent_hours": round(payroll.effective_absent_hours, 2),
                 "total_deduction_minutes": payroll.total_deduction_minutes,
                 "total_deduction_hours": round(payroll.total_deduction_hours, 2),
                 "comp_credit_days_applied": round(

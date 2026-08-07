@@ -19,7 +19,9 @@ class PayrollCalculation:
     comp_credit_minutes_available: int
     comp_credit_minutes_applied: int
     effective_unpaid_leave_minutes: int
+    absence_comp_credit_minutes_applied: int
     absent_minutes: int
+    effective_absent_minutes: int
     salary_basis_minutes: int
     salary_covered_minutes: int
     payroll_multiplier: float
@@ -49,8 +51,20 @@ class PayrollCalculation:
         return self.absent_minutes / self.standard_day_minutes
 
     @property
+    def absence_comp_credit_hours_applied(self) -> float:
+        return self.absence_comp_credit_minutes_applied / 60
+
+    @property
+    def effective_absent_hours(self) -> float:
+        return self.effective_absent_minutes / 60
+
+    @property
+    def effective_absent_days(self) -> float:
+        return self.effective_absent_minutes / self.standard_day_minutes
+
+    @property
     def total_deduction_minutes(self) -> int:
-        return self.effective_unpaid_leave_minutes + self.absent_minutes
+        return self.effective_unpaid_leave_minutes + self.effective_absent_minutes
 
     @property
     def total_deduction_hours(self) -> float:
@@ -88,7 +102,7 @@ class PayrollCalculation:
     def formula_display(self) -> str:
         return (
             f"({self.salary_basis_minutes} - {self.effective_unpaid_leave_minutes} "
-            f"- {self.absent_minutes}) / {self.salary_basis_minutes}"
+            f"- {self.effective_absent_minutes}) / {self.salary_basis_minutes}"
         )
 
     @property
@@ -104,8 +118,8 @@ class PayrollCalculation:
         parts = []
         if self.effective_unpaid_leave_minutes:
             parts.append(f"{self.effective_unpaid_leave_hours:g} unpaid leave hours")
-        if self.absent_minutes:
-            parts.append(f"{self.absent_hours:g} absence hours")
+        if self.effective_absent_minutes:
+            parts.append(f"{self.effective_absent_hours:g} uncovered absence hours")
         return "Reduced by " + " + ".join(parts)
 
     @property
@@ -128,13 +142,19 @@ def calculate_payroll_multiplier(
     normalized_comp = max(0, int(comp_credit_minutes_available or 0))
     normalized_absent_days = max(0, int(absent_days or 0))
 
-    # Comp credit offsets approved leave only. An unexcused ABSENT day is a
-    # direct deduction and is never cancelled by compensatory credit.
-    comp_applied = min(normalized_leave, normalized_comp)
-    effective_unpaid = max(0, normalized_leave - comp_applied)
+    # Approved compensatory credit first offsets approved leave, then any
+    # remaining approved credit offsets ABSENT time. This supports the common
+    # case where a leave request was missed but the member already has approved
+    # comp credit. Credit can never increase salary above the full monthly rate.
+    leave_comp_applied = min(normalized_leave, normalized_comp)
+    effective_unpaid = max(0, normalized_leave - leave_comp_applied)
+    remaining_comp = max(0, normalized_comp - leave_comp_applied)
     absent_minutes = normalized_absent_days * normalized_standard_day
+    absence_comp_applied = min(absent_minutes, remaining_comp)
+    effective_absent = max(0, absent_minutes - absence_comp_applied)
+    comp_applied = leave_comp_applied + absence_comp_applied
     salary_basis = normalized_calendar_days * normalized_standard_day
-    salary_covered = max(0, salary_basis - effective_unpaid - absent_minutes)
+    salary_covered = max(0, salary_basis - effective_unpaid - effective_absent)
     multiplier = min(1.0, max(0.0, salary_covered / salary_basis))
 
     return PayrollCalculation(
@@ -144,7 +164,9 @@ def calculate_payroll_multiplier(
         comp_credit_minutes_available=normalized_comp,
         comp_credit_minutes_applied=comp_applied,
         effective_unpaid_leave_minutes=effective_unpaid,
+        absence_comp_credit_minutes_applied=absence_comp_applied,
         absent_minutes=absent_minutes,
+        effective_absent_minutes=effective_absent,
         salary_basis_minutes=salary_basis,
         salary_covered_minutes=salary_covered,
         payroll_multiplier=multiplier,

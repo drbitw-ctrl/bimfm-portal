@@ -42,6 +42,8 @@ def configure_finance_routes(legacy_namespace: dict[str, object]) -> APIRouter:
                 "effective_unpaid_leave_hours": round(sum(x["effective_unpaid_leave_hours"] for x in rows), 2),
                 "absent_days": sum(x["absent_days"] for x in rows),
                 "absent_hours": round(sum(x["absent_hours"] for x in rows), 2),
+                "absence_comp_credit_hours_applied": round(sum(x["absence_comp_credit_hours_applied"] for x in rows), 2),
+                "effective_absent_hours": round(sum(x["effective_absent_hours"] for x in rows), 2),
                 "total_deduction_hours": round(sum(x["total_deduction_hours"] for x in rows), 2),
                 "regular_leave_days": round(sum(x["regular_leave_days"] for x in rows), 3),
                 "comp_leave_days": round(sum(x["comp_leave_days"] for x in rows), 3),

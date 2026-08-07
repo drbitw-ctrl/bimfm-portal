@@ -2254,5 +2254,13 @@
   "Cannot be offset by OT credit": "不可由加班點數抵扣",
   "unpaid leave": "無薪假",
   "absence": "缺勤",
-  "Absence": "缺勤"
+  "Absence": "缺勤",
+  "Applied to approved leave and absence": "可套用於核准休假與缺勤",
+  "uncovered after comp credit": "扣除補休額度後未涵蓋",
+  "Approved compensatory credit offsets approved leave first, then can cover absence. Only uncovered leave or absence reduces salary coverage.": "核准補休額度會先抵扣核准休假，其餘額度可再抵扣缺勤；僅未被涵蓋的休假或缺勤會降低薪資計算比例。",
+  "Less approved comp credit": "扣除核准補休額度",
+  "uncovered": "未涵蓋",
+  "Can be offset by approved comp credit": "可由核准補休額度抵扣",
+  "uncovered absence": "未涵蓋缺勤",
+  "Uncovered Absence": "未涵蓋缺勤"
 }
