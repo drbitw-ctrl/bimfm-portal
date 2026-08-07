@@ -1,0 +1,5 @@
+Release 21.22.1 validation
+- Python compilation: PASS
+- Work Order method regression tests: PASS
+- Jinja template parsing: PASS
+- Database migration: NONE

@@ -217,6 +217,23 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
                 ),
             )
 
+    @router.get("/tasks/work-orders/{task_id}/start", include_in_schema=False)
+    def open_freelancer_work_order_start(task_id: int, request: Request):
+        """Never mutate Work Order state from a GET request.
+
+        Some browser/navigation paths can open an action URL directly.  Rather
+        than exposing FastAPI's JSON 405 page, return the member to the Work
+        Orders screen and focus the requested task.
+        """
+        with SessionLocal() as database:
+            account = get_current_freelancer_account(request, database)
+            if account is None:
+                return RedirectResponse("/login", status_code=303)
+        return RedirectResponse(
+            f"/tasks?project_task_id={task_id}#work-order-task-{task_id}",
+            status_code=303,
+        )
+
     @router.post("/tasks/work-orders/{task_id}/start")
     def start_freelancer_work_order(
         task_id: int,
@@ -260,6 +277,19 @@ def configure_projects_routes(legacy_namespace: dict[str, object]) -> APIRouter:
             )
             database.commit()
         set_flash(request, "Work timer started.", "success")
+        return RedirectResponse("/tasks", status_code=303)
+
+    @router.get("/tasks/work-orders/stop", include_in_schema=False)
+    def open_freelancer_work_order_stop(request: Request):
+        """Redirect accidental GET navigation to the Work Orders screen.
+
+        Stopping a timer remains POST-only so it still requires the CSRF token
+        and cannot be triggered by a link, crawler, preview, or refresh.
+        """
+        with SessionLocal() as database:
+            account = get_current_freelancer_account(request, database)
+            if account is None:
+                return RedirectResponse("/login", status_code=303)
         return RedirectResponse("/tasks", status_code=303)
 
     @router.post("/tasks/work-orders/stop")
