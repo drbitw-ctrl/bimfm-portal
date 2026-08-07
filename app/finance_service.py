@@ -175,6 +175,7 @@ def finance_rows(database: Session, month_key: str) -> list[dict]:
             approved_leave_minutes=approved_leave_minutes,
             comp_credit_minutes_available=comp_applied_minutes,
             standard_day_minutes=standard_day_minutes,
+            absent_days=int(dtr.absent_days or 0),
         )
 
         payable_days = worked_days + payroll.comp_credit_days_applied
@@ -205,6 +206,11 @@ def finance_rows(database: Session, month_key: str) -> list[dict]:
                 "effective_unpaid_leave_hours": round(
                     payroll.effective_unpaid_leave_hours, 2
                 ),
+                "absent_days": int(dtr.absent_days or 0),
+                "absent_minutes": payroll.absent_minutes,
+                "absent_hours": round(payroll.absent_hours, 2),
+                "total_deduction_minutes": payroll.total_deduction_minutes,
+                "total_deduction_hours": round(payroll.total_deduction_hours, 2),
                 "comp_credit_days_applied": round(
                     payroll.comp_credit_days_applied, 3
                 ),

@@ -2241,5 +2241,18 @@
   "Last 3 Months": "最近 3 個月",
   "Last 6 Months": "最近 6 個月",
   "All Completed Tasks": "所有已完成任務",
-  "Freelancer Account": "自由工作者帳號"
+  "Freelancer Account": "自由工作者帳號",
+  "Absent Hours": "缺勤時數",
+  "Direct deduction": "直接扣除",
+  "direct deduction": "直接扣除",
+  "Total Deduction": "總扣除",
+  "Monthly basis hours − total deduction hours": "月薪基準時數 − 總扣除時數",
+  "No unpaid leave or absence deductions": "無無薪假或缺勤扣除",
+  "Approved overtime credit offsets approved leave minute-for-minute. Absence is a direct deduction and cannot be cancelled by overtime credit.": "核准加班點數可逐分鐘抵扣核准休假；缺勤屬直接扣除，不能以加班點數抵銷。",
+  "Working days remain visible. Salary deductions use uncovered leave hours plus unexcused absence hours.": "工作日仍會顯示；薪資扣除包含未抵扣休假時數及未核准缺勤時數。",
+  "Can be offset by OT credit": "可由加班點數抵扣",
+  "Cannot be offset by OT credit": "不可由加班點數抵扣",
+  "unpaid leave": "無薪假",
+  "absence": "缺勤",
+  "Absence": "缺勤"
 }

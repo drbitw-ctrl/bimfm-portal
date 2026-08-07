@@ -1,0 +1,20 @@
+BIM PORTAL RELEASE 21.22.3 VALIDATION
+
+Python compilation: PASS
+Jinja templates: 52 PASS
+English localization keys: 2256
+Traditional Chinese localization keys: 2256
+Localization key parity: PASS
+Application import: PASS
+Registered routes: 138
+Full executable test suite: 66 PASS
+Failures: 0
+Errors: 0
+
+New regression coverage:
+- One absence day reduces salary coverage.
+- Comp credit cannot cancel an absence.
+- Uncovered unpaid leave and absence combine into the total deduction.
+- Existing calculation remains unchanged when absent_days is zero.
+
+Database migration: NONE

@@ -19,6 +19,7 @@ class PayrollCalculation:
     comp_credit_minutes_available: int
     comp_credit_minutes_applied: int
     effective_unpaid_leave_minutes: int
+    absent_minutes: int
     salary_basis_minutes: int
     salary_covered_minutes: int
     payroll_multiplier: float
@@ -38,6 +39,22 @@ class PayrollCalculation:
     @property
     def effective_unpaid_leave_hours(self) -> float:
         return self.effective_unpaid_leave_minutes / 60
+
+    @property
+    def absent_hours(self) -> float:
+        return self.absent_minutes / 60
+
+    @property
+    def absent_days(self) -> float:
+        return self.absent_minutes / self.standard_day_minutes
+
+    @property
+    def total_deduction_minutes(self) -> int:
+        return self.effective_unpaid_leave_minutes + self.absent_minutes
+
+    @property
+    def total_deduction_hours(self) -> float:
+        return self.total_deduction_minutes / 60
 
     @property
     def approved_leave_days(self) -> float:
@@ -70,8 +87,8 @@ class PayrollCalculation:
     @property
     def formula_display(self) -> str:
         return (
-            f"({self.salary_basis_minutes} - {self.effective_unpaid_leave_minutes}) "
-            f"/ {self.salary_basis_minutes}"
+            f"({self.salary_basis_minutes} - {self.effective_unpaid_leave_minutes} "
+            f"- {self.absent_minutes}) / {self.salary_basis_minutes}"
         )
 
     @property
@@ -82,13 +99,18 @@ class PayrollCalculation:
 
     @property
     def payroll_treatment_display(self) -> str:
-        if self.effective_unpaid_leave_minutes == 0:
+        if self.total_deduction_minutes == 0:
             return "Full Monthly Rate"
-        return f"Reduced by {self.effective_unpaid_leave_hours:g} unpaid leave hours"
+        parts = []
+        if self.effective_unpaid_leave_minutes:
+            parts.append(f"{self.effective_unpaid_leave_hours:g} unpaid leave hours")
+        if self.absent_minutes:
+            parts.append(f"{self.absent_hours:g} absence hours")
+        return "Reduced by " + " + ".join(parts)
 
     @property
     def deduction_display(self) -> str:
-        return f"{self.effective_unpaid_leave_hours:g} hours"
+        return f"{self.total_deduction_hours:g} hours"
 
 
 def calculate_payroll_multiplier(
@@ -97,17 +119,22 @@ def calculate_payroll_multiplier(
     approved_leave_minutes: int,
     comp_credit_minutes_available: int,
     standard_day_minutes: int = 480,
+    absent_days: int = 0,
 ) -> PayrollCalculation:
     """Calculate hourly leave deduction against a calendar-day monthly salary."""
     normalized_calendar_days = max(1, int(calendar_days or 0))
     normalized_standard_day = max(1, int(standard_day_minutes or 0))
     normalized_leave = max(0, int(approved_leave_minutes or 0))
     normalized_comp = max(0, int(comp_credit_minutes_available or 0))
+    normalized_absent_days = max(0, int(absent_days or 0))
 
+    # Comp credit offsets approved leave only. An unexcused ABSENT day is a
+    # direct deduction and is never cancelled by compensatory credit.
     comp_applied = min(normalized_leave, normalized_comp)
     effective_unpaid = max(0, normalized_leave - comp_applied)
+    absent_minutes = normalized_absent_days * normalized_standard_day
     salary_basis = normalized_calendar_days * normalized_standard_day
-    salary_covered = max(0, salary_basis - effective_unpaid)
+    salary_covered = max(0, salary_basis - effective_unpaid - absent_minutes)
     multiplier = min(1.0, max(0.0, salary_covered / salary_basis))
 
     return PayrollCalculation(
@@ -117,6 +144,7 @@ def calculate_payroll_multiplier(
         comp_credit_minutes_available=normalized_comp,
         comp_credit_minutes_applied=comp_applied,
         effective_unpaid_leave_minutes=effective_unpaid,
+        absent_minutes=absent_minutes,
         salary_basis_minutes=salary_basis,
         salary_covered_minutes=salary_covered,
         payroll_multiplier=multiplier,

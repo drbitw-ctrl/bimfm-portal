@@ -817,6 +817,7 @@ def compact_dtr_metrics(database: Session, dtr: MonthlyDTR) -> dict[str, object]
         approved_leave_minutes=approved_leave_minutes,
         comp_credit_minutes_available=comp_leave_minutes,
         standard_day_minutes=standard_day_minutes,
+        absent_days=int(dtr.absent_days or 0),
     )
     payable_days = worked_days + payroll.comp_credit_days_applied
     non_payable_days = payroll.effective_unpaid_leave_days + int(dtr.absent_days or 0)
@@ -839,6 +840,10 @@ def compact_dtr_metrics(database: Session, dtr: MonthlyDTR) -> dict[str, object]
         "comp_credit_hours_applied": round(payroll.comp_credit_hours_applied, 2),
         "effective_unpaid_leave_minutes": payroll.effective_unpaid_leave_minutes,
         "effective_unpaid_leave_hours": round(payroll.effective_unpaid_leave_hours, 2),
+        "absent_minutes": payroll.absent_minutes,
+        "absent_hours": round(payroll.absent_hours, 2),
+        "total_deduction_minutes": payroll.total_deduction_minutes,
+        "total_deduction_hours": round(payroll.total_deduction_hours, 2),
         "comp_credit_days_applied": round(payroll.comp_credit_days_applied, 3),
         "effective_unpaid_leave_days": round(payroll.effective_unpaid_leave_days, 3),
         "payroll_numerator_days": round(payroll.payroll_numerator_days, 3),

@@ -144,6 +144,7 @@ def build_dtr_workbook(
         approved_leave_minutes=approved_leave_minutes,
         comp_credit_minutes_available=comp_leave_taken_minutes,
         standard_day_minutes=COMP_LEAVE_DAY_MINUTES,
+        absent_days=int(dtr.absent_days or 0),
     )
     payable_workday_equivalents = worked_days + payroll.comp_credit_days_applied
 
@@ -189,6 +190,7 @@ def build_dtr_workbook(
         ("APPROVED LEAVE TAKEN", f"{approved_leave_days} day(s) / {duration_text(payroll.approved_leave_minutes)}"),
         ("OVERTIME CREDIT APPLIED", duration_text(payroll.comp_credit_minutes_applied)),
         ("UNPAID LEAVE", duration_text(payroll.effective_unpaid_leave_minutes)),
+        ("ABSENCE DEDUCTION", duration_text(payroll.absent_minutes)),
         ("PAYABLE WORKDAY EQUIVALENTS", payable_workday_equivalents),
         ("SALARY-COVERED CALENDAR DAYS", payroll.salary_coverage_display),
         ("EFFECTIVE PAYROLL DEDUCTION", payroll.deduction_display),
@@ -250,7 +252,7 @@ def build_dtr_workbook(
                 size=16,
                 color="176B3A",
             )
-        elif label in {"UNPAID LEAVE", "EFFECTIVE PAYROLL DEDUCTION"}:
+        elif label in {"UNPAID LEAVE", "ABSENCE DEDUCTION", "EFFECTIVE PAYROLL DEDUCTION"}:
             summary.cell(current_row, column).fill = PatternFill("solid", fgColor=GOLD)
             summary.cell(current_row + 1, column).fill = PatternFill("solid", fgColor=GOLD)
 
@@ -273,6 +275,7 @@ def build_dtr_workbook(
             f"Approved leave taken: {approved_leave_days} day(s) / {duration_text(payroll.approved_leave_minutes)}. "
             f"Overtime credit applied: {duration_text(payroll.comp_credit_minutes_applied)}. "
             f"Unpaid leave: {duration_text(payroll.effective_unpaid_leave_minutes)}. "
+            f"Absence deduction: {duration_text(payroll.absent_minutes)}. "
             f"Payable workday equivalents: {payable_workday_equivalents:.3f}. "
             f"Salary coverage: {payroll.salary_coverage_display}. "
             f"Payroll treatment: {payroll.payroll_treatment_display}. "

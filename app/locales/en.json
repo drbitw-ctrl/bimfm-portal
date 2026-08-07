@@ -2241,5 +2241,18 @@
   "Last 3 Months": "Last 3 Months",
   "Last 6 Months": "Last 6 Months",
   "All Completed Tasks": "All Completed Tasks",
-  "Freelancer Account": "Freelancer Account"
+  "Freelancer Account": "Freelancer Account",
+  "Absent Hours": "Absent Hours",
+  "Direct deduction": "Direct deduction",
+  "direct deduction": "direct deduction",
+  "Total Deduction": "Total Deduction",
+  "Monthly basis hours − total deduction hours": "Monthly basis hours − total deduction hours",
+  "No unpaid leave or absence deductions": "No unpaid leave or absence deductions",
+  "Approved overtime credit offsets approved leave minute-for-minute. Absence is a direct deduction and cannot be cancelled by overtime credit.": "Approved overtime credit offsets approved leave minute-for-minute. Absence is a direct deduction and cannot be cancelled by overtime credit.",
+  "Working days remain visible. Salary deductions use uncovered leave hours plus unexcused absence hours.": "Working days remain visible. Salary deductions use uncovered leave hours plus unexcused absence hours.",
+  "Can be offset by OT credit": "Can be offset by OT credit",
+  "Cannot be offset by OT credit": "Cannot be offset by OT credit",
+  "unpaid leave": "unpaid leave",
+  "absence": "absence",
+  "Absence": "Absence"
 }

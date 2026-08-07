@@ -40,6 +40,9 @@ def configure_finance_routes(legacy_namespace: dict[str, object]) -> APIRouter:
                 "approved_leave_hours": round(sum(x["approved_leave_hours"] for x in rows), 2),
                 "comp_credit_hours_applied": round(sum(x["comp_credit_hours_applied"] for x in rows), 2),
                 "effective_unpaid_leave_hours": round(sum(x["effective_unpaid_leave_hours"] for x in rows), 2),
+                "absent_days": sum(x["absent_days"] for x in rows),
+                "absent_hours": round(sum(x["absent_hours"] for x in rows), 2),
+                "total_deduction_hours": round(sum(x["total_deduction_hours"] for x in rows), 2),
                 "regular_leave_days": round(sum(x["regular_leave_days"] for x in rows), 3),
                 "comp_leave_days": round(sum(x["comp_leave_days"] for x in rows), 3),
                 "payable_days": round(sum(x["payable_days"] for x in rows), 3),
@@ -51,8 +54,8 @@ def configure_finance_routes(legacy_namespace: dict[str, object]) -> APIRouter:
                 "comp_credit_days_applied": round(sum(x["comp_credit_days_applied"] for x in rows), 3),
                 "effective_unpaid_leave_days": round(sum(x["effective_unpaid_leave_days"] for x in rows), 3),
                 "month_calendar_days": max((x["calendar_days"] for x in rows), default=0),
-                "full_month_count": sum(1 for x in rows if x["effective_unpaid_leave_minutes"] == 0),
-                "reduced_month_count": sum(1 for x in rows if x["effective_unpaid_leave_minutes"] > 0),
+                "full_month_count": sum(1 for x in rows if x["total_deduction_minutes"] == 0),
+                "reduced_month_count": sum(1 for x in rows if x["total_deduction_minutes"] > 0),
             }
             totals["full_multiplier_count"] = totals["full_month_count"]
             totals["closing_label"] = minutes_label(totals["closing_minutes"])
