@@ -1,0 +1,6 @@
+Release 21.22.5 validation
+- Python compile: PASS
+- Application import/routes: PASS (142 routes)
+- Jinja template parse: PASS
+- Executable tests: 72 PASS
+- New Alembic migration: NONE

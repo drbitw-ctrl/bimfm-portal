@@ -114,6 +114,13 @@
   {% else %}<div class="all-clear unassigned-clear"><span>✓</span><div><strong>{{ t('All active tasks are assigned') }}</strong><small>{{ t('No open task currently requires assignment.') }}</small></div></div>{% endif %}
 </section>
 
+<section class="dashboard-panel review-queue-panel">
+  <div class="panel-heading-modern"><div><span class="eyebrow">{{ t('REVIEW QUEUE') }}</span><h2>{{ t('My review work') }}</h2><p>{{ t('Internal review time stays separate from freelancer production work.') }}</p></div><a class="text-link" href="/admin/review-queue">{{ t('Open queue') }} →</a></div>
+  <div class="review-queue-summary"><strong>{{ review_queue_count }}</strong><span>{{ t('assigned to me') }}</span>{% if current_staff_role == 'ADMIN' %}<small>{{ review_queue_total_count }} {{ t('total reviewable tasks') }}</small>{% endif %}</div>
+  {% if active_review %}<a class="review-live-strip" href="/admin/review-queue"><span class="live-pulse"><i></i>{{ t('REVIEW TIMER ACTIVE') }}</span><strong>{{ active_review.task_title }}</strong><small>{{ active_review.project_name }}</small></a>{% endif %}
+  <div class="review-queue-compact">{% for row in review_queue_rows[:4] %}<a href="/admin/review-queue"><div><strong>{{ row.task_title }}</strong><small>{{ row.project_name }} · {{ row.reviewer_name }}</small></div><span class="status-chip status-{{ row.status|lower|replace('_','-') }}">{{ row.status|replace('_',' ')|title }}</span><b>{{ duration_label(row.review_minutes) }}</b></a>{% else %}<div class="all-clear"><span>✓</span><div><strong>{{ t('No assigned review work') }}</strong><small>{{ t('Your review queue is clear.') }}</small></div></div>{% endfor %}</div>
+</section>
+
 <section class="dashboard-panel live-work-panel" data-live-work-board data-live-work-endpoint="/portal/live-work.json" data-can-remind="{{ '1' if can(Permission.TASK_REMINDER_SEND) else '0' }}">
   <div class="panel-heading-modern">
     <div><span class="eyebrow">{{ t('LIVE WORK ORDERS') }}</span><h2>{{ t('Working now') }}</h2><p>{{ t('Real-time task timers started by freelancers today.') }}</p></div>

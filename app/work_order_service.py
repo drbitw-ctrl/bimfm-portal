@@ -8,7 +8,7 @@ import smtplib
 from typing import Any, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.config import (
@@ -272,6 +272,7 @@ def reconcile_stale_work_sessions(
             TaskWorkSession.stopped_at.is_(None),
             TaskWorkSession.started_at <= cutoff,
             Freelancer.is_active.is_(True),
+            or_(TaskWorkSession.notes.is_(None), ~TaskWorkSession.notes.like("[[REVIEW_ACTIVE]]%")),
         )
         .order_by(TaskWorkSession.started_at, TaskWorkSession.id)
     )
