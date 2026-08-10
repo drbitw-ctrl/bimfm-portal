@@ -2271,5 +2271,19 @@
   "Open Review Queue": "開啟審查佇列",
   "assigned review tasks": "項已指派審查任務",
   "REVIEW TIMER ACTIVE": "審查計時進行中",
-  "Reviewing": "審查中"
+  "Reviewing": "審查中",
+  "MY ASSIGNED WORK": "我的指派工作",
+  "Tasks assigned directly to your staff task profile. Start and stop your own Work Order here without changing freelancer assignments.": "顯示直接指派給您員工任務身分的工作，可在此啟動或停止自己的工單，不會變更自由工作者的原始指派。",
+  "Open Task Register": "開啟任務清冊",
+  "WORK ORDER ACTIVE": "工單計時進行中",
+  "Your review timer is currently active. Stop review work before starting an assigned-task Work Order.": "您的審查計時器目前正在執行，請先停止審查工作後再啟動指派任務工單。",
+  "Work activities completed": "已完成的工作內容",
+  "Stop Work Order": "停止工單",
+  "Another timer is active": "另一個計時器正在執行",
+  "Start Work Order": "啟動工單",
+  "No tasks assigned directly to you": "目前沒有直接指派給您的任務",
+  "Tasks assigned for review appear separately below.": "審查指派會另外顯示於下方。",
+  "Review activity note": "審查工作說明",
+  "Stop Review": "停止審查",
+  "Start Review": "開始審查"
 }

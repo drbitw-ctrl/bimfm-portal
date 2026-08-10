@@ -32,9 +32,9 @@ from app.performance_reporting import (
 )
 from app.calendar_board import build_reminder_calendar
 from app.my_work_service import build_role_my_work
-from app.review_work_service import queue_rows, active_review_session
+from app.review_work_service import queue_rows, active_review_session, reviewer_freelancer, ACTIVE_PREFIX
 from app.task_time_reporting import build_task_time_utilization
-from app.work_order_service import create_task_reminder, live_work_rows
+from app.work_order_service import create_task_reminder, live_work_rows, active_work_session, start_work_session, stop_work_session
 from app.portal_project_service import (
     active_task_overview_rows,
     project_data_health,
@@ -42,6 +42,7 @@ from app.portal_project_service import (
     task_overview_rows,
     team_assignment_rows,
     unassigned_task_overview_rows,
+    current_freelancer_portal_tasks,
 )
 from app.web_helpers import set_flash, validate_csrf, write_audit
 
@@ -1347,6 +1348,71 @@ def create_portal_router(
         database.commit()
         return _xlsx_response(content, f"BIM_Complete_Report_Package_{selected_month}.xlsx")
 
+    @router.post("/portal/my-work/assigned/{task_id}/start")
+    def staff_assigned_work_start(
+        request: Request,
+        task_id: int,
+        csrf: str = Form(...),
+        database: Session = Depends(get_db),
+    ):
+        if not validate_csrf(request, csrf):
+            set_flash(request, "Invalid form token.", "error")
+            return RedirectResponse("/portal/my-work", status_code=303)
+        account = get_current_admin(request, database)
+        if account is None:
+            return RedirectResponse("/admin/login", status_code=303)
+        if str(account.role or "").upper() not in {"ADMIN", "SUPERVISOR"}:
+            set_flash(request, "Task Work Orders are available to Administrators and Supervisors.", "error")
+            return RedirectResponse("/portal/my-work", status_code=303)
+        member = reviewer_freelancer(database, account)
+        if member is None:
+            set_flash(request, "Your staff task profile is not enabled. Ask an Administrator to enable task assignment for this account.", "error")
+            return RedirectResponse("/portal/my-work", status_code=303)
+        try:
+            start_work_session(database, freelancer=member, task_id=task_id)
+            database.commit()
+            set_flash(request, "Assigned-task Work Order started.", "success")
+        except ValueError as exc:
+            database.rollback()
+            set_flash(request, str(exc), "error")
+        except Exception:
+            database.rollback()
+            set_flash(request, "The assigned-task Work Order could not start. No task data was changed.", "error")
+        return RedirectResponse("/portal/my-work", status_code=303)
+
+    @router.post("/portal/my-work/assigned/stop")
+    def staff_assigned_work_stop(
+        request: Request,
+        notes: str = Form(...),
+        csrf: str = Form(...),
+        database: Session = Depends(get_db),
+    ):
+        if not validate_csrf(request, csrf):
+            set_flash(request, "Invalid form token.", "error")
+            return RedirectResponse("/portal/my-work", status_code=303)
+        account = get_current_admin(request, database)
+        if account is None:
+            return RedirectResponse("/admin/login", status_code=303)
+        member = reviewer_freelancer(database, account)
+        if member is None:
+            set_flash(request, "No staff task profile is available for this account.", "error")
+            return RedirectResponse("/portal/my-work", status_code=303)
+        session = active_work_session(database, int(member.id))
+        if session is not None and str(session.notes or "").startswith(ACTIVE_PREFIX):
+            set_flash(request, "A review timer is active. Stop it from My Review Work instead.", "error")
+            return RedirectResponse("/portal/my-work", status_code=303)
+        try:
+            stop_work_session(database, freelancer=member, notes=notes)
+            database.commit()
+            set_flash(request, "Assigned-task Work Order stopped and activity time saved.", "success")
+        except ValueError as exc:
+            database.rollback()
+            set_flash(request, str(exc), "error")
+        except Exception:
+            database.rollback()
+            set_flash(request, "The assigned-task Work Order could not be stopped cleanly. Please refresh and retry.", "error")
+        return RedirectResponse("/portal/my-work", status_code=303)
+
     @router.get("/portal/{module_name}", response_class=HTMLResponse)
     def portal_module(
         request: Request,
@@ -1370,6 +1436,9 @@ def create_portal_router(
             staff_role = str(account.role or "").upper()
             my_review_rows = []
             my_active_review = None
+            my_assigned_tasks = []
+            my_staff_member = None
+            my_staff_active_session = None
             if staff_role in {"ADMIN", "SUPERVISOR"}:
                 try:
                     my_review_rows = queue_rows(database, admin=account)
@@ -1379,6 +1448,17 @@ def create_portal_router(
                     # marker is malformed. Review Queue has its own detailed error log.
                     my_review_rows = []
                     my_active_review = None
+                try:
+                    my_staff_member = reviewer_freelancer(database, account)
+                    if my_staff_member is not None:
+                        my_assigned_tasks = current_freelancer_portal_tasks(
+                            database, freelancer_id=int(my_staff_member.id), limit=100
+                        )
+                        my_staff_active_session = active_work_session(database, int(my_staff_member.id))
+                except Exception:
+                    # A staff task profile problem must not take down My Work.
+                    my_assigned_tasks = []
+                    my_staff_active_session = None
             return templates.TemplateResponse(
                 request=request,
                 name="staff_my_work.html",
@@ -1391,6 +1471,10 @@ def create_portal_router(
                     my_review_rows=my_review_rows,
                     my_review_count=len(my_review_rows),
                     my_active_review=my_active_review,
+                    my_assigned_tasks=my_assigned_tasks,
+                    my_staff_member=my_staff_member,
+                    my_staff_active_session=my_staff_active_session,
+                    review_active_prefix=ACTIVE_PREFIX,
                 ),
             )
 

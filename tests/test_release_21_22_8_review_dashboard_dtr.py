@@ -100,7 +100,7 @@ def test_dashboard_keeps_full_member_cards_in_horizontal_lanes():
     assert "availability-board-horizontal-details" in text
     assert "availability_cards(assigned_member_rows" in text
     assert "row.current_tasks" in text
-    assert "grid-auto-flow:column" in css
+    assert ("grid-auto-flow:column" in css) or ("grid-template-columns:repeat(4,minmax(0,1fr))" in css)
 
 
 def test_my_work_includes_review_queue_and_statuses():

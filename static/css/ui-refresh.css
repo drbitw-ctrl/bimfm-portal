@@ -6065,7 +6065,8 @@ body.dark-mode .member-visibility-toggle[aria-pressed="true"] {
 .availability-board-horizontal-details .available-group{background:linear-gradient(145deg,rgba(224,248,232,.96),rgba(255,255,255,.94));border-color:rgba(25,135,84,.25)}
 .availability-board-horizontal-details .assigned-group{background:linear-gradient(145deg,rgba(255,244,204,.97),rgba(255,255,255,.94));border-color:rgba(227,160,8,.3)}
 .availability-board-horizontal-details .overdue-group{background:linear-gradient(145deg,rgba(255,225,228,.97),rgba(255,255,255,.94));border-color:rgba(220,53,69,.28)}
-.availability-board-horizontal-details .availability-state-grid{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(320px,380px);grid-template-columns:none;gap:12px;overflow-x:auto;overflow-y:hidden;padding:2px 2px 10px;scroll-snap-type:x proximity;scrollbar-width:thin}
+.availability-board-horizontal-details .availability-state-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;overflow:visible;padding:2px;align-items:stretch}
+.availability-board-horizontal-details .member-availability-card{min-width:0}
 .availability-board-horizontal-details .member-availability-card{height:100%;scroll-snap-align:start}
 .my-review-work-panel .review-queue-compact>a{grid-template-columns:minmax(0,1fr) auto auto auto}
 .review-state-chip{display:inline-flex;align-items:center;justify-content:center;padding:5px 8px;border-radius:999px;font-size:.68rem;font-weight:800;white-space:nowrap;background:var(--ui-surface-soft);border:1px solid var(--ui-border)}
@@ -6075,4 +6076,19 @@ html[data-theme="dark"] .availability-board-horizontal-details .available-group{
 html[data-theme="dark"] .availability-board-horizontal-details .assigned-group{background:linear-gradient(145deg,#393119,#1c2932);border-color:#856f2c}
 html[data-theme="dark"] .availability-board-horizontal-details .overdue-group{background:linear-gradient(145deg,#3d2429,#1c2932);border-color:#84444e}
 html[data-theme="dark"] .review-state-chip{background:#253541;border-color:#42586a;color:#dce9f2}
-@media(max-width:760px){.availability-board-horizontal-details .availability-state-grid{grid-auto-columns:minmax(280px,88vw)}.my-review-work-panel .review-queue-compact>a{grid-template-columns:minmax(0,1fr) auto}.my-review-work-panel .review-state-chip{grid-column:2}}
+@media(max-width:1240px){.availability-board-horizontal-details .availability-state-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:900px){.availability-board-horizontal-details .availability-state-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.availability-board-horizontal-details .availability-state-grid{grid-template-columns:1fr}.my-review-work-panel .review-queue-compact>a{grid-template-columns:minmax(0,1fr) auto}.my-review-work-panel .review-state-chip{grid-column:2}}
+
+/* Release 21.22.9 — wrapped availability board + staff My Work timers. */
+.my-assigned-task-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.my-assigned-task-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;padding:16px;border:1px solid var(--ui-border);border-radius:16px;background:var(--ui-surface-soft)}
+.my-assigned-task-copy{min-width:0}.my-assigned-task-copy h3{margin:4px 0 6px;color:var(--ui-text)}.my-assigned-task-copy p,.my-assigned-task-copy small{margin:0;color:var(--ui-muted)}
+.my-assigned-task-actions{display:flex;align-items:center;justify-content:flex-end;min-width:150px}.inline-work-stop-form{display:grid;grid-template-columns:minmax(180px,1fr) auto;gap:8px;align-items:center}.inline-work-stop-form input{min-width:0}
+.timer-conflict-note{margin:0 0 12px;padding:10px 12px;border-radius:12px;background:var(--ui-warning-soft);color:var(--ui-text);border:1px solid color-mix(in srgb,var(--ui-warning) 35%,var(--ui-border))}
+.staff-work-live{margin-bottom:12px}
+.review-queue-actions{grid-template-columns:1fr}.review-queue-actions .my-review-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto minmax(210px,auto);gap:10px;align-items:center;padding:12px 14px;border:1px solid var(--ui-border);border-radius:14px;background:var(--ui-surface)}
+.review-queue-actions .my-review-row>div:first-child{min-width:0}.review-queue-actions .my-review-row strong,.review-queue-actions .my-review-row small{display:block}.review-queue-actions .my-review-row small{color:var(--ui-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.my-review-row-action{display:flex;justify-content:flex-end}
+html[data-theme="dark"] .my-assigned-task-card,html[data-theme="dark"] .review-queue-actions .my-review-row{background:var(--ui-surface)}
+@media(max-width:1100px){.my-assigned-task-grid{grid-template-columns:1fr}.review-queue-actions .my-review-row{grid-template-columns:minmax(0,1fr) auto auto}.review-queue-actions .my-review-row>b{grid-column:2}.review-queue-actions .my-review-row-action{grid-column:1/-1;justify-content:flex-start}}
+@media(max-width:760px){.my-assigned-task-card{grid-template-columns:1fr}.my-assigned-task-actions{justify-content:flex-start}.inline-work-stop-form{grid-template-columns:1fr}.review-queue-actions .my-review-row{grid-template-columns:1fr}.review-queue-actions .my-review-row>b,.review-queue-actions .my-review-row-action{grid-column:auto}}

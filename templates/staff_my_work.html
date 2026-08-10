@@ -31,6 +31,46 @@
 
 
 {% if role in ['ADMIN', 'SUPERVISOR'] %}
+<section class="content-card role-work-panel my-assigned-work-panel">
+  <div class="section-heading">
+    <div><span class="eyebrow">{{ t('MY ASSIGNED WORK') }}</span><h2>{{ t('My Assigned Tasks') }}</h2><p>{{ t('Tasks assigned directly to your staff task profile. Start and stop your own Work Order here without changing freelancer assignments.') }}</p></div>
+    <a class="button secondary" href="/portal/tasks?view=active">{{ t('Open Task Register') }}</a>
+  </div>
+  {% if my_staff_active_session and not (my_staff_active_session.notes or '').startswith(review_active_prefix) %}
+  <div class="review-live-strip staff-work-live"><span class="live-pulse"><i></i>{{ t('WORK ORDER ACTIVE') }}</span><strong>{{ my_staff_active_session.task_title }}</strong><small>{{ my_staff_active_session.project_name }}</small></div>
+  {% elif my_active_review %}
+  <div class="timer-conflict-note">{{ t('Your review timer is currently active. Stop review work before starting an assigned-task Work Order.') }}</div>
+  {% endif %}
+  {% if my_assigned_tasks %}
+  <div class="my-assigned-task-grid">
+    {% for row in my_assigned_tasks %}
+    <article class="my-assigned-task-card">
+      <div class="my-assigned-task-copy"><span class="eyebrow">{{ row.project_name }}</span><h3>{{ row.task_description }}</h3><p>{{ discipline_label(row.discipline) }} · {{ t(row.project_status|replace('_',' ')|title) }} · {{ row.progress }}%</p>{% if row.deadline %}<small>{{ t('Deadline') }} {{ row.deadline }}</small>{% endif %}</div>
+      <div class="my-assigned-task-actions">
+        {% if my_staff_active_session and not (my_staff_active_session.notes or '').startswith(review_active_prefix) and my_staff_active_session.portal_task_id == row.id %}
+          <span class="status-chip status-in-progress">{{ t('Working Now') }}</span>
+          <form method="post" action="/portal/my-work/assigned/stop" class="inline-work-stop-form">
+            <input type="hidden" name="csrf" value="{{ csrf_token }}">
+            <input name="notes" minlength="10" maxlength="1000" required placeholder="{{ t('Work activities completed') }}">
+            <button class="button danger small" type="submit">{{ t('Stop Work Order') }}</button>
+          </form>
+        {% elif my_staff_active_session %}
+          <button class="button secondary small" type="button" disabled>{{ t('Another timer is active') }}</button>
+        {% else %}
+          <form method="post" action="/portal/my-work/assigned/{{ row.id }}/start">
+            <input type="hidden" name="csrf" value="{{ csrf_token }}">
+            <button class="button primary small" type="submit">{{ t('Start Work Order') }}</button>
+          </form>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="all-clear"><span>✓</span><div><strong>{{ t('No tasks assigned directly to you') }}</strong><small>{{ t('Tasks assigned for review appear separately below.') }}</small></div></div>
+  {% endif %}
+</section>
+
 <section class="content-card role-work-panel review-queue-panel my-review-work-panel">
   <div class="section-heading">
     <div><span class="eyebrow">{{ t('REVIEW WORK') }}</span><h2>{{ t('My Review Work') }}</h2><p>{{ t('Review work is separate from freelancer production tasks and uses its own review timer.') }}</p></div>
@@ -40,14 +80,30 @@
   {% if my_active_review %}
   <a class="review-live-strip" href="/admin/review-queue"><span class="live-pulse"><i></i>{{ t('REVIEW TIMER ACTIVE') }}</span><strong>{{ my_active_review.task_title }}</strong><small>{{ my_active_review.project_name }}</small></a>
   {% endif %}
-  <div class="review-queue-compact">
+  <div class="review-queue-compact review-queue-actions">
     {% for row in my_review_rows %}
-    <a href="/admin/review-queue">
+    <article class="my-review-row">
       <div><strong>{{ row.task_title }}</strong><small>{{ row.project_name }} · {{ row.reviewer_name }}</small></div>
       <span class="status-chip status-{{ row.status|lower|replace('_','-') }}">{{ t(row.status|replace('_',' ')|title) }}</span>
       <span class="review-state-chip review-state-{{ row.review_status|lower }}">{{ t(row.review_status|replace('_',' ')|title) }}</span>
       <b>{{ duration_label(row.review_minutes) }}</b>
-    </a>
+      <div class="my-review-row-action">
+      {% if my_active_review and my_active_review.portal_task_id == row.task_id %}
+        <form method="post" action="/admin/review-queue/stop" class="inline-work-stop-form">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="return_to" value="/portal/my-work">
+          <input name="notes" minlength="5" maxlength="900" required placeholder="{{ t('Review activity note') }}">
+          <button class="button danger small" type="submit">{{ t('Stop Review') }}</button>
+        </form>
+      {% elif my_staff_active_session %}
+        <button class="button secondary small" type="button" disabled>{{ t('Another timer is active') }}</button>
+      {% else %}
+        <form method="post" action="/admin/review-queue/{{ row.task_id }}/start">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="return_to" value="/portal/my-work">
+          <button class="button primary small" type="submit">{{ t('Start Review') }}</button>
+        </form>
+      {% endif %}
+      </div>
+    </article>
     {% else %}
     <div class="all-clear"><span>✓</span><div><strong>{{ t('No assigned review work') }}</strong><small>{{ t('Your review queue is clear.') }}</small></div></div>
     {% endfor %}

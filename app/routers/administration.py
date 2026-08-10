@@ -545,7 +545,7 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
         return RedirectResponse("/admin/review-queue", status_code=303)
 
     @router.post("/admin/review-queue/{task_id}/start")
-    def review_queue_start(request: Request, task_id: int, csrf: str = Form(...)):
+    def review_queue_start(request: Request, task_id: int, csrf: str = Form(...), return_to: str = Form("")):
         if not validate_csrf(request, csrf):
             raise HTTPException(status_code=403, detail="Invalid CSRF token")
         with SessionLocal() as database:
@@ -566,10 +566,11 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                 database.rollback()
                 logger.exception("review_timer_start_failed", extra={"admin_id": getattr(admin, "id", None), "task_id": task_id})
                 set_flash(request, "The review timer could not start. No freelancer task was changed. Please retry after refreshing the queue.", "error")
-        return RedirectResponse("/admin/review-queue", status_code=303)
+        destination = "/portal/my-work" if return_to == "/portal/my-work" else "/admin/review-queue"
+        return RedirectResponse(destination, status_code=303)
 
     @router.post("/admin/review-queue/stop")
-    def review_queue_stop(request: Request, notes: str = Form(...), csrf: str = Form(...)):
+    def review_queue_stop(request: Request, notes: str = Form(...), csrf: str = Form(...), return_to: str = Form("")):
         if not validate_csrf(request, csrf):
             raise HTTPException(status_code=403, detail="Invalid CSRF token")
         with SessionLocal() as database:
@@ -587,7 +588,8 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                 database.rollback()
                 logger.exception("review_timer_stop_failed", extra={"admin_id": getattr(admin, "id", None)})
                 set_flash(request, "The review timer could not be stopped cleanly. Please refresh and retry; no freelancer task was changed.", "error")
-        return RedirectResponse("/admin/review-queue", status_code=303)
+        destination = "/portal/my-work" if return_to == "/portal/my-work" else "/admin/review-queue"
+        return RedirectResponse(destination, status_code=303)
 
     @router.get("/admin/staff-accounts", response_class=HTMLResponse)
     def staff_accounts_page(request: Request):

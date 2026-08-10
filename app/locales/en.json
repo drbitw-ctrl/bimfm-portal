@@ -2271,5 +2271,19 @@
   "Open Review Queue": "Open Review Queue",
   "assigned review tasks": "assigned review tasks",
   "REVIEW TIMER ACTIVE": "REVIEW TIMER ACTIVE",
-  "Reviewing": "Reviewing"
+  "Reviewing": "Reviewing",
+  "MY ASSIGNED WORK": "MY ASSIGNED WORK",
+  "Tasks assigned directly to your staff task profile. Start and stop your own Work Order here without changing freelancer assignments.": "Tasks assigned directly to your staff task profile. Start and stop your own Work Order here without changing freelancer assignments.",
+  "Open Task Register": "Open Task Register",
+  "WORK ORDER ACTIVE": "WORK ORDER ACTIVE",
+  "Your review timer is currently active. Stop review work before starting an assigned-task Work Order.": "Your review timer is currently active. Stop review work before starting an assigned-task Work Order.",
+  "Work activities completed": "Work activities completed",
+  "Stop Work Order": "Stop Work Order",
+  "Another timer is active": "Another timer is active",
+  "Start Work Order": "Start Work Order",
+  "No tasks assigned directly to you": "No tasks assigned directly to you",
+  "Tasks assigned for review appear separately below.": "Tasks assigned for review appear separately below.",
+  "Review activity note": "Review activity note",
+  "Stop Review": "Stop Review",
+  "Start Review": "Start Review"
 }
