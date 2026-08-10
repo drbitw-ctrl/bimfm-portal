@@ -854,7 +854,8 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                 return RedirectResponse("/admin/login", status_code=303)
 
             freelancers = [
-                row for row in hr_freelancer_choices(database) if row.is_active
+                row for row in hr_freelancer_choices(database)
+                if row.is_active and not str(row.freelancer_code or "").startswith("TS-")
             ]
             freelancer_map = {row.id: row for row in freelancers}
             dtrs = list(
@@ -920,11 +921,12 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
 
             if freelancer_id == 0:
                 freelancers = [
-                    row for row in hr_freelancer_choices(database) if row.is_active
+                    row for row in hr_freelancer_choices(database)
+                    if row.is_active and not str(row.freelancer_code or "").startswith("TS-")
                 ]
             else:
                 freelancer = database.get(Freelancer, freelancer_id)
-                freelancers = [freelancer] if freelancer is not None else []
+                freelancers = [freelancer] if freelancer is not None and not str(freelancer.freelancer_code or "").startswith("TS-") else []
 
             generated = 0
             skipped = 0

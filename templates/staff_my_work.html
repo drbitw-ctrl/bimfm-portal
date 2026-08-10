@@ -29,6 +29,13 @@
   {% if role == 'ADMIN' %}<article class="operations-stat-chip warning"><span>{{ t('Pending Requests') }}</span><strong>{{ my_work.requests.total_count }}</strong><small>{{ t('Leave, overtime, and attendance issues') }}</small></article>{% endif %}
 </section>
 
+<section class="content-card role-work-panel review-queue-panel">
+  <div class="section-heading"><div><span class="eyebrow">{{ t('REVIEW WORK') }}</span><h2>{{ t('My Review Queue') }}</h2><p>{{ t('Review assignments are separate from freelancer production tasks and have their own review timer.') }}</p></div><a class="button secondary" href="/admin/review-queue">{{ t('Open Review Queue') }}</a></div>
+  <div class="review-queue-summary"><strong>{{ my_review_count }}</strong><span>{{ t('assigned review tasks') }}</span></div>
+  {% if my_active_review %}<a class="review-live-strip" href="/admin/review-queue"><span class="live-pulse"><i></i>{{ t('REVIEW TIMER ACTIVE') }}</span><strong>{{ my_active_review.task_title }}</strong><small>{{ my_active_review.project_name }}</small></a>{% endif %}
+  <div class="review-queue-compact">{% for row in my_review_rows %}<a href="/admin/review-queue"><div><strong>{{ row.task_title }}</strong><small>{{ row.project_name }} · {{ row.reviewer_name }}</small></div><span class="status-chip status-{{ row.status|lower|replace('_','-') }}">{{ t(row.status|replace('_',' ')|title) }}</span><b>{{ duration_label(row.review_minutes) }}</b></a>{% else %}<div class="all-clear"><span>✓</span><div><strong>{{ t('No assigned review work') }}</strong><small>{{ t('Your review queue is clear.') }}</small></div></div>{% endfor %}</div>
+</section>
+
 <section class="content-card role-work-panel">
   <div class="section-heading">
     <div><span class="eyebrow">{{ t('CURRENT OPERATIONS') }}</span><h2>{{ t('Active Tasks') }}</h2><p>{{ t('Ongoing project work is shown first and can be sorted by any table heading.') }}</p></div>

@@ -1,0 +1,4 @@
+72 passed in 3.29s
+Python compile: PASS
+Jinja parse: PASS
+Database migration: NONE

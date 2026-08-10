@@ -32,6 +32,7 @@ from app.performance_reporting import (
 )
 from app.calendar_board import build_reminder_calendar
 from app.my_work_service import build_role_my_work
+from app.review_work_service import queue_rows, active_review_session
 from app.task_time_reporting import build_task_time_utilization
 from app.work_order_service import create_task_reminder, live_work_rows
 from app.portal_project_service import (
@@ -1346,6 +1347,9 @@ def create_portal_router(
 
         if module_name == "my-work":
             my_work = build_role_my_work(database, role=str(account.role or ""))
+            staff_role = str(account.role or "").upper()
+            my_review_rows = queue_rows(database, admin=account) if staff_role in {"ADMIN", "SUPERVISOR"} else []
+            my_active_review = active_review_session(database, account) if staff_role in {"ADMIN", "SUPERVISOR"} else None
             return templates.TemplateResponse(
                 request=request,
                 name="staff_my_work.html",
@@ -1355,6 +1359,9 @@ def create_portal_router(
                     page_title=page_title,
                     page_description=description,
                     my_work=my_work,
+                    my_review_rows=my_review_rows,
+                    my_review_count=len(my_review_rows),
+                    my_active_review=my_active_review,
                 ),
             )
 

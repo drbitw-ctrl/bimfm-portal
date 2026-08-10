@@ -69,8 +69,8 @@
       {{ nav_link('/admin/attendance/today', t('Today’s Attendance'), '◷') }}
       {{ nav_link('/admin/attendance/monthly', t('Monthly Attendance'), '▦') }}
       {{ nav_link('/admin/attendance/correction-requests', t('Correction Requests'), '✎') }}
-      {{ nav_link('/admin/tasks/monthly', t('Daily Task Reports'), '✓') }}
-      {{ nav_link('/admin/dtr', t('Monthly DTR'), '▤', false) }}
+      {{ nav_link('/admin/tasks/monthly', t('Daily Task Reports (Work Activities)'), '✓') }}
+      {{ nav_link('/admin/dtr', t('Daily Time Record (DTR)'), '▤', false) }}
       {% endif %}
 
       {% if can(Permission.LEAVE_VIEW_ALL) or can(Permission.OVERTIME_VIEW_ALL) %}

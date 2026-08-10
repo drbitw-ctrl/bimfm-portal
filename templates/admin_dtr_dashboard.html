@@ -4,8 +4,8 @@
 <div class="toolbar">
     <div>
         <span class="eyebrow">DAILY TIME RECORD</span>
-        <h1>Monthly DTR Generation</h1>
-        <p class="muted">Generate one calendar-day DTR for each freelancer.</p>
+        <h1>Daily Time Record (DTR) · Monthly Generation</h1>
+        <p class="muted">Attendance-based Daily Time Record. This is separate from Daily Task Reports / work activities.</p>
     </div>
     <div class="action-row">
         {% if can(Permission.REPORT_EXPORT) %}<a class="button primary" href="/portal/exports/dtr.xlsx?month={{ selected_month }}">⇩ {{ t('Export DTR Excel') }}</a>{% endif %}
