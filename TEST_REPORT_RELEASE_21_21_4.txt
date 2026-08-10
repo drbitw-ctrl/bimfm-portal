@@ -1,0 +1,20 @@
+BIM Portal Release 21.21.4 Test Report
+
+Python compilation: PASS
+Jinja template parsing: 51 PASS
+Application import: PASS
+Registered routes: 133
+Fresh Alembic migration chain through 20260806_0017: PASS
+Existing regression tests: 34 PASS
+New utilization and Task Supervisor tests: 3 PASS
+Total executable tests: 37 PASS
+Failures: 0
+Errors: 0
+
+Validated:
+- Early completion without recorded time produces utilization below 100%.
+- Late completion without recorded time produces utilization above 100%.
+- Planned time remains Start Date through Deadline.
+- Estimated actual time uses Start Date through Completion Date.
+- Staff account can link to an assignable Task Supervisor member.
+- Project-member directory mapping is created without a second login account.

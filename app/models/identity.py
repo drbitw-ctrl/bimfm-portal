@@ -39,6 +39,11 @@ class HRAdminAccount(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now
     )
+    task_freelancer_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("freelancers.id", ondelete="SET NULL"),
+        nullable=True,
+        unique=True,
+    )
 
 class Freelancer(Base):
     __tablename__ = "freelancers"

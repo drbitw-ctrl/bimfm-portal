@@ -23,8 +23,12 @@ def _aware(v: datetime) -> datetime:
 
 
 def reviewer_freelancer(db: Session, admin: HRAdminAccount) -> Freelancer | None:
-    fid = getattr(admin, "task_freelancer_id", None)
-    return db.get(Freelancer, fid) if fid else None
+    # Release 21.22.6 compatibility: task-enabled staff are represented by the
+    # deterministic TS-<admin id> freelancer mapping. Do not depend on the
+    # optional HRAdminAccount.task_freelancer_id ORM attribute because older
+    # deployed model definitions may not expose it.
+    member_code = f"TS-{int(admin.id):03d}"
+    return db.scalar(select(Freelancer).where(Freelancer.freelancer_code == member_code))
 
 
 def assign_review(db: Session, *, task: PortalTask, reviewer: HRAdminAccount, actor: HRAdminAccount) -> None:
@@ -95,13 +99,21 @@ def stop_review(db: Session, *, admin: HRAdminAccount, notes: str) -> TaskWorkSe
 
 
 def review_minutes_by_task(db: Session, admin_id: int | None = None) -> dict[int, int]:
-    q = select(TaskWorkSession, HRAdminAccount).join(Freelancer, Freelancer.id == TaskWorkSession.freelancer_id).join(HRAdminAccount, HRAdminAccount.task_freelancer_id == Freelancer.id).where(TaskWorkSession.status == "STOPPED", TaskWorkSession.notes.like(f"{STOPPED_PREFIX}%"))
-    if admin_id:
-        q = q.where(HRAdminAccount.id == admin_id)
-    totals: dict[int,int] = {}
-    for session, _ in db.execute(q).all():
+    # Review sessions carry reviewer=<admin id> in their notes. Reading that
+    # marker avoids joining through an optional staff-to-freelancer ORM field
+    # and keeps this feature compatible with the stable 21.22.4 schema/model.
+    q = select(TaskWorkSession).where(
+        TaskWorkSession.status == "STOPPED",
+        TaskWorkSession.notes.like(f"{STOPPED_PREFIX}%"),
+    )
+    totals: dict[int, int] = {}
+    for session in db.scalars(q).all():
+        note = str(session.notes or "")
+        if admin_id is not None and f"reviewer={int(admin_id)};" not in note:
+            continue
         if session.portal_task_id:
-            totals[int(session.portal_task_id)] = totals.get(int(session.portal_task_id),0) + int(session.duration_minutes or 0)
+            task_id = int(session.portal_task_id)
+            totals[task_id] = totals.get(task_id, 0) + int(session.duration_minutes or 0)
     return totals
 
 

@@ -1,0 +1,16 @@
+BIMFM Portal Release 21.20.2 Test Report
+
+Python compilation: PASS
+Application import: PASS
+Registered routes: 132
+Full executable suite: 24 PASS
+Failures: 0
+Errors: 0
+
+Validated:
+- Verified 510 minutes can exceed the original 300-minute plan.
+- Comp credit becomes 510 minutes.
+- Existing 300-minute approval can be adjusted to 510 minutes.
+- Existing ledger transaction is updated without a duplicate.
+- Overtime credit balances page is registered.
+- Prior API, attendance, selector, overnight OT, and page regression tests remain passing.
