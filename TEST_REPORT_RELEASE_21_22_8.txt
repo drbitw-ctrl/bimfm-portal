@@ -1,0 +1,25 @@
+BIM Portal Release 21.22.8 Validation
+=====================================
+
+Baseline: Release 21.22.6
+New Alembic migration: NONE
+
+Python compile: PASS
+Jinja template parse: PASS (53 templates)
+Application import: PASS
+Registered routes: 142
+Localization parity: PASS (2,273 keys EN / 2,273 keys zh-TW)
+Pytest: PASS (78 tests)
+Failures: 0
+Errors: 0
+
+Release-specific regression coverage:
+- Review assignment does not modify freelancer task assignment/status/progress
+- Review timer auto-creates/reuses staff-only TS-* timer identity
+- Review timer creates no DailyTask production record
+- Review stop saves accumulated review time
+- Duplicate same-name staff reviewer choices are collapsed
+- My Work includes review queue/status data
+- Dashboard uses full-detail horizontal member lanes
+- Staff TS-* identities are excluded from DTR generation
+- Review Queue routes contain safe failure handling

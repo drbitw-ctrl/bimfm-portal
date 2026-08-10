@@ -1,9 +1,66 @@
-{% extends "base.html" %}{% block title %}Review Queue · {{ app_name }}{% endblock %}{% block content %}
-<div class="toolbar"><div><span class="eyebrow">REVIEW WORK</span><h1>Review Queue</h1><p class="muted">Track internal review time separately from freelancer production work.</p></div><a class="button secondary" href="/admin">Dashboard</a></div>
-{% if active_review %}<section class="panel review-active-panel"><div><span class="live-badge">LIVE REVIEW</span><h2>{{ active_review.task_title }}</h2><p>{{ active_review.project_name }} · Started {{ format_local_datetime(active_review.started_at) }}</p></div><form method="post" action="/admin/review-queue/stop"><input type="hidden" name="csrf" value="{{ csrf_token }}"><label>Review activity</label><input name="notes" minlength="5" required placeholder="What did you review?"><button class="danger">Stop Review</button></form></section>{% endif %}
-<section class="panel table-panel"><div class="panel-heading-modern"><div><span class="eyebrow">ASSIGNED REVIEW WORK</span><h2>In Progress + Completed — For Review</h2></div></div>
-<div class="modern-table-wrap"><table class="modern-table smart-table"><thead><tr><th>Project</th><th>Task</th><th>Status</th><th>Deadline</th><th>Reviewer</th><th>Review Time</th><th></th></tr></thead><tbody>
-{% for row in review_rows %}<tr><td><strong>{{ row.project_name }}</strong></td><td>{{ row.task_title }}</td><td><span class="status-chip status-{{ row.status|lower|replace('_','-') }}">{{ row.status|replace('_',' ')|title }}</span></td><td>{{ row.due_date }}</td><td>
-{% if current_staff_role == 'ADMIN' %}<form method="post" action="/admin/review-queue/{{ row.task_id }}/assign" class="inline-filter"><input type="hidden" name="csrf" value="{{ csrf_token }}"><select name="reviewer_id">{% for r in reviewers %}<option value="{{ r.id }}" {% if r.id == row.reviewer_id %}selected{% endif %}>{{ r.display_name }} · {{ r.role|title }}</option>{% endfor %}</select><button class="secondary small">Assign</button></form>{% else %}{{ row.reviewer_name }}{% endif %}</td><td>{{ duration_label(row.review_minutes) }}</td><td>{% if row.reviewer_id == admin.id and not active_review %}<form method="post" action="/admin/review-queue/{{ row.task_id }}/start"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="primary small">Start Review</button></form>{% endif %}</td></tr>{% else %}<tr><td colspan="7"><div class="dashboard-empty compact">No review work is currently assigned.</div></td></tr>{% endfor %}
-</tbody></table></div></section>
+{% extends "base.html" %}
+{% block title %}Review Queue · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <div><span class="eyebrow">REVIEW WORK</span><h1>Review Queue</h1><p class="muted">Internal review work is timed separately and never changes the freelancer's task assignment, status, or progress.</p></div>
+  <div class="action-row"><a class="button secondary" href="/portal/my-work">My Work</a><a class="button secondary" href="/admin">Dashboard</a></div>
+</div>
+
+{% if active_review %}
+<section class="panel review-active-panel">
+  <div><span class="live-badge">LIVE REVIEW</span><h2>{{ active_review.task_title }}</h2><p>{{ active_review.project_name }} · Started {{ format_local_datetime(active_review.started_at) }}</p></div>
+  <form method="post" action="/admin/review-queue/stop">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <label>Review activity</label>
+    <input name="notes" minlength="5" required placeholder="What did you review?">
+    <button class="danger">Stop Review</button>
+  </form>
+</section>
+{% endif %}
+
+<section class="panel table-panel">
+  <div class="panel-heading-modern"><div><span class="eyebrow">ASSIGNED REVIEW WORK</span><h2>In Progress + Completed — For Review</h2><p>Administrators may assign a reviewer; Supervisors see their own review work.</p></div></div>
+  <div class="modern-table-wrap">
+    <table class="modern-table smart-table">
+      <thead><tr><th>Project</th><th>Task</th><th>Task Status</th><th>Review Status</th><th>Deadline</th><th>Reviewer</th><th>Review Time</th><th>Action</th></tr></thead>
+      <tbody>
+      {% for row in review_rows %}
+      <tr>
+        <td><strong>{{ row.project_name }}</strong></td>
+        <td>{{ row.task_title }}</td>
+        <td><span class="status-chip status-{{ row.status|lower|replace('_','-') }}">{{ row.status|replace('_',' ')|title }}</span></td>
+        <td><span class="review-state-chip review-state-{{ row.review_status|lower }}">{{ row.review_status|replace('_',' ')|title }}</span></td>
+        <td>{{ row.due_date }}</td>
+        <td>
+          {% if current_staff_role == 'ADMIN' %}
+          <form method="post" action="/admin/review-queue/{{ row.task_id }}/assign" class="inline-filter">
+            <input type="hidden" name="csrf" value="{{ csrf_token }}">
+            <select name="reviewer_id">
+              {% for r in reviewers %}
+              <option value="{{ r.id }}" {% if r.id == row.reviewer_id %}selected{% endif %}>{{ r.display_name }} · {{ r.role|title }}</option>
+              {% endfor %}
+            </select>
+            <button class="secondary small">Assign</button>
+          </form>
+          {% else %}{{ row.reviewer_name }}{% endif %}
+        </td>
+        <td>{{ duration_label(row.review_minutes) }}</td>
+        <td>
+          {% if row.reviewer_id == current_admin_id and not active_review %}
+          <form method="post" action="/admin/review-queue/{{ row.task_id }}/start">
+            <input type="hidden" name="csrf" value="{{ csrf_token }}">
+            <button class="primary small">Start Review</button>
+          </form>
+          {% elif row.reviewer_id == current_admin_id and active_review and active_review.portal_task_id == row.task_id %}
+          <span class="live-badge">REVIEWING</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8"><div class="dashboard-empty compact">No review work is currently assigned.</div></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
 {% endblock %}

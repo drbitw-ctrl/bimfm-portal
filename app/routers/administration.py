@@ -9,6 +9,8 @@ from datetime import date
 from fastapi import APIRouter
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import joinedload
+from sqlalchemy.exc import SQLAlchemyError
+import logging
 
 from app.auth.permissions import Permission, has_permission, normalize_role
 from app.calendar_board import build_reminder_calendar
@@ -43,8 +45,11 @@ from app.models import (
 )
 
 from app.review_work_service import (
-    assign_review, active_review_session, queue_rows, start_review, stop_review, reviewer_freelancer,
+    assign_review, active_review_session, queue_rows, start_review, stop_review, reviewer_freelancer, reviewer_choices,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 def _staff_can_manage(account) -> bool:
@@ -420,9 +425,21 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
             team_with_overdue_count = len(overdue_member_rows)
             unassigned_task_rows = unassigned_task_overview_rows(database, limit=200)
             attendance_recorded_count = today_complete + today_working
-            review_queue_rows = queue_rows(database, admin=admin) if str(getattr(admin, "role", "")).upper() in {"ADMIN", "SUPERVISOR"} else []
-            review_queue_all = queue_rows(database, admin=admin, all_reviewers=True) if str(getattr(admin, "role", "")).upper() == "ADMIN" else review_queue_rows
-            active_review = active_review_session(database, admin) if str(getattr(admin, "role", "")).upper() in {"ADMIN", "SUPERVISOR"} else None
+            review_queue_rows = []
+            review_queue_all = []
+            active_review = None
+            dashboard_role = str(getattr(admin, "role", "")).upper()
+            if dashboard_role in {"ADMIN", "SUPERVISOR"}:
+                try:
+                    review_queue_rows = queue_rows(database, admin=admin)
+                    review_queue_all = queue_rows(database, admin=admin, all_reviewers=True) if dashboard_role == "ADMIN" else review_queue_rows
+                    active_review = active_review_session(database, admin)
+                except Exception:
+                    # Review reporting must never take down the main dashboard.
+                    logger.exception("dashboard_review_queue_failed", extra={"admin_id": getattr(admin, "id", None)})
+                    review_queue_rows = []
+                    review_queue_all = []
+                    active_review = None
 
             return templates.TemplateResponse(
                 request=request,
@@ -473,12 +490,37 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
     def review_queue_page(request: Request):
         with SessionLocal() as database:
             admin = get_current_admin(request, database)
-            if admin is None: return RedirectResponse("/admin/login", status_code=303)
+            if admin is None:
+                return RedirectResponse("/admin/login", status_code=303)
             role = str(getattr(admin, "role", "")).upper()
-            if role not in {"ADMIN", "SUPERVISOR"}: return RedirectResponse("/admin", status_code=303)
-            rows = queue_rows(database, admin=admin, all_reviewers=(role == "ADMIN"))
-            reviewers = list(database.scalars(select(HRAdminAccount).where(HRAdminAccount.is_active.is_(True), HRAdminAccount.role.in_(("ADMIN","SUPERVISOR"))).order_by(HRAdminAccount.display_name)).all())
-            return templates.TemplateResponse(request=request, name="admin_review_queue.html", context=template_context(request, admin=admin, review_rows=rows, reviewers=reviewers, active_review=active_review_session(database, admin)))
+            if role not in {"ADMIN", "SUPERVISOR"}:
+                return RedirectResponse("/admin", status_code=303)
+            try:
+                rows = queue_rows(database, admin=admin, all_reviewers=(role == "ADMIN"))
+                reviewers = reviewer_choices(database, current_admin=admin)
+                active_review = active_review_session(database, admin)
+            except Exception:
+                # A malformed historical review marker must never take down the
+                # Administration workspace.  Roll back the read transaction and
+                # render the queue in a safe degraded state while logging the cause.
+                database.rollback()
+                logger.exception("review_queue_load_failed", extra={"admin_id": getattr(admin, "id", None)})
+                set_flash(request, "Review Queue could not load all review records. No freelancer task was changed.", "error")
+                rows = []
+                reviewers = reviewer_choices(database, current_admin=admin)
+                active_review = None
+            return templates.TemplateResponse(
+                request=request,
+                name="admin_review_queue.html",
+                context=template_context(
+                    request,
+                    admin=admin,
+                    current_admin_id=int(admin.id),
+                    review_rows=rows,
+                    reviewers=reviewers,
+                    active_review=active_review,
+                ),
+            )
 
     @router.post("/admin/review-queue/{task_id}/assign")
     def review_queue_assign(request: Request, task_id: int, reviewer_id: int = Form(...), csrf: str = Form(...)):
@@ -489,31 +531,63 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
             if str(getattr(admin,"role","")).upper() != "ADMIN": raise HTTPException(status_code=403, detail="Administrator access required")
             task=database.get(PortalTask,task_id); reviewer=database.get(HRAdminAccount,reviewer_id)
             if not task or not reviewer or str(reviewer.role).upper() not in {"ADMIN","SUPERVISOR"}: raise HTTPException(status_code=404, detail="Task or reviewer not found")
-            try: assign_review(database,task=task,reviewer=reviewer,actor=admin); database.commit(); set_flash(request,"Review assigned without changing the freelancer task assignment.","success")
-            except ValueError as exc: database.rollback(); set_flash(request,str(exc),"error")
-        return RedirectResponse("/admin/review-queue",status_code=303)
+            try:
+                assign_review(database, task=task, reviewer=reviewer, actor=admin)
+                database.commit()
+                set_flash(request, "Review assigned without changing the freelancer task assignment.", "success")
+            except ValueError as exc:
+                database.rollback()
+                set_flash(request, str(exc), "error")
+            except Exception:
+                database.rollback()
+                logger.exception("review_assignment_failed", extra={"admin_id": getattr(admin, "id", None), "task_id": task_id, "reviewer_id": reviewer_id})
+                set_flash(request, "Review assignment could not be saved. No freelancer task was changed.", "error")
+        return RedirectResponse("/admin/review-queue", status_code=303)
 
     @router.post("/admin/review-queue/{task_id}/start")
     def review_queue_start(request: Request, task_id: int, csrf: str = Form(...)):
-        if not validate_csrf(request, csrf): raise HTTPException(status_code=403, detail="Invalid CSRF token")
+        if not validate_csrf(request, csrf):
+            raise HTTPException(status_code=403, detail="Invalid CSRF token")
         with SessionLocal() as database:
-            admin=get_current_admin(request,database)
-            if admin is None: return RedirectResponse("/admin/login",status_code=303)
-            if str(getattr(admin,"role","")).upper() not in {"ADMIN","SUPERVISOR"}: raise HTTPException(status_code=403,detail="Review access required")
-            task=database.get(PortalTask,task_id)
-            try: start_review(database,admin=admin,task=task); database.commit(); set_flash(request,"Review Work Order started.","success")
-            except ValueError as exc: database.rollback(); set_flash(request,str(exc),"error")
-        return RedirectResponse("/admin/review-queue",status_code=303)
+            admin = get_current_admin(request, database)
+            if admin is None:
+                return RedirectResponse("/admin/login", status_code=303)
+            if str(getattr(admin, "role", "")).upper() not in {"ADMIN", "SUPERVISOR"}:
+                raise HTTPException(status_code=403, detail="Review access required")
+            task = database.get(PortalTask, task_id)
+            try:
+                start_review(database, admin=admin, task=task)
+                database.commit()
+                set_flash(request, "Review Work Order started.", "success")
+            except ValueError as exc:
+                database.rollback()
+                set_flash(request, str(exc), "error")
+            except Exception:
+                database.rollback()
+                logger.exception("review_timer_start_failed", extra={"admin_id": getattr(admin, "id", None), "task_id": task_id})
+                set_flash(request, "The review timer could not start. No freelancer task was changed. Please retry after refreshing the queue.", "error")
+        return RedirectResponse("/admin/review-queue", status_code=303)
 
     @router.post("/admin/review-queue/stop")
     def review_queue_stop(request: Request, notes: str = Form(...), csrf: str = Form(...)):
-        if not validate_csrf(request, csrf): raise HTTPException(status_code=403, detail="Invalid CSRF token")
+        if not validate_csrf(request, csrf):
+            raise HTTPException(status_code=403, detail="Invalid CSRF token")
         with SessionLocal() as database:
-            admin=get_current_admin(request,database)
-            if admin is None: return RedirectResponse("/admin/login",status_code=303)
-            try: stop_review(database,admin=admin,notes=notes); database.commit(); set_flash(request,"Review Work Order stopped and review time saved.","success")
-            except ValueError as exc: database.rollback(); set_flash(request,str(exc),"error")
-        return RedirectResponse("/admin/review-queue",status_code=303)
+            admin = get_current_admin(request, database)
+            if admin is None:
+                return RedirectResponse("/admin/login", status_code=303)
+            try:
+                stop_review(database, admin=admin, notes=notes)
+                database.commit()
+                set_flash(request, "Review Work Order stopped and review time saved.", "success")
+            except ValueError as exc:
+                database.rollback()
+                set_flash(request, str(exc), "error")
+            except Exception:
+                database.rollback()
+                logger.exception("review_timer_stop_failed", extra={"admin_id": getattr(admin, "id", None)})
+                set_flash(request, "The review timer could not be stopped cleanly. Please refresh and retry; no freelancer task was changed.", "error")
+        return RedirectResponse("/admin/review-queue", status_code=303)
 
     @router.get("/admin/staff-accounts", response_class=HTMLResponse)
     def staff_accounts_page(request: Request):

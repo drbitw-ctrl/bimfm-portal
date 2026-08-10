@@ -855,7 +855,7 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
 
             freelancers = [
                 row for row in hr_freelancer_choices(database)
-                if row.is_active and not str(row.freelancer_code or "").startswith("TS-")
+                if row.is_active and not str(row.freelancer_code or "").upper().startswith("TS-")
             ]
             freelancer_map = {row.id: row for row in freelancers}
             dtrs = list(
@@ -922,11 +922,13 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
             if freelancer_id == 0:
                 freelancers = [
                     row for row in hr_freelancer_choices(database)
-                    if row.is_active and not str(row.freelancer_code or "").startswith("TS-")
+                    if row.is_active and not str(row.freelancer_code or "").upper().startswith("TS-")
                 ]
             else:
                 freelancer = database.get(Freelancer, freelancer_id)
-                freelancers = [freelancer] if freelancer is not None and not str(freelancer.freelancer_code or "").startswith("TS-") else []
+                freelancers = [
+                    freelancer
+                ] if (freelancer is not None and not str(freelancer.freelancer_code or "").upper().startswith("TS-")) else []
 
             generated = 0
             skipped = 0
@@ -976,6 +978,9 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
             if freelancer is None:
                 set_flash(request, "Freelancer not found.", "error")
                 return RedirectResponse("/admin/dtr", status_code=303)
+            if str(freelancer.freelancer_code or "").upper().startswith("TS-"):
+                set_flash(request, "Administrator and Supervisor review/task identities do not require a Daily Time Record (DTR).", "info")
+                return RedirectResponse(f"/admin/dtr?month={dtr.month_key}", status_code=303)
             lines = list(
                 database.scalars(
                     select(DTRDailyLine)
@@ -1026,6 +1031,9 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
             if freelancer is None:
                 set_flash(request, "Freelancer not found.", "error")
                 return RedirectResponse("/admin/dtr", status_code=303)
+            if str(freelancer.freelancer_code or "").upper().startswith("TS-"):
+                set_flash(request, "Administrator and Supervisor review/task identities do not require a Daily Time Record (DTR).", "info")
+                return RedirectResponse(f"/admin/dtr?month={dtr.month_key}", status_code=303)
             attendance = list(database.scalars(
                 select(DTRDailyLine).where(DTRDailyLine.monthly_dtr_id == dtr.id).order_by(DTRDailyLine.attendance_date)
             ).all())
@@ -1182,6 +1190,9 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
             if freelancer is None:
                 set_flash(request, "Freelancer not found.", "error")
                 return RedirectResponse("/admin/dtr", status_code=303)
+            if str(freelancer.freelancer_code or "").upper().startswith("TS-"):
+                set_flash(request, "Administrator and Supervisor review/task identities do not require a Daily Time Record (DTR).", "info")
+                return RedirectResponse(f"/admin/dtr?month={dtr.month_key}", status_code=303)
             lines = list(
                 database.scalars(
                     select(DTRDailyLine)

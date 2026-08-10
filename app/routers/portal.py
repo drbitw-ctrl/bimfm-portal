@@ -256,17 +256,37 @@ def create_portal_router(
         )
 
     def available_project_members(database: Session) -> list[ProjectMember]:
-        members = list(
-            database.scalars(
+        members = [
+            member for member in database.scalars(
                 select(ProjectMember)
                 .where(ProjectMember.is_active.is_(True))
                 .order_by(ProjectMember.member_name, ProjectMember.id)
             ).all()
-        )
-        return [
-            member for member in members
             if _project_member_assignment_id(member) is not None
         ]
+        # Historical admin task mappings can leave a LEGACY-* and TS-* entry
+        # with the same visible name.  Keep the staff TS identity once, while
+        # preserving ordinary freelancer members. No database rows are deleted.
+        grouped: dict[str, list[ProjectMember]] = {}
+        for member in members:
+            key = " ".join(str(member.member_name or "").split()).casefold()
+            grouped.setdefault(key, []).append(member)
+        result: list[ProjectMember] = []
+        for group in grouped.values():
+            staff = [m for m in group if str(m.member_code or "").upper().startswith("TS-")]
+            if not staff:
+                result.extend(group)
+                continue
+            keep_staff = sorted(staff, key=lambda m: int(m.id))[0]
+            result.append(keep_staff)
+            for member in group:
+                if member is keep_staff:
+                    continue
+                code = str(member.member_code or "").upper()
+                if code.startswith("TS-") or code.startswith("LEGACY-"):
+                    continue
+                result.append(member)
+        return sorted(result, key=lambda m: (str(m.member_name or "").casefold(), int(m.id)))
 
     def selected_project_member_id(database: Session, task_id: int) -> int:
         assignment_ids = [
@@ -1348,8 +1368,17 @@ def create_portal_router(
         if module_name == "my-work":
             my_work = build_role_my_work(database, role=str(account.role or ""))
             staff_role = str(account.role or "").upper()
-            my_review_rows = queue_rows(database, admin=account) if staff_role in {"ADMIN", "SUPERVISOR"} else []
-            my_active_review = active_review_session(database, account) if staff_role in {"ADMIN", "SUPERVISOR"} else None
+            my_review_rows = []
+            my_active_review = None
+            if staff_role in {"ADMIN", "SUPERVISOR"}:
+                try:
+                    my_review_rows = queue_rows(database, admin=account)
+                    my_active_review = active_review_session(database, account)
+                except Exception:
+                    # My Work must remain available even if one historical review
+                    # marker is malformed. Review Queue has its own detailed error log.
+                    my_review_rows = []
+                    my_active_review = None
             return templates.TemplateResponse(
                 request=request,
                 name="staff_my_work.html",

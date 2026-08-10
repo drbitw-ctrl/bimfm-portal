@@ -87,6 +87,37 @@ def _normalize_project_member_name(value: str) -> str:
     return " ".join(str(value or "").strip().split()).casefold()
 
 
+
+
+def _dedupe_staff_shadow_freelancers(freelancers: list[Freelancer]) -> list[Freelancer]:
+    """Hide duplicate historical staff shadow identities without deleting data.
+
+    A staff task/review identity uses TS-*.  Older migrations may also have a
+    LEGACY-* row with the same visible name.  Keep one TS identity and suppress
+    only same-name LEGACY/duplicate TS shadows; ordinary freelancer identities
+    remain untouched.
+    """
+    by_name: dict[str, list[Freelancer]] = {}
+    for row in freelancers:
+        key = _normalize_project_member_name(row.full_name)
+        by_name.setdefault(key, []).append(row)
+    result: list[Freelancer] = []
+    for group in by_name.values():
+        staff = [r for r in group if str(r.freelancer_code or "").upper().startswith("TS-")]
+        if not staff:
+            result.extend(group)
+            continue
+        keep_staff = sorted(staff, key=lambda r: int(r.id))[0]
+        result.append(keep_staff)
+        for row in group:
+            if row is keep_staff:
+                continue
+            code = str(row.freelancer_code or "").upper()
+            if code.startswith("TS-") or code.startswith("LEGACY-"):
+                continue
+            result.append(row)
+    return sorted(result, key=lambda r: (str(r.full_name or "").casefold(), int(r.id)))
+
 def ensure_hr_project_members(
     database: Session,
     *,
@@ -915,11 +946,11 @@ def map_project_member(
 
 def team_assignment_rows(database: Session) -> list[dict[str, object]]:
     """Return HR team workload after resolving project-member mappings."""
-    freelancers = [
+    freelancers = _dedupe_staff_shadow_freelancers([
         freelancer
         for freelancer in hr_freelancer_choices(database)
         if freelancer.is_active
-    ]
+    ])
     project_sets = _project_sets_by_owner(database)
     active_sets = _task_sets_by_owner(database, status_mode="active")
     completed_sets = _task_sets_by_owner(database, status_mode="completed")

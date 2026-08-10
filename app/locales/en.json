@@ -2262,5 +2262,14 @@
   "uncovered": "uncovered",
   "Can be offset by approved comp credit": "Can be offset by approved comp credit",
   "uncovered absence": "uncovered absence",
-  "Uncovered Absence": "Uncovered Absence"
+  "Uncovered Absence": "Uncovered Absence",
+  "Daily Task Reports (Work Activities)": "Daily Task Reports (Work Activities)",
+  "Daily Time Record (DTR)": "Daily Time Record (DTR)",
+  "REVIEW WORK": "REVIEW WORK",
+  "My Review Work": "My Review Work",
+  "Review work is separate from freelancer production tasks and uses its own review timer.": "Review work is separate from freelancer production tasks and uses its own review timer.",
+  "Open Review Queue": "Open Review Queue",
+  "assigned review tasks": "assigned review tasks",
+  "REVIEW TIMER ACTIVE": "REVIEW TIMER ACTIVE",
+  "Reviewing": "Reviewing"
 }

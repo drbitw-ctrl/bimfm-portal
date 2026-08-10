@@ -1569,7 +1569,7 @@
   "Review the DTR before finalizing it.": "定案前請先審核 DTR。",
   "Review the instructions below before continuing to your Work Orders.": "請先查看以下指示，再繼續處理工作單。",
   "Review:": "審核：",
-  "Reviewed": "已審核",
+  "Reviewed": "已審查",
   "Role": "角色",
   "Roles and permissions": "角色與權限",
   "Rows without a color are not started, on hold, unassigned, or cancelled.": "未標示顏色的列代表尚未開始、暫停、未指派或已取消。",
@@ -2262,5 +2262,14 @@
   "uncovered": "未涵蓋",
   "Can be offset by approved comp credit": "可由核准補休額度抵扣",
   "uncovered absence": "未涵蓋缺勤",
-  "Uncovered Absence": "未涵蓋缺勤"
+  "Uncovered Absence": "未涵蓋缺勤",
+  "Daily Task Reports (Work Activities)": "每日工作回報（工作內容）",
+  "Daily Time Record (DTR)": "每日出勤紀錄（DTR）",
+  "REVIEW WORK": "審查工作",
+  "My Review Work": "我的審查工作",
+  "Review work is separate from freelancer production tasks and uses its own review timer.": "審查工作與自由工作者的原始任務分開管理，並使用獨立的審查計時器。",
+  "Open Review Queue": "開啟審查佇列",
+  "assigned review tasks": "項已指派審查任務",
+  "REVIEW TIMER ACTIVE": "審查計時進行中",
+  "Reviewing": "審查中"
 }
