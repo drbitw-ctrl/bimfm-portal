@@ -1,0 +1,25 @@
+BIM Portal Release 21.22.10 Validation
+======================================
+Baseline: Release 21.22.9
+Feature: Freelancer Personal Attendance & DTR History
+
+Python compilation: PASS
+Application import: PASS
+Registered routes: 145
+Jinja templates: 54 PASS
+Localization parity: 2343 English / 2343 Traditional Chinese
+Automated tests: 88 PASS
+Failures: 0
+Errors: 0
+Alembic migration count: unchanged
+New migration: NONE
+Packaged SQLite database: restored from Release 21.22.9 baseline before packaging
+
+Release-specific checks:
+- Attendance History supports Recent 31 / month / All Time: PASS
+- Monthly DTR archive is restricted to signed-in freelancer: PASS
+- Direct DTR route enforces freelancer ownership: PASS
+- Freelancer DTR page is read-only: PASS
+- Daily Time Record and Daily Task Reports are visually separated: PASS
+- Freelancer code is not rendered on personal history/DTR templates: PASS
+- EN / zh-TW localization keys remain in parity: PASS

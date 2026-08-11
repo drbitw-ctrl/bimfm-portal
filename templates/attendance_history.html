@@ -1,18 +1,68 @@
 {% extends "base.html" %}
-{% block title %}Attendance History · {{ app_name }}{% endblock %}
+{% block title %}{{ t('Attendance & DTR History') }} · {{ app_name }}{% endblock %}
 {% block content %}
-<div class="toolbar">
+<div class="toolbar attendance-history-toolbar">
   <div>
-    <span class="eyebrow">PERSONAL ATTENDANCE</span>
-    <h1>{{ t('Attendance History') }}</h1>
-    <p class="muted">{{ account.freelancer.full_name }} · {{ t('Last 31 attendance records') }}</p>
+    <span class="eyebrow">{{ t('PERSONAL RECORDS') }}</span>
+    <h1>{{ t('Attendance & DTR History') }}</h1>
+    <p class="muted">{{ t('Review your recent, monthly, or all-time attendance and open any DTR that has been generated for you.') }}</p>
   </div>
   <a class="button secondary" href="/attendance">{{ t('Back to Today’s Attendance') }}</a>
 </div>
 
-<section class="panel table-panel data-register-card">
+<section class="attendance-history-summary-grid">
+  <article class="panel personal-history-stat">
+    <span>{{ t('All-Time Attendance') }}</span>
+    <strong>{{ all_time_record_count }}</strong>
+    <small>{{ t('attendance records') }}</small>
+  </article>
+  <article class="panel personal-history-stat">
+    <span>{{ t('DTR Archive') }}</span>
+    <strong>{{ dtr_rows|length }}</strong>
+    <small>{{ t('monthly DTR records') }}</small>
+  </article>
+  <article class="panel personal-history-stat">
+    <span>{{ t('First Record') }}</span>
+    <strong class="history-date-value">{{ first_attendance_date }}</strong>
+    <small>{{ t('earliest attendance record') }}</small>
+  </article>
+  <article class="panel personal-history-stat">
+    <span>{{ t('Latest Record') }}</span>
+    <strong class="history-date-value">{{ latest_attendance_date }}</strong>
+    <small>{{ t('most recent attendance record') }}</small>
+  </article>
+</section>
+
+<section class="panel personal-history-controls">
   <div class="section-heading">
-    <div><span class="eyebrow">{{ t('ATTENDANCE REGISTER') }}</span><h2>{{ t('Recent Attendance') }}</h2><p>{{ t('Server-recorded attendance, rendered time, and attendance exceptions.') }}</p></div>
+    <div>
+      <span class="eyebrow">{{ t('ATTENDANCE RANGE') }}</span>
+      <h2>{{ t('Choose the records to display') }}</h2>
+      <p>{{ t('Use a quick range or select any previous month. All Time remains available whenever you need the complete record.') }}</p>
+    </div>
+    <span class="badge">{{ visible_record_count }} {{ t('shown') }}</span>
+  </div>
+  <div class="history-range-actions">
+    <a class="button {{ 'primary' if history_period == 'recent' else 'secondary' }}" href="/attendance/history?period=recent">{{ t('Recent 31 Records') }}</a>
+    <a class="button {{ 'primary' if history_period == 'month' and not selected_month else 'secondary' }}" href="/attendance/history?period=this_month">{{ t('This Month') }}</a>
+    <a class="button secondary" href="/attendance/history?period=last_month">{{ t('Last Month') }}</a>
+    <a class="button {{ 'primary' if history_period == 'all' else 'secondary' }}" href="/attendance/history?period=all">{{ t('All Time') }}</a>
+    <form method="get" action="/attendance/history" class="history-month-form">
+      <label for="historyMonth">{{ t('Specific Month') }}</label>
+      <input id="historyMonth" type="month" name="month" value="{{ selected_month }}">
+      <button class="button secondary" type="submit">{{ t('View Month') }}</button>
+    </form>
+  </div>
+</section>
+
+<section class="panel table-panel data-register-card" id="attendance-records">
+  <div class="section-heading">
+    <div>
+      <span class="eyebrow">{{ t('ATTENDANCE REGISTER') }}</span>
+      <h2>{{ t('Attendance Records') }}</h2>
+      <p>{{ t('Server-recorded Time In, Time Out, rendered time, and attendance exceptions.') }}</p>
+    </div>
+    {% if selected_month %}<span class="badge">{{ selected_month }}</span>{% endif %}
   </div>
   {% if history_rows %}
   <div class="table-toolbar" data-table-toolbar data-table-target="#attendanceHistoryTable" data-record-singular="record" data-record-plural="records">
@@ -21,7 +71,7 @@
   </div>
   <div class="modern-table-wrap">
     <table class="modern-table smart-table" id="attendanceHistoryTable" data-card-table>
-      <thead><tr><th>{{ t('Date') }}</th><th>Time In</th><th>Time Out</th><th>Gross</th><th>Rendered</th><th>Late</th><th>Undertime</th><th>Potential OT</th><th>{{ t('Status') }}</th></tr></thead>
+      <thead><tr><th>{{ t('Date') }}</th><th>{{ t('Time In') }}</th><th>{{ t('Time Out') }}</th><th>{{ t('Gross') }}</th><th>{{ t('Rendered') }}</th><th>{{ t('Late') }}</th><th>{{ t('Undertime') }}</th><th>{{ t('Potential OT') }}</th><th>{{ t('Status') }}</th></tr></thead>
       <tbody>
       {% for row in history_rows %}
         <tr>
@@ -33,14 +83,62 @@
           <td>{{ row.calculation.late }}</td>
           <td>{{ row.calculation.undertime }}</td>
           <td>{{ row.calculation.overtime }}</td>
-          <td><span class="status-chip {{ 'status-completed' if row.status == 'Complete' else ('status-on-hold' if row.status == 'Missing Time Out' else 'status-not-started') }}">{{ row.status }}</span></td>
+          <td><span class="status-chip {{ 'status-completed' if row.status == 'Complete' else ('status-on-hold' if row.status == 'Missing Time Out' else 'status-not-started') }}">{{ t(row.status) }}</span></td>
         </tr>
       {% endfor %}
       </tbody>
     </table>
   </div>
   {% else %}
-  <div class="empty-state"><h2>No attendance records yet</h2><p>Your Time In and Time Out history will appear here.</p></div>
+  <div class="empty-state"><h2>{{ t('No attendance records in this range') }}</h2><p>{{ t('Choose another period or month to review your previous records.') }}</p></div>
+  {% endif %}
+</section>
+
+<section class="panel personal-dtr-archive" id="dtr-archive">
+  <div class="section-heading">
+    <div>
+      <span class="eyebrow">{{ t('DAILY TIME RECORD ARCHIVE') }}</span>
+      <h2>{{ t('Monthly DTR Archive') }}</h2>
+      <p>{{ t('Every Monthly Daily Time Record generated for your account remains available here for read-only review.') }}</p>
+    </div>
+    <span class="badge">{{ dtr_rows|length }} {{ t('records') }}</span>
+  </div>
+
+  {% if dtr_rows %}
+  <div class="personal-dtr-grid">
+    {% for dtr in dtr_rows %}
+    <article class="personal-dtr-card">
+      <div class="personal-dtr-card-head">
+        <div>
+          <span>{{ t('DTR Month') }}</span>
+          <strong>{{ dtr.month_key }}</strong>
+        </div>
+        <span class="status-chip {{ 'status-completed' if dtr.status == 'FINALIZED' else ('status-reviewed' if dtr.status == 'REVIEWED' else 'status-on-hold') }}">{{ t(dtr.status_label) }}</span>
+      </div>
+      {% if task_hourly_mode %}
+      <div class="personal-dtr-metrics task-hourly-personal-dtr">
+        <span><small>{{ t('Recorded Task Time') }}</small><strong>{{ dtr.task_time }}</strong></span>
+        <span><small>{{ t('Generated') }}</small><strong>{{ dtr.generated_at }}</strong></span>
+      </div>
+      {% else %}
+      <div class="personal-dtr-metrics">
+        <span><small>{{ t('Present') }}</small><strong>{{ dtr.present_days }}</strong></span>
+        <span><small>{{ t('Absent') }}</small><strong>{{ dtr.absent_days }}</strong></span>
+        <span><small>{{ t('Leave') }}</small><strong>{{ dtr.leave_days }}</strong></span>
+        <span><small>{{ t('Late') }}</small><strong>{{ dtr.late_days }}</strong></span>
+        <span><small>{{ t('Rendered') }}</small><strong>{{ dtr.rendered }}</strong></span>
+        <span><small>{{ t('Approved OT') }}</small><strong>{{ dtr.approved_overtime }}</strong></span>
+      </div>
+      {% endif %}
+      <div class="personal-dtr-card-footer">
+        <small>{{ t('Generated') }}: {{ dtr.generated_at }}</small>
+        <a class="button primary small" href="/attendance/dtr/{{ dtr.id }}">{{ t('View DTR') }}</a>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state"><h2>{{ t('No DTR records generated yet') }}</h2><p>{{ t('When a Monthly DTR is generated for you, it will appear here automatically.') }}</p></div>
   {% endif %}
 </section>
 {% endblock %}

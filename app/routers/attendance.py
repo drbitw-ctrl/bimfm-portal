@@ -1715,6 +1715,13 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
 
     @router.get("/attendance/history", response_class=HTMLResponse)
     def attendance_history(request: Request):
+        """Personal attendance archive and generated DTR history.
+
+        The freelancer can browse recent records, a selected month, or the full
+        attendance history without exposing another member's data. Generated
+        MonthlyDTR records are listed on the same page for permanent self-service
+        access.
+        """
         with SessionLocal() as database:
             account = get_current_freelancer_account(
                 request,
@@ -1732,20 +1739,48 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                     status_code=303,
                 )
 
-            records = list(
-                database.scalars(
-                    select(DailyAttendance)
-                    .where(
-                        DailyAttendance.freelancer_id
-                        == account.freelancer_id
-                    )
-                    .order_by(
-                        DailyAttendance.attendance_date.desc()
-                    )
-                    .limit(31)
-                ).all()
-            )
+            freelancer = account.freelancer
+            timezone_name = freelancer.timezone_name
+            period = (request.query_params.get("period") or "recent").strip().lower()
+            selected_month = (request.query_params.get("month") or "").strip()
 
+            if selected_month:
+                bounds = parse_month_key(selected_month)
+                if bounds is None:
+                    set_flash(request, "Invalid attendance month.", "error")
+                    return RedirectResponse("/attendance/history", status_code=303)
+                range_start, range_end = bounds
+                period = "month"
+            elif period == "this_month":
+                selected_month = current_month_key(timezone_name)
+                range_start, range_end = parse_month_key(selected_month)
+                period = "month"
+            elif period == "last_month":
+                today = current_attendance_date(timezone_name)
+                previous_month_last_day = today.replace(day=1) - timedelta(days=1)
+                selected_month = previous_month_last_day.strftime("%Y-%m")
+                range_start, range_end = parse_month_key(selected_month)
+                period = "month"
+            elif period == "all":
+                range_start = range_end = None
+            else:
+                period = "recent"
+                range_start = range_end = None
+
+            attendance_query = (
+                select(DailyAttendance)
+                .where(DailyAttendance.freelancer_id == account.freelancer_id)
+                .order_by(DailyAttendance.attendance_date.desc())
+            )
+            if period == "month" and range_start is not None and range_end is not None:
+                attendance_query = attendance_query.where(
+                    DailyAttendance.attendance_date >= range_start,
+                    DailyAttendance.attendance_date < range_end,
+                )
+            elif period == "recent":
+                attendance_query = attendance_query.limit(31)
+
+            records = list(database.scalars(attendance_query).all())
             record_ids = [record.id for record in records]
             calculation_map: dict[int, AttendanceCalculation] = {}
             if record_ids:
@@ -1758,6 +1793,47 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                     ).all()
                 }
 
+            all_time_count = int(
+                database.scalar(
+                    select(func.count(DailyAttendance.id)).where(
+                        DailyAttendance.freelancer_id == account.freelancer_id
+                    )
+                )
+                or 0
+            )
+            first_date, latest_date = database.execute(
+                select(
+                    func.min(DailyAttendance.attendance_date),
+                    func.max(DailyAttendance.attendance_date),
+                ).where(DailyAttendance.freelancer_id == account.freelancer_id)
+            ).one()
+
+            dtrs = list(
+                database.scalars(
+                    select(MonthlyDTR)
+                    .where(MonthlyDTR.freelancer_id == account.freelancer_id)
+                    .order_by(MonthlyDTR.month_key.desc(), MonthlyDTR.id.desc())
+                ).all()
+            )
+            dtr_rows = [
+                {
+                    "id": dtr.id,
+                    "month_key": dtr.month_key,
+                    "status": dtr.status,
+                    "status_label": dtr_status_label(dtr.status),
+                    "present_days": int(dtr.present_days or 0),
+                    "absent_days": int(dtr.absent_days or 0),
+                    "leave_days": int(dtr.leave_days or 0),
+                    "late_days": int(dtr.late_days or 0),
+                    "incomplete_days": int(dtr.incomplete_days or 0),
+                    "rendered": minutes_label(int(dtr.rendered_minutes or 0)),
+                    "task_time": minutes_label(int(dtr.daily_task_minutes or 0)),
+                    "approved_overtime": minutes_label(int(dtr.approved_overtime_minutes or 0)),
+                    "generated_at": format_local_datetime(dtr.generated_at, timezone_name),
+                }
+                for dtr in dtrs
+            ]
+
             return templates.TemplateResponse(
                 request=request,
                 name="attendance_history.html",
@@ -1766,9 +1842,93 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                     account=account,
                     history_rows=build_history_rows(
                         records,
-                        account.freelancer.timezone_name,
+                        timezone_name,
                         calculation_map,
                     ),
+                    history_period=period,
+                    selected_month=selected_month,
+                    visible_record_count=len(records),
+                    all_time_record_count=all_time_count,
+                    first_attendance_date=(first_date.strftime("%b %d, %Y") if first_date else "—"),
+                    latest_attendance_date=(latest_date.strftime("%b %d, %Y") if latest_date else "—"),
+                    dtr_rows=dtr_rows,
+                    task_hourly_mode=is_task_hourly_member(freelancer),
+                ),
+            )
+
+
+    @router.get("/attendance/dtr/{dtr_id}", response_class=HTMLResponse)
+    def freelancer_dtr_detail(dtr_id: int, request: Request):
+        """Read-only Monthly DTR view restricted to the signed-in freelancer."""
+        with SessionLocal() as database:
+            account = get_current_freelancer_account(request, database)
+            if account is None:
+                return RedirectResponse("/login", status_code=303)
+            if account.must_change_password:
+                return RedirectResponse("/change-password", status_code=303)
+
+            dtr = database.get(MonthlyDTR, dtr_id)
+            if dtr is None or int(dtr.freelancer_id) != int(account.freelancer_id):
+                set_flash(request, "DTR not found.", "error")
+                return RedirectResponse("/attendance/history", status_code=303)
+
+            freelancer = account.freelancer
+            attendance_lines = list(
+                database.scalars(
+                    select(DTRDailyLine)
+                    .where(DTRDailyLine.monthly_dtr_id == dtr.id)
+                    .order_by(DTRDailyLine.attendance_date)
+                ).all()
+            )
+            tasks = list(
+                database.scalars(
+                    select(DTRTaskLine)
+                    .where(DTRTaskLine.monthly_dtr_id == dtr.id)
+                    .order_by(DTRTaskLine.task_date, DTRTaskLine.id)
+                ).all()
+            )
+            comp_lines = list(
+                database.scalars(
+                    select(DTRCompLine)
+                    .where(DTRCompLine.monthly_dtr_id == dtr.id)
+                    .order_by(DTRCompLine.transaction_date, DTRCompLine.id)
+                ).all()
+            )
+            leave_lines = list(
+                database.scalars(
+                    select(DTRLeaveLine)
+                    .where(DTRLeaveLine.monthly_dtr_id == dtr.id)
+                    .order_by(DTRLeaveLine.leave_date, DTRLeaveLine.id)
+                ).all()
+            )
+            overtime = [
+                line for line in attendance_lines
+                if int(line.potential_overtime_minutes or 0)
+                or int(line.approved_overtime_minutes or 0)
+            ]
+            task_hourly_mode = is_task_hourly_member(freelancer)
+            task_hourly_ledger = (
+                task_hourly_month_ledger(database, freelancer=freelancer, month_key=dtr.month_key)
+                if task_hourly_mode
+                else None
+            )
+
+            return templates.TemplateResponse(
+                request=request,
+                name="freelancer_dtr_detail.html",
+                context=template_context(
+                    request,
+                    account=account,
+                    dtr=dtr,
+                    freelancer=freelancer,
+                    lines=[dtr_line_row(line, dtr.timezone_name) for line in attendance_lines],
+                    overtime=[dtr_line_row(line, dtr.timezone_name) for line in overtime],
+                    tasks=tasks,
+                    comp_lines=comp_lines,
+                    leave_lines=leave_lines,
+                    compact=compact_dtr_metrics(database, dtr),
+                    task_hourly_mode=task_hourly_mode,
+                    task_hourly_ledger=task_hourly_ledger,
                 ),
             )
 

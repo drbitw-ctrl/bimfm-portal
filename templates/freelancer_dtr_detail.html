@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Daily Time Record (DTR)') }} {{ dtr.month_key }} · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="toolbar personal-dtr-toolbar">
+  <div>
+    <span class="eyebrow">{{ t('PERSONAL DAILY TIME RECORD') }}</span>
+    <h1>{{ t('Daily Time Record (DTR)') }} · {{ dtr.month_key }}</h1>
+    <p class="muted">{{ freelancer.full_name }} · {{ t('Read-only personal record') }}</p>
+  </div>
+  <div class="action-row">
+    <span class="status-chip {{ 'status-completed' if dtr.status == 'FINALIZED' else ('status-reviewed' if dtr.status == 'REVIEWED' else 'status-on-hold') }}">{{ t(dtr.status.replace('_',' ').title()) }}</span>
+    <a class="button secondary" href="/attendance/history#dtr-archive">{{ t('Back to Attendance History') }}</a>
+  </div>
+</div>
+
+{% if task_hourly_mode %}
+<section class="panel task-hourly-admin-summary personal-task-hourly-summary">
+  <div class="section-heading">
+    <div>
+      <span class="eyebrow">{{ t('WORK ORDER TIME BASIS') }}</span>
+      <h2>{{ t('Task-Hourly Monthly Record') }}</h2>
+      <p>{{ t('Your monthly record is based on verified stopped Work Orders rather than attendance Time In and Time Out.') }}</p>
+    </div>
+    <span class="badge good">{{ t('TASK HOURS') }}</span>
+  </div>
+  <div class="task-hourly-summary-grid">
+    <article><span>{{ t('Worked days') }}</span><strong>{{ task_hourly_ledger.worked_day_count }}</strong></article>
+    <article><span>{{ t('Stopped work sessions') }}</span><strong>{{ task_hourly_ledger.session_count }}</strong></article>
+    <article class="featured"><span>{{ t('Total recorded task time') }}</span><strong>{{ task_hourly_ledger.total.label }}</strong><small>{{ t('Hours : Minutes : Seconds') }}</small></article>
+  </div>
+</section>
+
+<section class="panel table-panel">
+  <div class="section-heading"><div><span class="eyebrow">{{ t('DAILY TASK TIME TABULATION') }}</span><h2>{{ dtr.month_key }}</h2><p>{{ t('Each verified stopped Work Order is shown with its project, task, work description, and exact elapsed time.') }}</p></div></div>
+  {% if task_hourly_ledger.rows %}
+  <div class="modern-table-wrap"><table class="modern-table smart-table" data-card-table><thead><tr><th>{{ t('Date') }}</th><th>{{ t('Day') }}</th><th>{{ t('Project') }}</th><th>{{ t('Task') }}</th><th>{{ t('Discipline') }}</th><th>{{ t('Description / Activity') }}</th><th>{{ t('Started') }}</th><th>{{ t('Stopped') }}</th><th>{{ t('Hours') }}</th><th>{{ t('Minutes') }}</th><th>{{ t('Seconds') }}</th><th>{{ t('Total') }}</th></tr></thead><tbody>{% for row in task_hourly_ledger.rows %}<tr><td><strong>{{ row.date }}</strong></td><td>{{ t(row.day_name) }}</td><td>{{ row.project }}</td><td>{{ row.task }}</td><td>{{ row.discipline }}</td><td>{{ row.description }}</td><td>{{ row.started }}</td><td>{{ row.stopped }}</td><td>{{ row.hours }}</td><td>{{ row.minutes }}</td><td>{{ row.seconds }}</td><td><strong>{{ row.label }}</strong></td></tr>{% endfor %}</tbody></table></div>
+  {% else %}<div class="empty-state"><h2>{{ t('No stopped Work Orders are recorded for this month.') }}</h2><p>{{ t('Only verified stopped sessions are included.') }}</p></div>{% endif %}
+</section>
+{% else %}
+<section class="personal-dtr-summary-grid">
+  <article class="panel personal-history-stat"><span>{{ t('Present') }}</span><strong>{{ dtr.present_days }}</strong><small>{{ t('days') }}</small></article>
+  <article class="panel personal-history-stat"><span>{{ t('Absent') }}</span><strong>{{ dtr.absent_days }}</strong><small>{{ t('days') }}</small></article>
+  <article class="panel personal-history-stat"><span>{{ t('Leave') }}</span><strong>{{ dtr.leave_days }}</strong><small>{{ t('days') }}</small></article>
+  <article class="panel personal-history-stat"><span>{{ t('Late') }}</span><strong>{{ dtr.late_days }}</strong><small>{{ t('days') }}</small></article>
+  <article class="panel personal-history-stat"><span>{{ t('Rendered') }}</span><strong>{{ duration_label(dtr.rendered_minutes) }}</strong><small>{{ t('total time') }}</small></article>
+  <article class="panel personal-history-stat"><span>{{ t('Approved OT') }}</span><strong>{{ duration_label(dtr.approved_overtime_minutes) }}</strong><small>{{ t('approved credit basis') }}</small></article>
+</section>
+
+<section class="panel table-panel" id="personal-dtr-attendance">
+  <div class="section-heading"><div><span class="eyebrow">{{ t('DAILY TIME RECORD') }}</span><h2>{{ t('Attendance Ledger') }}</h2><p>{{ t('Daily attendance status and official server-recorded times for this DTR month.') }}</p></div></div>
+  {% if lines %}
+  <div class="modern-table-wrap"><table class="modern-table smart-table" data-card-table><thead><tr><th>{{ t('Date') }}</th><th>{{ t('Day') }}</th><th>{{ t('Status') }}</th><th>{{ t('Time In') }}</th><th>{{ t('Time Out') }}</th><th>{{ t('Rendered') }}</th><th>{{ t('Late') }}</th><th>{{ t('Undertime') }}</th><th>{{ t('Approved OT') }}</th></tr></thead><tbody>{% for line in lines %}<tr><td><strong>{{ line.date }}</strong></td><td>{{ t(line.day) }}</td><td>{{ t(line.status_label) }}</td><td>{{ line.time_in }}</td><td>{{ line.time_out }}</td><td>{{ line.rendered }}</td><td>{{ line.late }}</td><td>{{ line.undertime }}</td><td>{{ line.approved_overtime }}</td></tr>{% endfor %}</tbody></table></div>
+  {% else %}<div class="empty-state"><h2>{{ t('No daily DTR lines are available.') }}</h2></div>{% endif %}
+</section>
+
+<section class="panel personal-dtr-supporting">
+  <div class="section-heading"><div><span class="eyebrow">{{ t('MONTHLY SUPPORTING RECORDS') }}</span><h2>{{ t('Work, Overtime, Leave and Credits') }}</h2><p>{{ t('These records explain the activity associated with this Monthly DTR.') }}</p></div></div>
+  <div class="personal-dtr-support-grid">
+    <article><span>{{ t('Task Entries') }}</span><strong>{{ tasks|length }}</strong><small>{{ duration_label(dtr.daily_task_minutes) }}</small></article>
+    <article><span>{{ t('Overtime Days') }}</span><strong>{{ overtime|length }}</strong><small>{{ duration_label(dtr.approved_overtime_minutes) }} {{ t('approved') }}</small></article>
+    <article><span>{{ t('Leave Records') }}</span><strong>{{ leave_lines|length }}</strong><small>{{ t('approved monthly leave') }}</small></article>
+    <article><span>{{ t('Comp Credit Closing') }}</span><strong>{{ compact.closing_comp_label }}</strong><small>{{ t('remaining approved credit') }}</small></article>
+  </div>
+</section>
+
+{% if tasks %}
+<section class="panel table-panel" id="personal-dtr-tasks">
+  <div class="section-heading"><div><span class="eyebrow">{{ t('DAILY TASK REPORTS') }}</span><h2>{{ t('Work Activity Summary') }}</h2><p>{{ t('Task activity is shown separately from the Daily Time Record to avoid confusing attendance with work reporting.') }}</p></div></div>
+  <div class="modern-table-wrap"><table class="modern-table smart-table" data-card-table><thead><tr><th>{{ t('Date') }}</th><th>{{ t('Project') }}</th><th>{{ t('Task') }}</th><th>{{ t('Completion') }}</th><th>{{ t('Time') }}</th><th>{{ t('Status') }}</th></tr></thead><tbody>{% for line in tasks %}<tr><td>{{ line.task_date }}</td><td>{{ line.project_name or '—' }}</td><td>{{ line.task_description }}</td><td>{{ line.completion_percentage }}%</td><td>{{ duration_label(line.minutes_spent) }}</td><td>{{ t(line.task_status|replace('_',' ')|title) }}</td></tr>{% endfor %}</tbody></table></div>
+</section>
+{% endif %}
+{% endif %}
+
+<section class="panel personal-dtr-note">
+  <div class="section-heading"><div><span class="eyebrow">{{ t('RECORD STATUS') }}</span><h2>{{ t('About this DTR') }}</h2><p>{{ t('This is a read-only copy of the Monthly DTR currently stored in BIM Portal. Attendance corrections or approved HR changes may cause a non-finalized DTR to be regenerated by authorized staff.') }}</p></div></div>
+</section>
+{% endblock %}
