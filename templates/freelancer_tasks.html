@@ -13,7 +13,33 @@
   </div>
 </section>
 
+
+
 {% if work_orders.active_session %}
+<section class="content-card screen-share-prototype-card live-work-visibility-card" data-screen-share-publisher>
+  <div class="screen-share-prototype-grid">
+    <div>
+      <span class="eyebrow">LIVE WORK VISIBILITY</span>
+      <h2>Live Screen Sharing <span class="status-chip status-available">Work Order Active</span></h2>
+      <p>Share your selected work screen with authorized Administrator, Supervisor, and Finance Head users while this Work Order is active.</p>
+      <div class="screen-share-status-line"><i></i><span data-share-state>Not sharing</span></div>
+      <small data-share-detail>Your screen is not currently being transmitted.</small>
+      <div class="screen-share-privacy-note">
+        <strong>Live viewing only — this session is not being recorded.</strong>
+        <span>BIM Portal does not record the shared screen, save screenshots, access your microphone or webcam, monitor keyboard or mouse input, or collect files.</span>
+      </div>
+      <div class="screen-share-capture-tip">
+        <strong>Recommended for BIM/Revit work:</strong> share a dedicated work monitor using <b>Entire Screen</b> for the most stable session. A single application window offers greater privacy but may pause when minimized on some systems.
+      </div>
+      <small class="muted">Screen sharing is supplementary. Stopping or losing the live screen does not stop your Work Order timer.</small>
+    </div>
+    <div class="screen-share-prototype-actions">
+      <span class="screen-share-viewer-count">Authorized viewers: <strong data-share-viewers>0</strong></span>
+      <button class="button primary" type="button" data-share-start>▣ Start Live Screen</button>
+      <button class="button danger" type="button" data-share-stop hidden>■ Stop Live Screen</button>
+    </div>
+  </div>
+</section>
 <section class="active-work-order-card" data-active-work-order data-started-at="{{ work_orders.active_started_iso }}">
   <div class="active-work-order-main">
     <span class="live-pulse"><i></i>{{ t('Working now') }}</span>
@@ -39,6 +65,10 @@
 <section class="work-order-ready-banner">
   <div><span class="ready-icon">▶</span><div><strong>{{ t('Ready to start work') }}</strong><small>{{ t('Select one task below. Only one timer can run at a time.') }}</small></div></div>
   <span class="status-chip status-available">{{ t('No active timer') }}</span>
+</section>
+<section class="content-card live-work-sharing-standby">
+  <div><span class="eyebrow">LIVE SCREEN SHARING</span><h3>Available during an active Work Order</h3><p>Start an assigned Work Order to enable optional live screen sharing for authorized management viewers.</p></div>
+  <span class="status-chip status-neutral">Inactive</span>
 </section>
 {% endif %}
 
@@ -138,4 +168,5 @@
   </div>
   {% else %}<div class="empty-state"><p>{{ t('No recorded work for this month.') }}</p></div>{% endif %}
 </section>
+<script src="/static/js/screen-share.js?v=21.23.1" defer></script>
 {% endblock %}

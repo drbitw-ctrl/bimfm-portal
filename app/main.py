@@ -1022,6 +1022,10 @@ app.include_router(configure_overtime_routes(globals()))
 from app.routers.dashboard import router as dashboard_router
 app.include_router(dashboard_router)
 
+# Release 21.23.1 Work Order-linked WebRTC live screen sharing
+from app.screen_share import router as screen_share_router
+app.include_router(screen_share_router)
+
 
 # Versioned JSON API foundation
 from app.api.v1 import router as api_v1_router

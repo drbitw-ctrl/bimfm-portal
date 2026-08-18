@@ -79,6 +79,11 @@
       {% if can(Permission.OVERTIME_VIEW_ALL) %}{{ nav_link('/admin/overtime', t('Overtime Claims'), '＋') }}{% endif %}
       {% endif %}
 
+      {% if account and account.role and account.role|trim|upper in ['ADMIN', 'SUPERVISOR', 'FINANCE'] %}
+      <span class="nav-label">Live Work</span>
+      {{ nav_link('/portal/live-work/room', 'Live Work Room', '▣') }}
+      {% endif %}
+
       {% if can(Permission.FINANCE_VIEW) %}
       <span class="nav-label">{{ t('Finance') }}</span>
       {{ nav_link('/admin/finance', t('Finance Center'), '₱') }}

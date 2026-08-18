@@ -19,7 +19,14 @@
   </span>
 </section>
 
-{% if role in ['ADMIN', 'SUPERVISOR'] %}
+{% if role in ['ADMIN', 'SUPERVISOR', 'FINANCE'] %}
+<section class="content-card screen-share-prototype-card">
+  <div class="screen-share-prototype-grid">
+    <div><span class="eyebrow">LIVE WORK VISIBILITY</span><h2>Live Work Room</h2><p>Open the management live-work view for active Work Orders and explicitly shared screens. Live screen media is not recorded or stored.</p></div>
+    <div class="screen-share-prototype-actions"><a class="button primary" href="/portal/live-work/room">▣ Open Live Work Room</a></div>
+  </div>
+</section>
+
 <section class="operations-stat-strip role-work-stats">
   <article class="operations-stat-chip"><span>{{ t('Active Tasks') }}</span><strong>{{ my_work.task_summary.active }}</strong><small>{{ t('Open work requiring action') }}</small></article>
   <article class="operations-stat-chip danger"><span>{{ t('Delayed Tasks') }}</span><strong>{{ my_work.task_summary.delayed }}</strong><small>{{ t('Past deadline and still open') }}</small></article>
