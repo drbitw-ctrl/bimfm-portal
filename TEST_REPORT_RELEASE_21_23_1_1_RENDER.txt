@@ -1,0 +1,35 @@
+BIM Portal Release 21.23.1.1 — Render Validation Report
+========================================================
+
+Scope
+-----
+Screen-sharing usability / expanded-view hotfix on top of Release 21.23.1.
+
+Automated validation
+--------------------
+Python compile: PASS
+JavaScript syntax (node --check): PASS
+Pytest: 105 passed, 0 failed
+
+Regression coverage added
+-------------------------
+- Expanded View Live reuses the existing thumbnail viewer/WebRTC peer.
+- Repeated View Live click is idempotent and does not create a second viewer connection.
+- Freelancer Work Order page includes local live preview.
+- Revit-window-only recommendation is present.
+- Start/preparing/live/stopped/interrupted notifications are present.
+- Start/Stop buttons maintain opposite disabled states.
+- No MediaRecorder/getUserMedia/audio recording pipeline was introduced.
+- No Release 21.23.1.1 migration or local account seed was introduced.
+
+Database safety
+---------------
+- No Alembic changes vs Release 21.22.10 baseline.
+- app/database.py unchanged vs Release 21.22.10 baseline.
+- app/models unchanged vs Release 21.22.10 baseline.
+- requirements.txt unchanged vs Release 21.22.10 baseline.
+- Packaged data/hr.db restored from the Release 21.22.10 baseline after tests.
+
+Production limitation retained
+------------------------------
+Screen-share presence/signaling remains process-local/in-memory. Keep one Render instance and one Uvicorn worker until shared signaling state is implemented.

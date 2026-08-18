@@ -17,26 +17,57 @@
 
 {% if work_orders.active_session %}
 <section class="content-card screen-share-prototype-card live-work-visibility-card" data-screen-share-publisher>
-  <div class="screen-share-prototype-grid">
-    <div>
+  <div class="screen-share-prototype-grid screen-share-work-order-grid">
+    <div class="screen-share-work-order-copy">
       <span class="eyebrow">LIVE WORK VISIBILITY</span>
       <h2>Live Screen Sharing <span class="status-chip status-available">Work Order Active</span></h2>
-      <p>Share your selected work screen with authorized Administrator, Supervisor, and Finance Head users while this Work Order is active.</p>
+      <p>Share your active Revit work window with authorized Administrator, Supervisor, and Finance Head users while this Work Order is running.</p>
       <div class="screen-share-status-line"><i></i><span data-share-state>Not sharing</span></div>
-      <small data-share-detail>Your screen is not currently being transmitted.</small>
+      <small data-share-detail>Your Revit window is not currently being transmitted.</small>
+
+      <div class="screen-share-event-notice" data-share-notification data-state="idle" role="status" aria-live="polite">
+        <span class="screen-share-event-icon" data-share-notification-icon>○</span>
+        <div>
+          <strong data-share-notification-title>Live screen sharing is off</strong>
+          <span data-share-notification-message>Start sharing when you are ready. Your Work Order timer is already running independently.</span>
+        </div>
+      </div>
+
+      <div class="screen-share-capture-tip screen-share-revit-tip">
+        <strong>Recommended: share the Revit window only.</strong>
+        <span>In the browser sharing dialog, choose the active <b>Autodesk Revit application window</b> instead of your entire desktop. This limits live visibility to Revit. Keep the shared Revit window open; if your browser or operating system pauses a minimized window, restore it to continue the live view.</span>
+      </div>
       <div class="screen-share-privacy-note">
         <strong>Live viewing only — this session is not being recorded.</strong>
         <span>BIM Portal does not record the shared screen, save screenshots, access your microphone or webcam, monitor keyboard or mouse input, or collect files.</span>
       </div>
-      <div class="screen-share-capture-tip">
-        <strong>Recommended for BIM/Revit work:</strong> share a dedicated work monitor using <b>Entire Screen</b> for the most stable session. A single application window offers greater privacy but may pause when minimized on some systems.
-      </div>
       <small class="muted">Screen sharing is supplementary. Stopping or losing the live screen does not stop your Work Order timer.</small>
     </div>
-    <div class="screen-share-prototype-actions">
-      <span class="screen-share-viewer-count">Authorized viewers: <strong data-share-viewers>0</strong></span>
-      <button class="button primary" type="button" data-share-start>▣ Start Live Screen</button>
-      <button class="button danger" type="button" data-share-stop hidden>■ Stop Live Screen</button>
+
+    <div class="screen-share-publisher-side">
+      <div class="screen-share-prototype-actions screen-share-work-order-actions">
+        <span class="screen-share-viewer-count">Authorized viewers: <strong data-share-viewers>0</strong></span>
+        <div class="screen-share-button-row">
+          <button class="button primary" type="button" data-share-start>▣ Start Live Screen</button>
+          <button class="button danger" type="button" data-share-stop disabled>■ Stop Live Screen</button>
+        </div>
+      </div>
+
+      <div class="screen-share-local-preview-card">
+        <div class="screen-share-local-preview-head">
+          <div><span class="eyebrow">YOUR SHARED VIEW</span><strong>Live Preview</strong></div>
+          <span class="status-chip status-neutral">Local preview</span>
+        </div>
+        <div class="screen-share-local-preview-shell">
+          <video data-share-preview autoplay playsinline muted></video>
+          <div class="screen-share-local-preview-placeholder" data-share-preview-placeholder>
+            <span>▣</span>
+            <strong>No screen is being shared</strong>
+            <small>Your selected Revit window will appear here after sharing starts.</small>
+          </div>
+        </div>
+        <small class="muted">This preview shows the same selected window being sent to authorized live viewers.</small>
+      </div>
     </div>
   </div>
 </section>
@@ -168,5 +199,5 @@
   </div>
   {% else %}<div class="empty-state"><p>{{ t('No recorded work for this month.') }}</p></div>{% endif %}
 </section>
-<script src="/static/js/screen-share.js?v=21.23.1" defer></script>
+<script src="/static/js/screen-share.js?v=21.23.1.1" defer></script>
 {% endblock %}

@@ -14,6 +14,12 @@
     const state = root.querySelector('[data-share-state]');
     const detail = root.querySelector('[data-share-detail]');
     const viewers = root.querySelector('[data-share-viewers]');
+    const preview = root.querySelector('[data-share-preview]');
+    const previewPlaceholder = root.querySelector('[data-share-preview-placeholder]');
+    const notification = root.querySelector('[data-share-notification]');
+    const notificationTitle = root.querySelector('[data-share-notification-title]');
+    const notificationMessage = root.querySelector('[data-share-notification-message]');
+    const notificationIcon = root.querySelector('[data-share-notification-icon]');
     let stream = null;
     let socket = null;
     let heartbeatTimer = null;
@@ -21,6 +27,29 @@
     const peers = new Map();
 
     const updateViewers = () => setText(viewers, String(peers.size));
+
+    function setButtons(isSharing, isTransitioning = false) {
+      if (shareButton) shareButton.disabled = isSharing || isTransitioning;
+      if (stopButton) stopButton.disabled = !isSharing || isTransitioning;
+    }
+
+    function setNotification(kind, titleText, messageText, iconText = '●') {
+      if (!notification) return;
+      notification.dataset.state = kind;
+      setText(notificationTitle, titleText);
+      setText(notificationMessage, messageText);
+      setText(notificationIcon, iconText);
+    }
+
+    function setLocalPreview(mediaStream) {
+      if (!preview) return;
+      preview.srcObject = mediaStream || null;
+      if (previewPlaceholder) previewPlaceholder.hidden = Boolean(mediaStream);
+      if (mediaStream) {
+        const playPromise = preview.play();
+        if (playPromise && typeof playPromise.catch === 'function') playPromise.catch(() => {});
+      }
+    }
 
     async function closePeer(viewerId) {
       const pc = peers.get(viewerId);
@@ -52,59 +81,89 @@
       updateViewers();
     }
 
-    async function stopSharing() {
+    async function stopSharing(options = {}) {
       if (stopping) return;
       stopping = true;
+      const reason = options.reason || 'user';
+      setButtons(true, true);
       if (heartbeatTimer) window.clearInterval(heartbeatTimer);
       heartbeatTimer = null;
-      if (stream) stream.getTracks().forEach((track) => track.stop());
+      const activeStream = stream;
       stream = null;
+      if (activeStream) activeStream.getTracks().forEach((track) => track.stop());
+      setLocalPreview(null);
       for (const viewerId of [...peers.keys()]) await closePeer(viewerId);
-      if (socket) socket.close(1000, 'User stopped sharing');
+      if (socket) {
+        try { socket.close(1000, 'Screen sharing stopped'); } catch (_) {}
+      }
       socket = null;
       root.classList.remove('is-live');
       root.classList.remove('is-source-paused');
       setText(state, 'Not sharing');
-      setText(detail, 'Your screen is not being transmitted.');
-      shareButton.disabled = false;
-      stopButton.hidden = true;
+      setText(detail, 'Your Revit window is not being transmitted.');
+      setButtons(false, false);
       updateViewers();
+
+      if (reason === 'work-order-ended') {
+        setNotification('stopped', 'Live screen sharing stopped automatically', 'Your Work Order ended, so BIM Portal closed the live screen session.', '■');
+      } else if (reason === 'browser') {
+        setNotification('stopped', 'Live screen sharing stopped', 'Screen sharing was stopped from the browser. Your Work Order continues to run.', '■');
+      } else {
+        setNotification('stopped', 'Live screen sharing stopped', 'Your Revit window is no longer visible to management. Your Work Order continues to run.', '■');
+      }
       stopping = false;
     }
 
     async function startSharing() {
+      if (stream || stopping) return;
       if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
         setText(state, 'Screen capture unavailable');
-        setText(detail, 'Use a current Chrome or Edge browser on localhost/HTTPS.');
+        setText(detail, 'Use a current Chrome or Edge browser over HTTPS.');
+        setNotification('error', 'Live screen sharing is unavailable', 'Use a current Chrome or Edge browser and reload this page.', '!');
         return;
       }
-      shareButton.disabled = true;
-      setText(state, 'Select a work screen or window…');
+
+      setButtons(false, true);
+      setText(state, 'Select your Revit window…');
+      setText(detail, 'In the browser sharing dialog, choose the Revit application window rather than your entire desktop.');
+      setNotification('preparing', 'Select the Revit window to share', 'Choose the active Autodesk Revit window in the browser sharing dialog.', '…');
+
       try {
         stream = await navigator.mediaDevices.getDisplayMedia({
-          video: { frameRate: { ideal: 10, max: 15 } },
+          video: {
+            displaySurface: 'window',
+            frameRate: { ideal: 10, max: 15 },
+          },
           audio: false,
         });
         const track = stream.getVideoTracks()[0];
         if (!track) throw new Error('No display video track was selected.');
-        track.addEventListener('ended', stopSharing, { once: true });
+        setLocalPreview(stream);
+        setText(state, 'Connecting live screen…');
+        setText(detail, track.label || 'Selected Revit window');
+        setNotification('preparing', 'Connecting your live Revit view', 'Your selected window is ready. BIM Portal is connecting authorized viewers.', '…');
+
+        track.addEventListener('ended', () => stopSharing({ reason: 'browser' }), { once: true });
         track.addEventListener('mute', () => {
           root.classList.add('is-source-paused');
-          setText(state, 'LIVE — source temporarily unavailable');
-          setText(detail, 'The shared window may be minimized. Restore it, or share a dedicated work monitor for a more stable stream.');
+          setText(state, 'LIVE — shared window temporarily unavailable');
+          setText(detail, 'The Revit window may be minimized or temporarily unavailable. Restore it to continue the live view.');
+          setNotification('paused', 'Live view temporarily interrupted', 'Restore the shared Revit window if it was minimized. Your Work Order continues normally.', '!');
         });
         track.addEventListener('unmute', () => {
           root.classList.remove('is-source-paused');
-          setText(state, 'LIVE — screen visible to authorized viewers');
-          setText(detail, track.label || 'Selected work screen');
+          setText(state, 'LIVE — Revit window visible to authorized viewers');
+          setText(detail, track.label || 'Selected Revit window');
+          setNotification('live', 'Live screen sharing is active', 'Authorized management viewers can currently view your selected Revit window.', '●');
         });
 
         socket = new WebSocket(wsUrl('/ws/screen-share/publish'));
         socket.addEventListener('open', () => {
           root.classList.add('is-live');
-          setText(state, 'LIVE — screen visible to authorized viewers');
-          setText(detail, track.label || 'Selected work screen');
-          stopButton.hidden = false;
+          setText(state, 'LIVE — Revit window visible to authorized viewers');
+          setText(detail, track.label || 'Selected Revit window');
+          setButtons(true, false);
+          setNotification('live', 'Live screen sharing is active', 'Authorized management viewers can currently view your selected Revit window.', '●');
           if (heartbeatTimer) window.clearInterval(heartbeatTimer);
           heartbeatTimer = window.setInterval(() => {
             if (socket?.readyState === WebSocket.OPEN) {
@@ -138,39 +197,50 @@
           } else if (message.type === 'viewer_left') {
             await closePeer(message.viewer_id);
           } else if (message.type === 'work_order_ended') {
-            setText(state, 'Work Order ended — live screen stopped');
-            setText(detail, 'Screen sharing closes automatically when the active Work Order ends.');
-            await stopSharing();
+            await stopSharing({ reason: 'work-order-ended' });
           }
         });
         socket.addEventListener('error', () => {
-          setText(state, 'Signaling connection failed');
-          setText(detail, 'Unable to connect to the live screen service. Refresh the page and try again.');
+          if (!stream) return;
+          setText(state, 'Live connection unavailable');
+          setText(detail, 'Unable to connect to the live screen service. Stop sharing and try again.');
+          setNotification('error', 'Live connection could not be established', 'Stop the current share and try again. Your Work Order remains active.', '!');
+          setButtons(true, false);
         });
         socket.addEventListener('close', (event) => {
-          if (stream) {
-            setText(state, 'Signaling disconnected');
-            const reason = event.code === 4401
-              ? 'Your freelancer session was not recognized. Sign in again.'
-              : (event.code === 4409 || event.code === 4003)
-                ? 'An active Work Order is required for live screen sharing.'
-                : 'The live connection was interrupted. Stop sharing and try again.';
-            setText(detail, reason);
-          }
+          if (!stream || stopping) return;
+          setText(state, 'Live connection interrupted');
+          const reason = event.code === 4401
+            ? 'Your freelancer session was not recognized. Sign in again.'
+            : (event.code === 4409 || event.code === 4003)
+              ? 'An active Work Order is required for live screen sharing.'
+              : 'The live connection was interrupted. Stop sharing and try again.';
+          setText(detail, reason);
+          setNotification('error', 'Live screen connection interrupted', `${reason} Your Work Order timer is not affected.`, '!');
+          setButtons(true, false);
         });
       } catch (error) {
-        shareButton.disabled = false;
+        const activeStream = stream;
+        stream = null;
+        if (activeStream) activeStream.getTracks().forEach((track) => track.stop());
+        setLocalPreview(null);
+        setButtons(false, false);
         setText(state, 'Not sharing');
-        setText(detail, error?.name === 'NotAllowedError' ? 'Screen sharing was cancelled.' : (error?.message || 'Unable to start screen sharing.'));
+        const cancelled = error?.name === 'NotAllowedError';
+        const message = cancelled ? 'Screen sharing was cancelled.' : (error?.message || 'Unable to start screen sharing.');
+        setText(detail, message);
+        setNotification(cancelled ? 'idle' : 'error', cancelled ? 'Screen sharing was not started' : 'Unable to start live screen sharing', `${message} Your Work Order continues normally.`, cancelled ? '○' : '!');
       }
     }
 
-    shareButton.addEventListener('click', startSharing);
-    stopButton.addEventListener('click', stopSharing);
+    setButtons(false, false);
+    setLocalPreview(null);
+    shareButton?.addEventListener('click', startSharing);
+    stopButton?.addEventListener('click', () => stopSharing({ reason: 'user' }));
     const stopWorkOrderForm = document.querySelector('.stop-work-order-form');
     if (stopWorkOrderForm) {
       stopWorkOrderForm.addEventListener('submit', () => {
-        if (stream) stopSharing();
+        if (stream) stopSharing({ reason: 'work-order-ended' });
       });
     }
     window.addEventListener('beforeunload', () => {
@@ -186,7 +256,7 @@
     const title = root.querySelector('[data-screen-viewer-title]');
     const state = root.querySelector('[data-screen-viewer-state]');
     const close = root.querySelector('[data-screen-viewer-close]');
-    const thumbnailPeers = new Map();
+    const viewerPeers = new Map();
     let expanded = null;
 
     function formatElapsed(startedAt) {
@@ -200,23 +270,22 @@
       return `${h}:${m}:${sec}`;
     }
 
-    function disconnectThumbnail(freelancerId) {
-      const entry = thumbnailPeers.get(String(freelancerId));
+    function disconnectViewerPeer(freelancerId) {
+      const key = String(freelancerId);
+      const entry = viewerPeers.get(key);
       if (!entry) return;
-      try { if (entry.ws) entry.ws.close(1000, 'Thumbnail closed'); } catch (_) {}
+      viewerPeers.delete(key);
+      entry.closing = true;
+      try { if (entry.ws) entry.ws.close(1000, 'Live viewer closed'); } catch (_) {}
       try { if (entry.pc) entry.pc.close(); } catch (_) {}
-      if (entry.video) entry.video.srcObject = null;
-      thumbnailPeers.delete(String(freelancerId));
+      if (entry.thumbnailVideo) entry.thumbnailVideo.srcObject = null;
+      if (expanded?.freelancerId === key && video) video.srcObject = null;
     }
 
     function stopExpandedViewer() {
-      if (expanded) {
-        try { if (expanded.ws) expanded.ws.close(1000, 'Viewer closed'); } catch (_) {}
-        try { if (expanded.pc) expanded.pc.close(); } catch (_) {}
-        expanded = null;
-      }
       if (video) video.srcObject = null;
-      viewer.hidden = true;
+      expanded = null;
+      if (viewer) viewer.hidden = true;
     }
 
     function connectPeer(freelancerId, onTrack, onState, onEnded) {
@@ -240,7 +309,9 @@
           }
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
-          ws.send(JSON.stringify({ type: 'answer', sdp: pc.localDescription }));
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'answer', sdp: pc.localDescription }));
+          }
         } else if (message.type === 'ice' && message.candidate) {
           if (pc.remoteDescription?.type) {
             try { await pc.addIceCandidate(message.candidate); } catch (_) {}
@@ -253,64 +324,117 @@
       });
       ws.addEventListener('close', (event) => {
         if (event.code === 4404) onEnded('This sharing session is no longer available');
-        if (event.code === 4403) onEnded('This account is not authorized to view live screens');
+        else if (event.code === 4403) onEnded('This account is not authorized to view live screens');
+        else if (event.code !== 1000) onEnded('Live viewer connection closed');
       });
       return { pc, ws };
     }
 
-    function connectThumbnail(freelancerId, videoNode, badgeNode, noteNode) {
+    function setThumbnailStatus(entry, badgeText, noteText) {
+      if (entry.badgeNode) entry.badgeNode.textContent = badgeText;
+      if (entry.noteNode && noteText) entry.noteNode.textContent = noteText;
+    }
+
+    function ensureViewerPeer(freelancerId, videoNode, badgeNode, noteNode) {
       const key = String(freelancerId);
-      if (!videoNode || thumbnailPeers.has(key) || expanded?.freelancerId === key) return;
+      let entry = viewerPeers.get(key);
+      if (entry) {
+        entry.thumbnailVideo = videoNode || entry.thumbnailVideo;
+        entry.badgeNode = badgeNode || entry.badgeNode;
+        entry.noteNode = noteNode || entry.noteNode;
+        if (entry.stream && entry.thumbnailVideo) entry.thumbnailVideo.srcObject = entry.stream;
+        if (entry.stream && expanded?.freelancerId === key && video) {
+          video.srcObject = entry.stream;
+          setText(state, 'LIVE — direct WebRTC');
+        }
+        return entry;
+      }
+
+      entry = {
+        freelancerId: key,
+        thumbnailVideo: videoNode || null,
+        badgeNode: badgeNode || null,
+        noteNode: noteNode || null,
+        stream: null,
+        pc: null,
+        ws: null,
+        closing: false,
+      };
+      viewerPeers.set(key, entry);
+
       const peer = connectPeer(
         freelancerId,
-        (stream) => {
-          videoNode.srcObject = stream;
-          if (badgeNode) badgeNode.textContent = '● LIVE GLIMPSE';
-          if (noteNode) noteNode.textContent = 'Live thumbnail — not recorded or stored';
+        (remoteStream) => {
+          if (viewerPeers.get(key) !== entry) return;
+          entry.stream = remoteStream;
+          if (entry.thumbnailVideo) {
+            entry.thumbnailVideo.srcObject = remoteStream;
+            const playPromise = entry.thumbnailVideo.play();
+            if (playPromise && typeof playPromise.catch === 'function') playPromise.catch(() => {});
+          }
+          setThumbnailStatus(entry, '● LIVE GLIMPSE', 'Live thumbnail — not recorded or stored');
+          if (expanded?.freelancerId === key && video) {
+            video.srcObject = remoteStream;
+            const playPromise = video.play();
+            if (playPromise && typeof playPromise.catch === 'function') playPromise.catch(() => {});
+            setText(state, 'LIVE — direct WebRTC');
+          }
         },
         (connectionState) => {
+          if (viewerPeers.get(key) !== entry) return;
           if (connectionState === 'connected') {
-            if (badgeNode) badgeNode.textContent = '● LIVE GLIMPSE';
+            setThumbnailStatus(entry, '● LIVE GLIMPSE', 'Live thumbnail — not recorded or stored');
+            if (expanded?.freelancerId === key) setText(state, 'LIVE — direct WebRTC');
           } else if (connectionState === 'failed') {
-            if (badgeNode) badgeNode.textContent = 'Preview failed';
+            setThumbnailStatus(entry, 'Preview failed', 'Live connection could not be established');
+            if (expanded?.freelancerId === key) setText(state, 'Direct connection failed');
           } else if (connectionState === 'disconnected') {
-            if (badgeNode) badgeNode.textContent = 'Preview interrupted';
+            setThumbnailStatus(entry, 'Preview interrupted', 'Attempting to retain the live connection');
+            if (expanded?.freelancerId === key) setText(state, 'Connection interrupted');
           }
         },
         (message) => {
-          if (badgeNode) badgeNode.textContent = message;
-          if (noteNode) noteNode.textContent = 'Preview unavailable';
-          videoNode.srcObject = null;
-          disconnectThumbnail(key);
+          if (viewerPeers.get(key) !== entry || entry.closing) return;
+          setThumbnailStatus(entry, message, 'Preview unavailable');
+          if (entry.thumbnailVideo) entry.thumbnailVideo.srcObject = null;
+          if (expanded?.freelancerId === key) {
+            if (video) video.srcObject = null;
+            setText(state, message);
+          }
+          disconnectViewerPeer(key);
         },
       );
-      thumbnailPeers.set(key, { ...peer, video: videoNode });
+      entry.pc = peer.pc;
+      entry.ws = peer.ws;
+      return entry;
     }
 
     function openExpandedViewer(freelancerId, freelancerName) {
       const key = String(freelancerId);
-      disconnectThumbnail(key);
-      stopExpandedViewer();
-      viewer.hidden = false;
+      const sameViewerAlreadyOpen = expanded?.freelancerId === key && viewer && !viewer.hidden;
+      if (sameViewerAlreadyOpen) {
+        viewer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return;
+      }
+
+      expanded = { freelancerId: key };
+      if (viewer) viewer.hidden = false;
       setText(title, `${freelancerName} — live screen`);
       setText(state, 'Connecting…');
-      const peer = connectPeer(
-        freelancerId,
-        (stream) => {
-          video.srcObject = stream;
-          setText(state, 'LIVE — direct WebRTC');
-        },
-        (connectionState) => {
-          if (connectionState === 'connected') setText(state, 'LIVE — direct WebRTC');
-          else if (connectionState === 'failed') setText(state, 'Direct connection failed');
-          else if (connectionState === 'disconnected') setText(state, 'Connection interrupted');
-        },
-        (message) => {
-          setText(state, message);
-          if (video) video.srcObject = null;
-        },
-      );
-      expanded = { freelancerId: key, ...peer };
+
+      const card = list.querySelector(`.live-work-order-card[data-fid="${key}"]`);
+      const videoNode = card?.querySelector('.live-work-thumb');
+      const badgeNode = card?.querySelector('.live-thumb-badge');
+      const noteNode = card?.querySelector('.live-thumb-note');
+      const entry = ensureViewerPeer(freelancerId, videoNode, badgeNode, noteNode);
+
+      if (entry.stream && video) {
+        video.srcObject = entry.stream;
+        const playPromise = video.play();
+        if (playPromise && typeof playPromise.catch === 'function') playPromise.catch(() => {});
+        setText(state, 'LIVE — direct WebRTC');
+      }
+      viewer?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     let lastRoomStructure = '';
@@ -345,8 +469,13 @@
         return;
       }
       lastRoomStructure = structure;
-      const previousExpanded = expanded ? String(expanded.freelancerId) : null;
-      for (const key of [...thumbnailPeers.keys()]) disconnectThumbnail(key);
+
+      const liveKeys = new Set(rooms.filter((room) => room.screen_live).map((room) => String(room.freelancer_id)));
+      for (const key of [...viewerPeers.keys()]) {
+        if (!liveKeys.has(key)) disconnectViewerPeer(key);
+      }
+      if (expanded && !liveKeys.has(String(expanded.freelancerId))) stopExpandedViewer();
+
       list.innerHTML = '';
       empty.hidden = rooms.length > 0;
       updatePresenceMeta(rooms);
@@ -357,17 +486,17 @@
         card.className = `live-work-order-card${room.screen_live ? ' has-live-screen' : ''}`;
         card.dataset.fid = key;
 
-        const preview = document.createElement('div');
-        preview.className = 'live-work-order-preview';
+        const previewNode = document.createElement('div');
+        previewNode.className = 'live-work-order-preview';
         if (room.screen_live) {
-          preview.innerHTML = `
+          previewNode.innerHTML = `
             <video class="live-work-thumb" autoplay playsinline muted></video>
             <div class="live-thumb-overlay">
               <span class="live-thumb-badge">Connecting preview…</span>
               <small class="live-thumb-note">Live thumbnail — not recorded or stored</small>
             </div>`;
         } else {
-          preview.innerHTML = '<div class="live-preview-placeholder is-offline"><span>○ NOT SHARING</span><strong>Work Order active</strong><small>No screen video is being transmitted</small></div>';
+          previewNode.innerHTML = '<div class="live-preview-placeholder is-offline"><span>○ NOT SHARING</span><strong>Work Order active</strong><small>No screen video is being transmitted</small></div>';
         }
 
         const body = document.createElement('div');
@@ -419,35 +548,20 @@
         }
 
         body.append(head, task, project, meta, actions);
-        card.append(preview, body);
+        card.append(previewNode, body);
         list.append(card);
 
         if (room.screen_live) {
-          const videoNode = preview.querySelector('.live-work-thumb');
-          const badgeNode = preview.querySelector('.live-thumb-badge');
-          const noteNode = preview.querySelector('.live-thumb-note');
-          if (previousExpanded === key) {
-            if (badgeNode) badgeNode.textContent = 'Expanded live view open';
-            if (noteNode) noteNode.textContent = 'Thumbnail paused while full viewer is open';
-          } else {
-            connectThumbnail(room.freelancer_id, videoNode, badgeNode, noteNode);
-          }
+          const videoNode = previewNode.querySelector('.live-work-thumb');
+          const badgeNode = previewNode.querySelector('.live-thumb-badge');
+          const noteNode = previewNode.querySelector('.live-thumb-note');
+          ensureViewerPeer(room.freelancer_id, videoNode, badgeNode, noteNode);
         }
       });
       updatePresenceMeta(rooms);
     }
 
-    close.addEventListener('click', () => {
-      const key = expanded?.freelancerId || null;
-      stopExpandedViewer();
-      if (key) {
-        const card = list.querySelector(`.live-work-order-card[data-fid="${key}"]`);
-        const videoNode = card?.querySelector('.live-work-thumb');
-        const badgeNode = card?.querySelector('.live-thumb-badge');
-        const noteNode = card?.querySelector('.live-thumb-note');
-        if (videoNode) connectThumbnail(key, videoNode, badgeNode, noteNode);
-      }
-    });
+    close?.addEventListener('click', stopExpandedViewer);
 
     const watch = new WebSocket(wsUrl('/ws/screen-share/watch'));
     watch.addEventListener('message', (event) => {
@@ -471,7 +585,7 @@
 
     window.addEventListener('beforeunload', () => {
       stopExpandedViewer();
-      for (const key of [...thumbnailPeers.keys()]) disconnectThumbnail(key);
+      for (const key of [...viewerPeers.keys()]) disconnectViewerPeer(key);
     });
   }
 
