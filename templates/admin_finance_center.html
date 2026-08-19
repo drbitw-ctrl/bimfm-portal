@@ -34,17 +34,14 @@
 <section class="payroll-formula-banner hourly-payroll-rule" aria-label="Hourly payroll rule">
   <div class="formula-copy">
     <span class="eyebrow">{{ t('PAYROLL RULE') }}</span>
-    <h2>{{ t('Hourly leave deduction with working-day reporting') }}</h2>
-    <p>{{ t('Approved compensatory credit offsets approved leave first, then can cover absence. Only uncovered leave or absence reduces salary coverage.') }}</p>
+    <h2>{{ t('How monthly salary coverage is calculated') }}</h2>
+    <p>{{ t('The system first uses approved overtime credit to cover approved leave. Any leave hours still uncovered, plus any uncovered absence hours, become salary deduction hours.') }}</p>
+    <p class="payroll-rule-note">{{ t('Days worked are shown for attendance reporting. Payroll deduction itself is calculated by hours.') }}</p>
   </div>
-  <div class="formula-visual hourly-payroll-formula">
-    <div><span>{{ t('Approved Leave Hours') }}</span><strong>− {{ t('OT Credit Hours') }}</strong></div>
-    <span class="formula-equals">=</span>
-    <div><span>{{ t('Unpaid Leave Hours') }}</span><strong>{{ t('Hourly deduction') }}</strong></div>
-    <span class="formula-equals">+</span>
-    <div><span>{{ t('Absent Hours') }}</span><strong>{{ t('Less approved comp credit') }}</strong></div>
-    <span class="formula-equals">→</span>
-    <div class="formula-result"><span>{{ t('Salary Coverage') }}</span><strong>{{ t('Monthly basis hours − total deduction hours') }}</strong></div>
+  <div class="payroll-rule-steps">
+    <div class="payroll-rule-step"><b>1</b><span>{{ t('Approved leave hours − OT credit used') }}</span><strong>= {{ t('Unpaid leave hours') }}</strong></div>
+    <div class="payroll-rule-step"><b>2</b><span>{{ t('Unpaid leave hours + uncovered absence hours') }}</span><strong>= {{ t('Total deduction hours') }}</strong></div>
+    <div class="payroll-rule-step result"><b>3</b><span>{{ t('Monthly salary basis hours − total deduction hours') }}</span><strong>= {{ t('Salary-covered hours') }}</strong></div>
   </div>
 </section>
 

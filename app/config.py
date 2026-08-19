@@ -2,8 +2,8 @@ import os
 from pathlib import Path
 
 APP_NAME = "BIM Portal"
-APP_VERSION = "v3.0.24.0.1-release21.24.0.1-dtr-overtime-render-hotfix"
-APP_VERSION_NUMBER = "3.0.24.0.1"
+APP_VERSION = "v3.0.24.0.2-release21.24.0.2-finance-ui-leave-approval-hotfix"
+APP_VERSION_NUMBER = "3.0.24.0.2"
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"

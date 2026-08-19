@@ -140,7 +140,7 @@ def configure_leave_routes(legacy_namespace: dict[str, object]) -> APIRouter:
         request: Request,
         csrf: str = Form(...),
         decision: str = Form(...),
-        reason: str = Form(...),
+        reason: str = Form(""),
     ):
         if not validate_csrf(request, csrf):
             return RedirectResponse("/admin/leave-requests", 303)

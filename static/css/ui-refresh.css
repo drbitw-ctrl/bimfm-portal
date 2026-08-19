@@ -6420,3 +6420,125 @@ html[data-theme="dark"] .screen-share-local-preview-card { background: rgba(15,2
 
 /* Release 21.24.0 finance/reporting additions */
 .project-member-time-list{display:grid;gap:.38rem;min-width:260px}.project-member-time-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.45rem .6rem;border-radius:10px;background:var(--surface-soft,#f6f8fb)}.project-member-time-row span{display:flex;flex-direction:column;min-width:0}.project-member-time-row small{color:var(--muted,#667085)}.project-member-time-row b,.project-time-total{white-space:nowrap}.bank-details-cell{min-width:270px}.bank-details-cell>strong,.bank-details-cell>small{display:block;margin-bottom:.2rem}.bank-details-cell .button{margin-top:.45rem}.bank-details-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.8rem}.bank-details-summary>div{padding:.8rem 1rem;border:1px solid var(--border,#d8dee8);border-radius:12px;background:var(--surface-soft,#f7f9fc)}.bank-details-summary span{display:block;font-size:.78rem;color:var(--muted,#667085);text-transform:uppercase;letter-spacing:.04em}.bank-details-summary strong{display:block;margin-top:.25rem;word-break:break-word}.finance-history-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}.finance-history-grid .panel{margin:0}@media(max-width:980px){.finance-history-grid{grid-template-columns:1fr}.bank-details-cell{min-width:220px}}
+
+
+/* Release 21.24.0.2 — finance light-mode contrast and clearer payroll explanation */
+html:not([data-theme="dark"]) .finance-page-header,
+html:not([data-theme="dark"]) .finance-filter-panel,
+html:not([data-theme="dark"]) .finance-summary-panel,
+html:not([data-theme="dark"]) .finance-summary-panel td,
+html:not([data-theme="dark"]) .finance-summary-panel .member-cell,
+html:not([data-theme="dark"]) .dtr-header-panel,
+html:not([data-theme="dark"]) .summary-section,
+html:not([data-theme="dark"]) .glance-summary,
+html:not([data-theme="dark"]) .bank-details-summary,
+html:not([data-theme="dark"]) .finance-history-grid {
+  color: var(--ui-text);
+}
+
+html:not([data-theme="dark"]) .finance-page-header h1,
+html:not([data-theme="dark"]) .finance-summary-panel h1,
+html:not([data-theme="dark"]) .finance-summary-panel h2,
+html:not([data-theme="dark"]) .summary-section h2,
+html:not([data-theme="dark"]) .summary-section h3,
+html:not([data-theme="dark"]) .glance-summary h2,
+html:not([data-theme="dark"]) .bank-details-summary strong,
+html:not([data-theme="dark"]) .finance-history-grid strong,
+html:not([data-theme="dark"]) .finance-factor-table td strong {
+  color: var(--ui-text-strong);
+}
+
+html:not([data-theme="dark"]) .finance-page-header .muted,
+html:not([data-theme="dark"]) .finance-summary-panel small,
+html:not([data-theme="dark"]) .finance-summary-panel .muted,
+html:not([data-theme="dark"]) .summary-section small,
+html:not([data-theme="dark"]) .summary-section .muted,
+html:not([data-theme="dark"]) .bank-details-summary span,
+html:not([data-theme="dark"]) .bank-details-cell small,
+html:not([data-theme="dark"]) .finance-history-grid small {
+  color: #5d7185;
+}
+
+html:not([data-theme="dark"]) .payroll-formula-banner {
+  color: var(--ui-text);
+  background: linear-gradient(135deg, #f7fbff 0%, #edf6fd 100%);
+  border: 1px solid #cbddeb;
+  box-shadow: var(--ui-shadow-sm);
+}
+
+html:not([data-theme="dark"]) .payroll-formula-banner h2 {
+  color: var(--ui-text-strong);
+}
+
+html:not([data-theme="dark"]) .payroll-formula-banner p {
+  color: #4f6579;
+  opacity: 1;
+}
+
+html:not([data-theme="dark"]) .payroll-formula-banner .eyebrow {
+  color: var(--ui-brand-700);
+}
+
+.payroll-rule-note {
+  margin-top: 10px !important;
+  font-weight: 750;
+}
+
+.payroll-rule-steps {
+  display: grid;
+  gap: 10px;
+}
+
+.payroll-rule-step {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 15px;
+  border: 1px solid var(--ui-border);
+  border-radius: 13px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+}
+
+.payroll-rule-step > b:first-child {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--ui-brand-100);
+  color: var(--ui-brand-800);
+  font-size: .82rem;
+}
+
+.payroll-rule-step span {
+  color: var(--ui-text);
+  font-size: .82rem;
+  font-weight: 750;
+}
+
+.payroll-rule-step strong {
+  color: var(--ui-text-strong);
+  font-size: .9rem;
+  text-align: right;
+}
+
+.payroll-rule-step.result {
+  border-color: color-mix(in srgb, var(--ui-success) 28%, var(--ui-border));
+  background: var(--ui-success-soft);
+}
+
+.payroll-rule-step.result strong {
+  color: var(--ui-success);
+}
+
+html[data-theme="dark"] .payroll-formula-banner h2 { color: var(--ui-text-strong); }
+html[data-theme="dark"] .payroll-formula-banner p { color: var(--ui-muted); opacity: 1; }
+html[data-theme="dark"] .payroll-formula-banner .eyebrow { color: #91c8ef; }
+html[data-theme="dark"] .payroll-rule-step { background: var(--ui-surface-raised); }
+
+@media (max-width: 800px) {
+  .payroll-rule-step { grid-template-columns: 34px 1fr; }
+  .payroll-rule-step strong { grid-column: 2; text-align: left; }
+}
