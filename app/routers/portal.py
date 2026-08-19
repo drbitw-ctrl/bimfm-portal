@@ -15,7 +15,8 @@ from sqlalchemy.orm import Session
 
 from app.auth.permissions import Permission, has_permission, normalize_role
 from app.database import get_db
-from app.excel_exports import build_export_workbook
+from app.i18n import locale_for_request
+from app.excel_exports import build_export_workbook, build_project_work_time_workbook
 from app.models import (
     HRAdminAccount,
     Freelancer,
@@ -1259,6 +1260,10 @@ def create_portal_router(
         except ValueError:
             return date.today().strftime("%Y-%m")
 
+    def _export_period(value: str) -> str:
+        normalized = str(value or "month").strip().lower()
+        return normalized if normalized in {"month", "12m", "all"} else "month"
+
     def _export_allowed(account) -> bool:
         return bool(account and has_permission(normalize_role(account.role), Permission.REPORT_EXPORT))
 
@@ -1299,7 +1304,7 @@ def create_portal_router(
         account = get_current_admin(request, database)
         if not _export_allowed(account):
             return RedirectResponse("/admin/login", status_code=303)
-        content = build_export_workbook(database, month_key=date.today().strftime("%Y-%m"), include_tasks=True)
+        content = build_export_workbook(database, month_key=date.today().strftime("%Y-%m"), locale=locale_for_request(request), include_tasks=True)
         write_audit(database, actor_type="HR_ADMIN", actor_id=account.id, action="EXPORT_ALL_TASKS_XLSX", request=request, target_type="REPORT", details="Exported complete task register.")
         database.commit()
         return _xlsx_response(content, f"BIM_All_Tasks_{date.today().isoformat()}.xlsx")
@@ -1310,10 +1315,41 @@ def create_portal_router(
         if not _export_allowed(account):
             return RedirectResponse("/admin/login", status_code=303)
         selected_month = _export_month(month)
-        content = build_export_workbook(database, month_key=selected_month, include_reports=True)
+        content = build_export_workbook(database, month_key=selected_month, locale=locale_for_request(request), include_reports=True)
         write_audit(database, actor_type="HR_ADMIN", actor_id=account.id, action="EXPORT_MONTHLY_REPORTS_XLSX", request=request, target_type="REPORT", details=f"Exported management reports for {selected_month}.")
         database.commit()
         return _xlsx_response(content, f"BIM_Monthly_Reports_{selected_month}.xlsx")
+
+    @router.get("/portal/exports/project-work-time.xlsx")
+    def export_project_work_time(
+        request: Request,
+        period: str = "month",
+        month: str = "",
+        database: Session = Depends(get_db),
+    ):
+        account = get_current_admin(request, database)
+        if not _export_allowed(account):
+            return RedirectResponse("/admin/login", status_code=303)
+        selected_period = _export_period(period)
+        selected_month = _export_month(month)
+        content = build_project_work_time_workbook(
+            database,
+            period=selected_period,
+            month_key=selected_month,
+            locale=locale_for_request(request),
+        )
+        write_audit(
+            database,
+            actor_type="HR_ADMIN",
+            actor_id=account.id,
+            action="EXPORT_PROJECT_WORK_TIME_XLSX",
+            request=request,
+            target_type="REPORT",
+            details=f"Exported project work time for period={selected_period}, month={selected_month}.",
+        )
+        database.commit()
+        period_token = {"month": "monthly", "12m": "12_months", "all": "all_time"}[selected_period]
+        return _xlsx_response(content, f"BIM_Project_Work_Time_{period_token}_{selected_month}.xlsx")
 
     @router.get("/portal/exports/attendance.xlsx")
     def export_monthly_attendance(request: Request, month: str = "", database: Session = Depends(get_db)):
@@ -1321,7 +1357,7 @@ def create_portal_router(
         if not _export_allowed(account):
             return RedirectResponse("/admin/login", status_code=303)
         selected_month = _export_month(month)
-        content = build_export_workbook(database, month_key=selected_month, include_attendance=True)
+        content = build_export_workbook(database, month_key=selected_month, locale=locale_for_request(request), include_attendance=True)
         write_audit(database, actor_type="HR_ADMIN", actor_id=account.id, action="EXPORT_MONTHLY_ATTENDANCE_XLSX", request=request, target_type="REPORT", details=f"Exported attendance for {selected_month}.")
         database.commit()
         return _xlsx_response(content, f"BIM_Attendance_{selected_month}.xlsx")
@@ -1332,7 +1368,7 @@ def create_portal_router(
         if not _export_allowed(account):
             return RedirectResponse("/admin/login", status_code=303)
         selected_month = _export_month(month)
-        content = build_export_workbook(database, month_key=selected_month, include_dtr=True)
+        content = build_export_workbook(database, month_key=selected_month, locale=locale_for_request(request), include_dtr=True)
         write_audit(database, actor_type="HR_ADMIN", actor_id=account.id, action="EXPORT_DTR_REGISTER_XLSX", request=request, target_type="REPORT", details=f"Exported DTR register for {selected_month}.")
         database.commit()
         return _xlsx_response(content, f"BIM_DTR_Register_{selected_month}.xlsx")
@@ -1343,7 +1379,7 @@ def create_portal_router(
         if not _export_allowed(account):
             return RedirectResponse("/admin/login", status_code=303)
         selected_month = _export_month(month)
-        content = build_export_workbook(database, month_key=selected_month, include_all=True)
+        content = build_export_workbook(database, month_key=selected_month, locale=locale_for_request(request), include_all=True)
         write_audit(database, actor_type="HR_ADMIN", actor_id=account.id, action="EXPORT_COMPLETE_REPORT_PACKAGE_XLSX", request=request, target_type="REPORT", details=f"Exported complete Excel package for {selected_month}.")
         database.commit()
         return _xlsx_response(content, f"BIM_Complete_Report_Package_{selected_month}.xlsx")

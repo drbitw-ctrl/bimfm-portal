@@ -4,6 +4,7 @@ from __future__ import annotations
 from calendar import monthrange
 from datetime import date, datetime, timezone
 from io import BytesIO
+import re
 from typing import Any, Iterable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -40,6 +41,155 @@ PURPLE = "EFE7FA"
 TEXT = "243447"
 BORDER_COLOR = "D6DEE6"
 THIN = Side(style="thin", color=BORDER_COLOR)
+
+
+EXCEL_ZH = {
+    "Export Summary": "匯出摘要", "All Tasks": "所有任務", "Projects": "專案", "Team Availability": "團隊可用狀態",
+    "Monthly Attendance": "月度出勤", "Monthly DTR Summary": "月度 DTR 摘要", "DTR Daily Details": "DTR 每日明細",
+    "Leave Requests": "請假申請", "Overtime Claims": "加班申請", "Performance": "績效", "Project Reports": "專案報表",
+    "Monthly Project Time": "每月專案工時", "Project Time Utilization": "專案工時利用率", "Task Time Details": "任務工時明細",
+    "Project Work Time Health": "專案工時概況", "Project Time by Member": "專案成員工時", "Monthly Breakdown": "每月工時明細",
+    "BIM PORTAL — FREELANCER EXPORT PACKAGE": "BIM PORTAL — 自由工作者匯出資料包",
+    "Generated {value}": "產生時間 {value}", "Metric": "指標", "Value": "數值", "Purpose": "用途", "Scope": "範圍",
+    "Selected Month": "選定月份", "Open Tasks": "未結案任務", "Completed Tasks": "已完成任務", "Unassigned Open Tasks": "未指派未結案任務",
+    "Active Team Members": "啟用團隊成員", "DTR Records": "DTR 紀錄", "Portal records": "Portal 紀錄",
+    "Monthly attendance and DTR period": "月度出勤與 DTR 期間", "Current project register": "目前專案清冊",
+    "Complete task register": "完整任務清冊", "Tasks requiring action": "需要處理的任務", "Completed task history": "已完成任務歷程",
+    "Tasks requiring assignment": "需要指派的任務", "Current team availability population": "目前團隊可用人員",
+    "Generated DTR records for selected month": "選定月份已產生的 DTR 紀錄",
+    "ALL TASKS": "所有任務", "Complete task register including current assignment, schedule, progress, and Quality Score.": "完整任務清冊，包含目前指派、時程、進度及品質分數。",
+    "Task ID": "任務 ID", "Project": "專案", "Project Engineer": "專案工程師", "Task": "任務", "Description": "說明", "Assigned Member": "指派成員",
+    "Status": "狀態", "Priority": "優先順序", "Discipline": "專業別", "Progress %": "進度 %", "Quality Score": "品質分數", "Start Date": "開始日期",
+    "Deadline": "截止日期", "Completed Date": "完成日期", "Updated At": "更新時間",
+    "PROJECT REGISTER": "專案清冊", "Current project-level status, progress, team coverage, and active workload.": "目前各專案狀態、進度、團隊配置與進行中工作量。",
+    "Project ID": "專案 ID", "Project Category": "專案類別", "Members": "成員數", "Active Tasks": "進行中任務",
+    "TEAM AVAILABILITY": "團隊可用狀態", "Green = available, blue = working now, yellow = assigned, red = overdue.": "綠色＝可用、藍色＝工作中、黃色＝已指派、紅色＝逾期。",
+    "Member": "成員", "Code": "代碼", "Join Date": "加入日期", "Availability": "可用狀態", "Current Project": "目前專案", "Working Task": "目前任務",
+    "Overdue": "逾期", "Completed": "已完成", "Assignment Status": "指派狀態", "Overdue": "逾期", "Working Now": "工作中", "Assigned": "已指派", "Available": "可用",
+    "MONTHLY ATTENDANCE — {value}": "月度出勤 — {value}", "Daily attendance records for the selected month.": "選定月份的每日出勤紀錄。",
+    "Date": "日期", "Active": "啟用", "Time In": "上班時間", "Time Out": "下班時間", "Break Minutes": "休息分鐘", "Rendered": "實際工時", "Late": "遲到",
+    "Undertime": "不足工時", "Overtime": "加班", "Review Status": "審查狀態", "Locked": "已鎖定", "Yes": "是", "No": "否",
+    "MONTHLY DTR SUMMARY — {value}": "月度 DTR 摘要 — {value}", "Generated DTR status and monthly totals for all members.": "所有成員的 DTR 狀態與月度合計。",
+    "DTR ID": "DTR ID", "Calendar Days": "日曆天數", "Scheduled Workdays": "排定工作日", "Present": "出勤", "Late Days": "遲到天數", "Absent": "缺勤",
+    "Leave": "請假", "Holiday": "假日", "Rest Days": "休息日", "Incomplete": "不完整", "Approved OT": "核准加班", "Task Entries": "任務筆數", "Task Time": "任務工時", "Task Review": "任務審查",
+    "DTR DAILY DETAILS — {value}": "DTR 每日明細 — {value}", "Day-by-day attendance and task totals supporting the monthly DTR.": "支援月度 DTR 的逐日出勤與任務工時明細。",
+    "Day": "星期", "Day Type": "日期類型", "Attendance Status": "出勤狀態", "Scheduled Start": "排定開始", "Scheduled End": "排定結束", "Potential OT": "可能加班", "Task Summary": "任務摘要", "Notes": "備註",
+    "LEAVE REQUESTS — {value}": "請假申請 — {value}", "Leave requests submitted for the selected month.": "選定月份提交的請假申請。",
+    "Type": "類型", "Requested": "申請時數", "Approved": "核准時數", "Reason": "原因", "Review Reason": "審查原因", "Submitted At": "提交時間",
+    "OVERTIME CLAIMS — {value}": "加班申請 — {value}", "Overtime claims and approved time for the selected month.": "選定月份的加班申請與核准時數。",
+    "Potential": "可能加班", "Comp Credit": "補休額度", "Work Description": "工作說明", "Missing Time Out Reason": "缺少下班時間原因",
+    "PERFORMANCE OVERVIEW": "績效總覽", "Task output, delivery, and Quality Score as calculated.": "任務產出、交付與品質分數。",
+    "Rank": "排名", "Total Tasks": "任務總數", "Completion %": "完成率 %", "Rated Tasks": "已評分任務", "Measured Tasks": "可衡量任務", "On-time %": "準時率 %", "Average Days": "平均天數",
+    "PROJECT REPORTS — {value}": "專案報表 — {value}", "Project delivery, active work, overdue tasks, Quality Score, and logged time.": "專案交付、進行中工作、逾期任務、品質分數與登錄工時。",
+    "Delivered": "已交付", "Rated": "已評分", "Logged Hours": "登錄工時",
+    "MONTHLY PROJECT WORK TIME — {value}": "每月專案工時 — {value}", "Logged production time by month, project, and member. Project Total repeats for each contributing member for easy filtering.": "依月份、專案與成員列示登錄的生產工時；專案總工時會在各貢獻成員列重複顯示，方便篩選。",
+    "Month": "月份", "Project Code": "專案代碼", "Project Total": "專案總工時", "Member Code": "成員代碼", "Member Time": "成員工時",
+    "PROJECT TIME UTILIZATION": "專案工時利用率", "Planned time is Start Date through Deadline. Utilization time includes production time plus saved review time; completed tasks without production hours use Start Date through Completion Date as the production estimate.": "計畫工時以開始日期至截止日期計算；利用工時包含生產工時與已儲存的審查工時。已完成但無生產工時的任務，使用開始日期至完成日期估算生產工時。",
+    "Tasks": "任務數", "Tasks with Utilization": "有利用率資料的任務", "Planned Time": "計畫工時", "Utilization Time": "利用工時", "Production Recorded Time": "已登錄生產工時", "Review Time": "審查工時", "Recorded Total": "登錄總工時", "Completion Estimate Time": "完成估算工時", "All-time Project Hours": "專案歷史總工時", "Recorded Without Plan": "無計畫工時的登錄時間", "Remaining / Overrun": "剩餘／超支", "Time Budget Used %": "工時預算使用率 %", "Unlinked Time": "未連結工時",
+    "TASK TIME UTILIZATION DETAILS": "任務工時利用率明細", "Utilization includes recorded production time plus saved review time. Completed tasks without production hours use Start Date through Completion Date as the production estimate.": "利用工時包含登錄生產工時與已儲存的審查工時。已完成但無生產工時的任務，以開始日期至完成日期估算生產工時。",
+    "Time Source": "工時來源", "Included": "納入計算", "Calculation": "計算方式", "Contributors": "貢獻成員",
+    "PROJECT WORK TIME HEALTH — {value}": "專案工時概況 — {value}",
+    "Work-time health shows how much production time was logged to each project in the selected reporting period. It does not grade productivity; it shows recorded activity and contribution coverage.": "工時概況顯示所選期間內各專案登錄的生產工時。此欄位不評分生產力，只呈現實際登錄活動與成員貢獻範圍。",
+    "Reporting Period": "報告期間", "Total Work Time": "總工作工時", "Members Logging Time": "有登錄工時成員", "Top Contributor": "主要貢獻成員", "Top Contributor Time": "主要貢獻工時", "Share of All Project Time %": "占全部專案工時 %", "Active Logging Months": "有工時月份數", "Last Logged Date": "最後登錄日期", "Work Time Health": "工時狀態", "Time Logged": "已有工時", "No Logged Time": "無登錄工時",
+    "PROJECT TIME BY MEMBER — {value}": "專案成員工時 — {value}", "Selected-period project totals broken down by every member who logged production time.": "將所選期間的專案總工時依每位登錄生產工時的成員拆分。", "Share of Project %": "占專案工時 %",
+    "MONTHLY PROJECT TIME BREAKDOWN — {value}": "每月專案工時明細 — {value}", "Calendar-month breakdown of logged production time for the selected reporting period.": "所選報告期間內依日曆月份拆分的生產工時。",
+    "Monthly": "月度", "12 Months": "12 個月", "All Time": "全部期間",
+    "Not calculated — complete Start and Deadline": "未計算 — 請完成開始日期與截止日期", "Completion-date estimate + review": "完成日期估算 + 審查", "Completion-date estimate": "完成日期估算", "Unlinked recorded time": "未連結的登錄工時", "Production + review": "生產 + 審查", "Review time": "審查工時", "Recorded production time": "已登錄生產工時",
+    "COMPLETED": "已完成", "IN_PROGRESS": "進行中", "FOR_REVIEW": "待審查", "PENDING": "待處理", "PENDING_PLAN": "待計畫核准", "PENDING_FINAL": "待最終核准", "CANCELLED": "已取消", "FINALIZED": "已定稿", "APPROVED": "已核准", "REJECTED": "已拒絕", "NOT_STARTED": "未開始", "ON_HOLD": "暫停", "ACTIVE": "啟用", "INACTIVE": "停用", "Unassigned": "未指派",
+}
+
+EXCEL_DATA_TRANSLATABLE = {
+    "COMPLETED", "IN_PROGRESS", "FOR_REVIEW", "PENDING", "PENDING_PLAN", "PENDING_FINAL",
+    "CANCELLED", "FINALIZED", "APPROVED", "REJECTED", "NOT_STARTED", "ON_HOLD", "ACTIVE", "INACTIVE",
+    "Available", "Working Now", "Assigned", "Overdue", "Yes", "No", "Unassigned",
+    "Time Logged", "No Logged Time", "Not calculated — complete Start and Deadline",
+    "Completion-date estimate + review", "Completion-date estimate", "Unlinked recorded time",
+    "Production + review", "Review time", "Recorded production time",
+}
+
+
+def _xl(locale: str, text: str, **values: object) -> str:
+    localized = EXCEL_ZH.get(text, text) if str(locale or "en") == "zh_TW" else text
+    try:
+        return localized.format(**values)
+    except (KeyError, ValueError):
+        return localized
+
+def _xl_status(locale: str, value: object) -> str:
+    raw = str(value or "")
+    key = raw.strip().upper()
+    return _xl(locale, key) if key in EXCEL_ZH else raw
+
+def _xl_sheet(wb: Workbook, locale: str, name: str):
+    return wb.create_sheet(_xl(locale, name)[:31])
+
+
+_ZH_MONTHS = {
+    "January": 1, "February": 2, "March": 3, "April": 4, "May": 5, "June": 6,
+    "July": 7, "August": 8, "September": 9, "October": 10, "November": 11, "December": 12,
+    "Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "Jun": 6, "Jul": 7, "Aug": 8, "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12,
+}
+
+def _zh_month_text(text: str) -> str:
+    month_pattern = "|".join(sorted((re.escape(key) for key in _ZH_MONTHS), key=len, reverse=True))
+    def repl(match):
+        return f"{match.group(2)}年{_ZH_MONTHS[match.group(1)]}月"
+    return re.sub(rf"\b({month_pattern})\s+(\d{{4}})\b", repl, text)
+
+def _xl_dynamic(locale: str, text: str) -> str:
+    if str(locale or "en") != "zh_TW":
+        return text
+    exact = EXCEL_ZH.get(text)
+    if exact is not None:
+        return _zh_month_text(exact)
+    for pattern, translated in EXCEL_ZH.items():
+        if "{value}" not in pattern:
+            continue
+        prefix, suffix = pattern.split("{value}", 1)
+        if text.startswith(prefix) and text.endswith(suffix):
+            middle_end = len(text) - len(suffix) if suffix else len(text)
+            value = text[len(prefix):middle_end]
+            return _zh_month_text(translated.format(value=value))
+    return _zh_month_text(text)
+
+
+def _localize_workbook(wb: Workbook, locale: str) -> None:
+    if str(locale or "en") != "zh_TW":
+        return
+    for sheet in wb.worksheets:
+        original_title = sheet.title
+        sheet.title = _xl(locale, original_title)[:31]
+        for row in sheet.iter_rows():
+            for cell in row:
+                if not isinstance(cell.value, str):
+                    continue
+                # Rows 1, 2 and 4 are generated title/subtitle/header rows.
+                # Data rows are left untouched except for known categorical
+                # values so project/member/user-entered text is never translated.
+                if cell.row in {1, 2, 4}:
+                    cell.value = _xl_dynamic(locale, cell.value)
+                elif original_title == "Export Summary" and cell.column in {1, 3, 4}:
+                    cell.value = _xl_dynamic(locale, cell.value)
+                elif cell.value in EXCEL_DATA_TRANSLATABLE:
+                    cell.value = _xl_dynamic(locale, cell.value)
+
+
+def _project_period_label(period: str, month_key: str, fallback: str, locale: str) -> str:
+    if str(locale or "en") != "zh_TW":
+        return fallback
+    if period == "all":
+        return "全部期間"
+    try:
+        selected = datetime.strptime(month_key, "%Y-%m").date().replace(day=1)
+    except ValueError:
+        return fallback
+    if period == "month":
+        return f"{selected.year}年{selected.month}月"
+    if period == "12m":
+        index = selected.year * 12 + (selected.month - 1) - 11
+        start = date(index // 12, index % 12 + 1, 1)
+        return f"{start.year}年{start.month}月 – {selected.year}年{selected.month}月"
+    return fallback
 
 
 def _zone(name: str | None) -> ZoneInfo:
@@ -517,6 +667,7 @@ def build_export_workbook(
     database: Session,
     *,
     month_key: str,
+    locale: str = "en",
     include_tasks: bool = False,
     include_attendance: bool = False,
     include_dtr: bool = False,
@@ -538,6 +689,106 @@ def build_export_workbook(
         _add_attendance_sheet(wb, database, month_key)
     if include_all or include_dtr:
         _add_dtr_sheets(wb, database, month_key)
+    _localize_workbook(wb, locale)
     output = BytesIO()
     wb.save(output)
     return output.getvalue()
+
+def build_project_work_time_workbook(
+    database: Session,
+    *,
+    period: str = "month",
+    month_key: str = "",
+    locale: str = "en",
+) -> bytes:
+    """Export project work-time health and member contribution for the selected report period."""
+    report = build_project_reports(database, period=period, month_key=month_key)
+    wb = _new_workbook()
+    period_label = _project_period_label(
+        str(report.get("period") or period),
+        str(report.get("selected_month") or month_key),
+        str(report.get("period_label") or month_key or ""),
+        locale,
+    )
+    time_rows = {int(row["project_id"]): row for row in report.get("project_time_by_member_rows", [])}
+    projects = project_overview_rows(database, limit=500)
+    total_logged = sum(int(row.get("total_minutes") or 0) for row in time_rows.values())
+
+    health_ranked_rows = []
+    for project in projects:
+        project_id = int(project["id"])
+        activity = time_rows.get(project_id)
+        total_minutes = int(activity.get("total_minutes") or 0) if activity else 0
+        members = list(activity.get("members", []) or []) if activity else []
+        top = members[0] if members else None
+        health_ranked_rows.append((total_minutes, str(project.get("name") or ""), [
+            project.get("name"),
+            project.get("project_code") or project.get("code") or "",
+            project.get("status") or "",
+            project.get("progress") or 0,
+            period_label,
+            _duration(total_minutes),
+            len(members),
+            top.get("name") if top else "—",
+            _duration(top.get("minutes")) if top else "0h 00m",
+            round((total_minutes / total_logged * 100), 1) if total_logged else 0.0,
+            int(activity.get("active_months") or 0) if activity else 0,
+            activity.get("last_activity") or "—" if activity else "—",
+            "Time Logged" if total_minutes > 0 else "No Logged Time",
+        ]))
+    health_ranked_rows.sort(key=lambda item: (-item[0], item[1].casefold()))
+    health_rows = [item[2] for item in health_ranked_rows]
+
+    _write_rows(
+        wb.create_sheet("Project Work Time Health"),
+        title=f"PROJECT WORK TIME HEALTH — {period_label}",
+        subtitle="Work-time health shows how much production time was logged to each project in the selected reporting period. It does not grade productivity; it shows recorded activity and contribution coverage.",
+        headers=["Project", "Project Code", "Status", "Progress %", "Reporting Period", "Total Work Time", "Members Logging Time", "Top Contributor", "Top Contributor Time", "Share of All Project Time %", "Active Logging Months", "Last Logged Date", "Work Time Health"],
+        rows=health_rows,
+        widths=[30, 17, 15, 12, 24, 17, 20, 26, 20, 24, 20, 16, 18],
+        status_column=3,
+    )
+
+    member_rows = []
+    for project_row in report.get("project_time_by_member_rows", []):
+        members = project_row.get("members", []) or []
+        if not members:
+            member_rows.append([project_row.get("project_name"), project_row.get("project_code"), period_label, _duration(project_row.get("total_minutes")), "—", "", "0h 00m", 0.0])
+            continue
+        for member in members:
+            member_rows.append([
+                project_row.get("project_name"), project_row.get("project_code"), period_label,
+                _duration(project_row.get("total_minutes")), member.get("name"), member.get("code"),
+                _duration(member.get("minutes")), member.get("share_percent") or 0.0,
+            ])
+    _write_rows(
+        wb.create_sheet("Project Time by Member"),
+        title=f"PROJECT TIME BY MEMBER — {period_label}",
+        subtitle="Selected-period project totals broken down by every member who logged production time.",
+        headers=["Project", "Project Code", "Reporting Period", "Project Total", "Member", "Member Code", "Member Time", "Share of Project %"],
+        rows=member_rows,
+        widths=[30, 17, 24, 17, 26, 16, 17, 18],
+    )
+
+    monthly_rows = []
+    for project_row in report.get("monthly_project_time_rows", []):
+        members = project_row.get("members", []) or []
+        if not members:
+            monthly_rows.append([project_row.get("month"), project_row.get("project_name"), project_row.get("project_code"), _duration(project_row.get("total_minutes")), "—", "", "0h 00m"])
+            continue
+        for member in members:
+            monthly_rows.append([project_row.get("month"), project_row.get("project_name"), project_row.get("project_code"), _duration(project_row.get("total_minutes")), member.get("name"), member.get("code"), _duration(member.get("minutes"))])
+    _write_rows(
+        wb.create_sheet("Monthly Breakdown"),
+        title=f"MONTHLY PROJECT TIME BREAKDOWN — {period_label}",
+        subtitle="Calendar-month breakdown of logged production time for the selected reporting period.",
+        headers=["Month", "Project", "Project Code", "Project Total", "Member", "Member Code", "Member Time"],
+        rows=monthly_rows,
+        widths=[12, 30, 17, 17, 26, 16, 17],
+    )
+
+    _localize_workbook(wb, locale)
+    output = BytesIO()
+    wb.save(output)
+    return output.getvalue()
+

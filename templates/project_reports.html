@@ -7,22 +7,22 @@
     <h1>Member &amp; Project Reports</h1>
     <p>Quality, delivery, output, active workload, and logged effort for {{ report.period_label }}.</p>
   </div>
-  <div class="hero-actions">{% if can(Permission.REPORT_EXPORT) %}<a class="button secondary" href="/portal/exports/monthly-reports.xlsx?month={{ selected_month or request.query_params.get('month', '') }}">⇩ {{ t('Export Excel') }}</a>{% endif %}<div class="hero-badge">Updated {{ report.updated_at }}</div></div>
+  <div class="hero-actions">{% if can(Permission.REPORT_EXPORT) %}<a class="button secondary" href="/portal/exports/project-work-time.xlsx?period={{ report.period }}&month={{ report.selected_month }}">⇩ {{ t('Export Project Work Time') }}</a>{% endif %}<div class="hero-badge">{{ t('Updated') }} {{ report.updated_at }}</div></div>
 </section>
 
 <section class="content-card report-period-card">
   <div>
-    <span class="eyebrow">REPORTING PERIOD</span>
+    <span class="eyebrow">{{ t('REPORTING PERIOD') }}</span>
     <h2>{{ report.period_label }}</h2>
-    <p>Switch between one month, a rolling twelve-month view, and complete historical performance.</p>
+    <p>{{ t('Switch between one month, a rolling twelve-month view, and complete historical performance.') }}</p>
   </div>
   <form method="get" action="/portal/reports" class="report-period-form" data-report-period-form>
     <div class="report-period-buttons" role="group" aria-label="Reporting period">
-      <button type="submit" name="period" value="month" class="{{ 'active' if report.period == 'month' else '' }}">Monthly</button>
-      <button type="submit" name="period" value="12m" class="{{ 'active' if report.period == '12m' else '' }}">12 Months</button>
-      <button type="submit" name="period" value="all" class="{{ 'active' if report.period == 'all' else '' }}">All Time</button>
+      <button type="submit" name="period" value="month" class="{{ 'active' if report.period == 'month' else '' }}">{{ t('Monthly') }}</button>
+      <button type="submit" name="period" value="12m" class="{{ 'active' if report.period == '12m' else '' }}">{{ t('12 Months') }}</button>
+      <button type="submit" name="period" value="all" class="{{ 'active' if report.period == 'all' else '' }}">{{ t('All Time') }}</button>
     </div>
-    <label class="report-month-control"><span>Ending month</span><input type="month" name="month" value="{{ report.selected_month }}"></label>
+    <label class="report-month-control"><span>{{ t('Ending month') }}</span><input type="month" name="month" value="{{ report.selected_month }}"></label>
   </form>
 </section>
 
@@ -64,19 +64,23 @@
 </section>
 
 <section class="content-card data-register-card report-table-card monthly-project-time-card">
-  <div class="section-heading"><div><span class="eyebrow">MONTHLY PROJECT WORK TIME</span><h2>Project Time by Member</h2><p>Logged production time is grouped by project and calendar month. Each project total is broken down by the members who recorded time against that project.</p></div></div>
-  {% if report.monthly_project_time_rows %}
-  <div class="table-toolbar" data-table-toolbar data-table-target="#monthlyProjectTimeTable" data-record-singular="project-month" data-record-plural="project-months"><label class="table-search"><span class="sr-only">Search project or member</span><input type="search" data-table-search placeholder="Search project, code, month, or member"></label><span class="table-result-count" data-result-count></span></div>
-  <div class="modern-table-wrap"><table class="modern-table smart-table report-data-table" id="monthlyProjectTimeTable" data-sortable-table data-card-table>
-    <thead><tr><th data-sort-type="text">Month</th><th data-sort-type="text">Project</th><th data-sort-type="number">Project Total</th><th>Member Time</th></tr></thead>
-    <tbody>{% for row in report.monthly_project_time_rows %}<tr>
-      <td data-sort-value="{{ row.month }}"><strong>{{ row.month }}</strong></td>
+  <div class="section-heading"><div>
+    <span class="eyebrow">{{ t('MONTHLY PROJECT WORK TIME') if report.period == 'month' else (t('12-MONTH PROJECT WORK TIME') if report.period == '12m' else t('ALL-TIME PROJECT WORK TIME')) }}</span>
+    <h2>{{ t('Project Time by Member') }}</h2>
+    <p>{{ t('Shows total logged production time for each project in the selected reporting period, with each project total broken down by contributing member.') }}</p>
+  </div><div class="section-heading-actions"><span class="status-chip status-completed">{{ report.period_label }}</span>{% if can(Permission.REPORT_EXPORT) %}<a class="button secondary small" href="/portal/exports/project-work-time.xlsx?period={{ report.period }}&month={{ report.selected_month }}">⇩ {{ t('Export Excel') }}</a>{% endif %}</div></div>
+  {% if report.project_time_by_member_rows %}
+  <div class="table-toolbar" data-table-toolbar data-table-target="#projectTimeByMemberTable" data-record-singular="project" data-record-plural="projects"><label class="table-search"><span class="sr-only">{{ t('Search project or member') }}</span><input type="search" data-table-search placeholder="{{ t('Search project, code, or member') }}"></label><span class="table-result-count" data-result-count></span></div>
+  <div class="modern-table-wrap"><table class="modern-table smart-table report-data-table" id="projectTimeByMemberTable" data-sortable-table data-card-table>
+    <thead><tr><th data-sort-type="text">{{ t('Project') }}</th><th data-sort-type="number">{{ t('Project Total') }}</th><th>{{ t('Member Time') }}</th><th data-sort-type="number">{{ t('Share of Period') }}</th></tr></thead>
+    <tbody>{% for row in report.project_time_by_member_rows %}<tr>
       <td data-sort-value="{{ row.project_name }}"><div class="table-identity-cell"><div><strong>{{ row.project_name }}</strong><small>{{ row.project_code }}</small></div></div></td>
-      <td data-sort-value="{{ row.total_minutes }}"><strong class="project-time-total">{{ row.total_label }}</strong><small>{{ '%.2f'|format(row.total_hours) }} h</small></td>
-      <td><div class="project-member-time-list">{% for member in row.members %}<div class="project-member-time-row"><span><strong>{{ member.name }}</strong>{% if member.code %}<small>{{ member.code }}</small>{% endif %}</span><b>{{ member.label }}</b></div>{% endfor %}</div></td>
+      <td data-sort-value="{{ row.total_minutes }}"><strong class="project-time-total">{{ row.total_label }}</strong><small>{{ '%.2f'|format(row.total_hours) }} h · {{ row.member_count }} {{ t('members') }}</small></td>
+      <td><div class="project-member-time-list">{% for member in row.members %}<div class="project-member-time-row"><span><strong>{{ member.name }}</strong>{% if member.code %}<small>{{ member.code }}</small>{% endif %}</span><b>{{ member.label }} <small>({{ '%.1f'|format(member.share_percent) }}%)</small></b></div>{% endfor %}</div></td>
+      <td data-sort-value="{{ row.share_percent }}"><strong>{{ '%.1f'|format(row.share_percent) }}%</strong><small>{{ t('of logged project time') }}</small></td>
     </tr>{% endfor %}</tbody>
   </table></div>
-  {% else %}<div class="empty-state"><p>No logged project time is available for this reporting period.</p></div>{% endif %}
+  {% else %}<div class="empty-state"><p>{{ t('No logged project time is available for this reporting period.') }}</p></div>{% endif %}
 </section>
 
 <section class="content-card data-register-card report-table-card">

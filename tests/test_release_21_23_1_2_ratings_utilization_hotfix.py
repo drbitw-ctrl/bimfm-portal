@@ -188,8 +188,8 @@ def test_completion_fallback_still_adds_review_time():
 def test_release_21_23_1_2_version_ui_and_no_schema_change():
     config = (ROOT / "app" / "config.py").read_text(encoding="utf-8")
     template = (ROOT / "templates" / "task_time_utilization.html").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "v3.0.24.0-release21.24.0-finance-reporting-bank-details"' in config
-    assert 'APP_VERSION_NUMBER = "3.0.24.0"' in config
+    assert 'APP_VERSION = "v3.0.24.1-release21.24.1-project-report-period-localized-excel"' in config
+    assert 'APP_VERSION_NUMBER = "3.0.24.1"' in config
     assert "Review Time" in template
     assert "project.review_minutes" in template
     assert "row.review_minutes" in template

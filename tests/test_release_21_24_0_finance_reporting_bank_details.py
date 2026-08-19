@@ -26,7 +26,7 @@ def test_release_version_and_additive_bank_fields():
     config = (ROOT / "app" / "config.py").read_text(encoding="utf-8")
     identity = (ROOT / "app" / "models" / "identity.py").read_text(encoding="utf-8")
     migration = (ROOT / "alembic" / "versions" / "20260819_0018_freelancer_bank_details.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "v3.0.24.0-release21.24.0-finance-reporting-bank-details"' in config
+    assert 'APP_VERSION = "v3.0.24.1-release21.24.1-project-report-period-localized-excel"' in config
     for field in ("bank_account_name", "bank_account_number", "bank_name", "bank_swift_code", "bank_branch_address"):
         assert field in identity
         assert field in migration

@@ -1,0 +1,32 @@
+BIM Portal Release 21.24.1 — Validation Report
+================================================
+
+Release marker:
+v3.0.24.1-release21.24.1-project-report-period-localized-excel
+
+Full regression suite:
+129 passed
+0 failed
+
+New release-specific tests:
+6 passed
+
+Validated:
+- Monthly Project Time by Member uses selected month only.
+- 12 Months Project Time by Member aggregates rolling 12-month history.
+- All Time Project Time by Member aggregates complete history.
+- Member totals reconcile to project totals.
+- Dedicated Project Work Time Excel contains Work Time Health, Project Time by Member, and Monthly Breakdown sheets.
+- English export uses English workbook labels.
+- Traditional Chinese export uses Traditional Chinese workbook labels and Chinese month presentation.
+- Existing Excel Export Center workbook labels follow the portal locale.
+- Project Work Time export route carries both period and ending month.
+- No new database migration/model/database-core changes.
+- Packaged data/hr.db restored to baseline bytes after tests.
+
+Database safety:
+Alembic tree: IDENTICAL to 21.24.0.2
+app/models/: IDENTICAL to 21.24.0.2
+app/database.py: IDENTICAL to 21.24.0.2
+requirements.txt: IDENTICAL to 21.24.0.2
+Final packaged data/hr.db SHA-256: c249cad105139ccbd85bdced8b86263734b152523d02390c18d2bb50fe33f354

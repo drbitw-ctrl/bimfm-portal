@@ -997,6 +997,71 @@ def build_project_reports(
     monthly_project_time_rows.sort(key=lambda item: item["project_name"].casefold())
     monthly_project_time_rows.sort(key=lambda item: item["month"], reverse=True)
 
+    # Aggregate the selected reporting period into one project row so the
+    # Project Time by Member table follows Monthly / 12 Months / All Time.
+    period_project_member_minutes: dict[int, dict[int, int]] = defaultdict(lambda: defaultdict(int))
+    period_project_last_activity: dict[int, date] = {}
+    period_project_months: dict[int, set[str]] = defaultdict(set)
+    for row in daily_in_period:
+        project_id: Optional[int] = None
+        if row.portal_task_id is not None:
+            project_id = task_to_project.get(int(row.portal_task_id))
+        if project_id is None:
+            project_id = project_code_lookup.get(
+                " ".join(str(row.project_code or "").casefold().split())
+            )
+        if project_id is None:
+            project_id = project_name_lookup.get(
+                " ".join(str(row.project_name or "").casefold().split())
+            )
+        task_date = _as_date(row.task_date)
+        if project_id is None or task_date is None:
+            continue
+        minutes = max(0, int(row.minutes_spent or 0))
+        if minutes <= 0:
+            continue
+        period_project_member_minutes[project_id][int(row.freelancer_id)] += minutes
+        period_project_months[project_id].add(task_date.strftime("%Y-%m"))
+        previous = period_project_last_activity.get(project_id)
+        if previous is None or task_date > previous:
+            period_project_last_activity[project_id] = task_date
+
+    total_period_project_minutes = sum(project_minutes.values())
+    project_time_by_member_rows: list[dict[str, Any]] = []
+    for project_id, total_minutes in project_minutes.items():
+        if total_minutes <= 0:
+            continue
+        project = projects.get(project_id)
+        if project is None:
+            continue
+        members = []
+        for freelancer_id, minutes in period_project_member_minutes.get(project_id, {}).items():
+            freelancer = freelancer_lookup.get(freelancer_id)
+            members.append({
+                "freelancer_id": freelancer_id,
+                "name": str(getattr(freelancer, "full_name", None) or f"Member {freelancer_id}"),
+                "code": str(getattr(freelancer, "freelancer_code", None) or ""),
+                "minutes": minutes,
+                "hours": round(minutes / 60, 2),
+                "label": f"{minutes // 60}h {minutes % 60:02d}m",
+                "share_percent": round((minutes / total_minutes * 100), 1) if total_minutes else 0.0,
+            })
+        members.sort(key=lambda item: (-item["minutes"], item["name"].casefold()))
+        project_time_by_member_rows.append({
+            "project_id": project_id,
+            "project_name": str(project.name or project.project_code or f"Project {project_id}"),
+            "project_code": str(project.project_code or ""),
+            "total_minutes": total_minutes,
+            "total_hours": round(total_minutes / 60, 2),
+            "total_label": f"{total_minutes // 60}h {total_minutes % 60:02d}m",
+            "members": members,
+            "member_count": len(members),
+            "share_percent": round((total_minutes / total_period_project_minutes * 100), 1) if total_period_project_minutes else 0.0,
+            "active_months": len(period_project_months.get(project_id, set())),
+            "last_activity": period_project_last_activity.get(project_id).isoformat() if period_project_last_activity.get(project_id) else "",
+        })
+    project_time_by_member_rows.sort(key=lambda item: (-item["total_minutes"], item["project_name"].casefold()))
+
     tasks_by_project: dict[int, list[PortalTask]] = defaultdict(list)
     for task in tasks:
         tasks_by_project[int(task.project_id)].append(task)
@@ -1159,6 +1224,7 @@ def build_project_reports(
         "member_rows": member_rows,
         "project_rows": project_rows,
         "monthly_project_time_rows": monthly_project_time_rows,
+        "project_time_by_member_rows": project_time_by_member_rows,
         "top_member_output": [
             {"label": row["name"], "value": row["delivered_tasks"]}
             for row in member_rows if row["delivered_tasks"] > 0
