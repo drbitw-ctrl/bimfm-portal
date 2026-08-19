@@ -3,10 +3,12 @@
 Planned time is calculated for tasks with both a Start Date and Deadline. Each
 scheduled workday contributes eight hours and active holidays are excluded.
 When a task has Work Order / Daily Task time, that recorded time is used as its
-actual utilization time. When no actual time exists and the task has been
-completed, the estimated actual time is calculated from Start Date through the
-Completion Date. Planned time always remains Start Date through Deadline. This
-allows early completions to report below 100% and late completions above 100%.
+actual utilization time. Saved staff review time is added to that production
+time. When no production time exists and the task has been completed, the
+estimated production time is calculated from Start Date through Completion Date
+and saved review time is added on top. Planned time always remains Start Date
+through Deadline. This allows early completions to report below 100% and late
+completions or review effort to report above 100%.
 """
 from __future__ import annotations
 
@@ -27,6 +29,7 @@ from app.models import (
     ProjectMember,
     WorkSchedule,
 )
+from app.review_work_service import review_minutes_by_task
 
 CLOSED_TASK_STATUSES = {"COMPLETED", "CANCELLED"}
 STANDARD_TASK_DAY_MINUTES = 480
@@ -176,6 +179,7 @@ def build_task_time_utilization(
         tasks = [task for task in tasks if int(task.project_id) == int(project_id)]
 
     task_ids = {int(task.id) for task in tasks}
+    review_minutes = review_minutes_by_task(database)
     assignment_values: dict[int, list[str]] = defaultdict(list)
     if task_ids:
         for task_id, freelancer_id in database.execute(
@@ -245,7 +249,9 @@ def build_task_time_utilization(
             else None
         )
         linked_entries = linked_entries_by_task.get(int(task.id), 0)
-        recorded_minutes = linked_minutes_by_task.get(int(task.id), 0)
+        production_recorded_minutes = linked_minutes_by_task.get(int(task.id), 0)
+        task_review_minutes = max(0, int(review_minutes.get(int(task.id), 0) or 0))
+        recorded_minutes = int(production_recorded_minutes) + task_review_minutes
         included_in_utilization = target_minutes is not None and target_minutes > 0
         completion_date = task.completed_at.date() if task.completed_at else None
         estimated_actual_workdays = (
@@ -255,20 +261,21 @@ def build_task_time_utilization(
                 workweek=workweek,
                 holidays=holidays,
             )
-            if recorded_minutes <= 0 and completion_date is not None
+            if production_recorded_minutes <= 0 and completion_date is not None
             else None
         )
         uses_completion_fallback = bool(
             included_in_utilization
-            and recorded_minutes <= 0
+            and production_recorded_minutes <= 0
             and estimated_actual_workdays is not None
             and estimated_actual_workdays > 0
         )
-        utilization_minutes = (
+        production_utilization_minutes = (
             int(estimated_actual_workdays) * STANDARD_TASK_DAY_MINUTES
             if uses_completion_fallback
-            else int(recorded_minutes)
+            else int(production_recorded_minutes)
         )
+        utilization_minutes = production_utilization_minutes + task_review_minutes
         variance_minutes = (
             utilization_minutes - target_minutes
             if included_in_utilization
@@ -306,18 +313,21 @@ def build_task_time_utilization(
             "target_minutes": target_minutes,
             # ``actual_minutes`` remains the compatibility field used by the
             # report templates and exports. It now means effective utilization
-            # time: recorded time when available, otherwise planned time.
+            # time: production time (recorded, or completion fallback) plus
+            # saved review time.
             "actual_minutes": utilization_minutes,
             "recorded_minutes": recorded_minutes,
+            "production_recorded_minutes": int(production_recorded_minutes),
+            "review_minutes": task_review_minutes,
             "utilization_minutes": utilization_minutes,
             "planned_fallback_minutes": 0,
             "completion_fallback_minutes": (
-                int(utilization_minutes) if uses_completion_fallback else 0
+                int(production_utilization_minutes) if uses_completion_fallback else 0
             ),
             "uses_planned_fallback": False,
             "uses_completion_fallback": uses_completion_fallback,
             "measured_actual_minutes": utilization_minutes if included_in_utilization else 0,
-            "excluded_actual_minutes": recorded_minutes if not included_in_utilization else 0,
+            "excluded_actual_minutes": utilization_minutes if not included_in_utilization else 0,
             "variance_minutes": variance_minutes,
             "variance_absolute_minutes": abs(variance_minutes) if variance_minutes is not None else None,
             "variance_direction": (
@@ -340,19 +350,37 @@ def build_task_time_utilization(
             "logged_minutes": recorded_minutes,
             "is_estimated_actual": uses_completion_fallback,
             "actual_time_source": (
-                "completion_date_fallback"
+                "completion_date_fallback_plus_review"
+                if uses_completion_fallback and task_review_minutes > 0
+                else "completion_date_fallback"
                 if uses_completion_fallback
+                else "daily_task_entries_plus_review"
+                if linked_entries > 0 and task_review_minutes > 0
                 else "daily_task_entries"
                 if linked_entries > 0
+                else "review_time"
+                if task_review_minutes > 0
                 else "no_time_data"
             ),
             "estimated_workdays": estimated_actual_workdays,
             "completion_date": completion_date.isoformat() if completion_date else "—",
             "contributors": (
-                _contributors_label(linked_member_minutes.get(int(task.id), {}))
+                (
+                    _contributors_label(linked_member_minutes.get(int(task.id), {}))
+                    + (f"; Review: {task_review_minutes // 60}h {task_review_minutes % 60:02d}m" if task_review_minutes >= 60 else f"; Review: {task_review_minutes}m")
+                )
+                if linked_entries > 0 and task_review_minutes > 0
+                else _contributors_label(linked_member_minutes.get(int(task.id), {}))
                 if linked_entries > 0
-                else "Completion-date estimate used as actual"
+                else (
+                    "Completion-date estimate used as production time; "
+                    + (f"Review: {task_review_minutes // 60}h {task_review_minutes % 60:02d}m" if task_review_minutes >= 60 else f"Review: {task_review_minutes}m")
+                )
+                if uses_completion_fallback and task_review_minutes > 0
+                else "Completion-date estimate used as production time"
                 if uses_completion_fallback
+                else (f"Review: {task_review_minutes // 60}h {task_review_minutes % 60:02d}m" if task_review_minutes >= 60 else f"Review: {task_review_minutes}m")
+                if task_review_minutes > 0
                 else "—"
             ),
             "is_unlinked": False,
@@ -392,6 +420,8 @@ def build_task_time_utilization(
                 "target_minutes": None,
                 "actual_minutes": unlinked_minutes,
                 "recorded_minutes": unlinked_minutes,
+                "production_recorded_minutes": unlinked_minutes,
+                "review_minutes": 0,
                 "utilization_minutes": unlinked_minutes,
                 "planned_fallback_minutes": 0,
                 "uses_planned_fallback": False,
@@ -429,6 +459,12 @@ def build_task_time_utilization(
         )
         recorded_minutes = sum(
             int(row["recorded_minutes"] or 0) for row in task_rows
+        )
+        production_recorded_minutes = sum(
+            int(row.get("production_recorded_minutes") or 0) for row in task_rows
+        )
+        project_review_minutes = sum(
+            int(row.get("review_minutes") or 0) for row in task_rows
         )
         planned_fallback_minutes = sum(
             int(row["planned_fallback_minutes"] or 0) for row in task_rows
@@ -474,6 +510,8 @@ def build_task_time_utilization(
             "measured_actual_minutes": measured_actual_minutes,
             "actual_minutes": actual_minutes,
             "recorded_minutes": recorded_minutes,
+            "production_recorded_minutes": production_recorded_minutes,
+            "review_minutes": project_review_minutes,
             "planned_fallback_minutes": planned_fallback_minutes,
             "completion_fallback_minutes": sum(
                 int(row.get("completion_fallback_minutes") or 0) for row in task_rows
@@ -521,6 +559,12 @@ def build_task_time_utilization(
     )
     total_recorded_project_minutes = sum(
         int(row["recorded_minutes"] or 0) for row in project_rows
+    )
+    total_production_recorded_minutes = sum(
+        int(row.get("production_recorded_minutes") or 0) for row in project_rows
+    )
+    total_review_minutes = sum(
+        int(row.get("review_minutes") or 0) for row in project_rows
     )
     total_planned_fallback_minutes = sum(
         int(row["planned_fallback_minutes"] or 0) for row in project_rows
@@ -571,6 +615,8 @@ def build_task_time_utilization(
             "measured_actual_minutes": total_measured_actual_minutes,
             "actual_project_minutes": total_actual_project_minutes,
             "recorded_project_minutes": total_recorded_project_minutes,
+            "production_recorded_minutes": total_production_recorded_minutes,
+            "review_minutes": total_review_minutes,
             "planned_fallback_minutes": total_planned_fallback_minutes,
             "excluded_actual_minutes": total_excluded_actual_minutes,
             "top_project_name": top_project["name"] if top_project else "—",
@@ -599,7 +645,7 @@ def build_task_time_utilization(
             "hours_per_day": 8,
             "holiday_count": len(holidays),
             "workweek": workweek,
-            "formula": "Actual time (recorded, or Start-to-Completion estimate when no record exists) ÷ Planned time (Start-to-Deadline) × 100",
+            "formula": "Actual time (production recorded, or Start-to-Completion estimate when no production record exists, plus saved review time) ÷ Planned time (Start-to-Deadline) × 100",
         },
         "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
     }

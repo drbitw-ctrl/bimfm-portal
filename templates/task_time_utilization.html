@@ -12,34 +12,35 @@
   <div>
     <span class="eyebrow">{{ t('PROJECT TIME CONTROL') }}</span>
     <h1>{{ t('Task Time Utilization') }}</h1>
-    <p>{{ t('Review every project’s all-time hours and see whether each task uses recorded time or a Start-to-Completion estimate.') }}</p>
+    <p>{{ t('Review every project’s all-time hours, including saved review time, and see how each task compares with its planned time.') }}</p>
   </div>
   <div class="hero-actions">{% if can(Permission.REPORT_EXPORT) %}<a class="button secondary" href="/portal/exports/monthly-reports.xlsx">⇩ {{ t('Export Excel') }}</a>{% endif %}<div class="hero-badge">{{ t('Updated') }} {{ report.updated_at }}</div></div>
 </section>
 
 <div class="stats-grid time-utilization-summary">
   <article class="stat-card"><span>{{ t('Projects tracked') }}</span><strong>{{ report.summary.project_count }}</strong><small>{{ report.summary.task_count }} {{ t('portal tasks') }}</small></article>
-  <article class="stat-card"><span>{{ t('All-time project hours') }}</span><strong>{{ duration_label(report.summary.actual_project_minutes) }}</strong><small>{{ t('Recorded hours plus completion-date estimates') }}</small></article>
-  <article class="stat-card"><span>{{ t('Actually recorded hours') }}</span><strong>{{ duration_label(report.summary.recorded_project_minutes) }}</strong><small>{{ t('Work Orders and linked Daily Task entries') }}</small></article>
+  <article class="stat-card"><span>{{ t('All-time project hours') }}</span><strong>{{ duration_label(report.summary.actual_project_minutes) }}</strong><small>{{ t('Production time, review time, and completion-date estimates') }}</small></article>
+  <article class="stat-card"><span>{{ t('Production recorded') }}</span><strong>{{ duration_label(report.summary.production_recorded_minutes) }}</strong><small>{{ t('Work Orders and linked Daily Task entries') }}</small></article>
+  <article class="stat-card"><span>{{ t('Review time') }}</span><strong>{{ duration_label(report.summary.review_minutes) }}</strong><small>{{ t('Saved staff review timer entries included in utilization') }}</small></article>
   <article class="stat-card"><span>{{ t('Planned-time fallback') }}</span><strong>{{ duration_label(report.summary.planned_fallback_minutes) }}</strong><small>{{ report.summary.estimated_actual_task_count }} {{ t('tasks had no actual time record') }}</small></article>
   <article class="stat-card"><span>{{ t('Planned time') }}</span><strong>{{ duration_label(report.summary.target_minutes) if report.summary.target_minutes is not none else '—' }}</strong><small>{{ report.summary.targeted_task_count }} {{ t('tasks included in calculation') }}</small></article>
-  <article class="stat-card"><span>{{ t('Time budget used') }}</span><strong>{{ '%.1f%%'|format(report.summary.utilization) if report.summary.utilization is not none else '—' }}</strong><small>{{ t('Actual time ÷ Planned time × 100') }}</small></article>
+  <article class="stat-card"><span>{{ t('Time budget used') }}</span><strong>{{ '%.1f%%'|format(report.summary.utilization) if report.summary.utilization is not none else '—' }}</strong><small>{{ t('Production + Review time ÷ Planned time × 100') }}</small></article>
 </div>
 
 <section class="content-card utilization-formula-card">
   <div>
     <span class="eyebrow">{{ t('CLEAR CALCULATION') }}</span>
-    <h2>{{ t('How planned and actual time are selected') }}</h2>
-    <div class="utilization-formula" aria-label="{{ t('Actual time uses recorded time when available, otherwise completed tasks use Start Date through Completion Date') }}">
-      <span>{{ t('Recorded actual time, when available') }}</span><b>{{ t('OR') }}</b><span>{{ t('Start-to-Completion estimate, when completed without actual hours') }}</span>
+    <h2>{{ t('How planned and utilization time are selected') }}</h2>
+    <div class="utilization-formula" aria-label="{{ t('Production time uses recorded time when available, otherwise completed tasks use Start Date through Completion Date; saved review time is then added') }}">
+      <span>{{ t('Recorded production time, or Start-to-Completion estimate') }}</span><b>+</b><span>{{ t('Saved review time') }}</span>
     </div>
     <div class="utilization-formula" aria-label="{{ t('Actual time divided by planned time multiplied by one hundred') }}">
-      <span>{{ t('Actual time') }}</span><b>÷</b><span>{{ t('Planned time') }}</span><b>× 100</b>
+      <span>{{ t('Production + Review time') }}</span><b>÷</b><span>{{ t('Planned time') }}</span><b>× 100</b>
     </div>
     <div class="utilization-meaning-grid">
-      <div><strong>{{ t('No actual record') }}</strong><span>{{ t('When no actual hours exist, completed tasks estimate actual time from Start Date through Completion Date.') }}</span></div>
-      <div><strong>{{ t('Recorded below plan') }}</strong><span>{{ t('The task shows less than 100%.') }}</span></div>
-      <div><strong>{{ t('Recorded above plan') }}</strong><span>{{ t('The task shows more than 100%.') }}</span></div>
+      <div><strong>{{ t('No production record') }}</strong><span>{{ t('When no production hours exist, completed tasks estimate production time from Start Date through Completion Date; review time is still added separately.') }}</span></div>
+      <div><strong>{{ t('Total below plan') }}</strong><span>{{ t('Production plus review time is below the planned time, so the task shows less than 100%.') }}</span></div>
+      <div><strong>{{ t('Total above plan') }}</strong><span>{{ t('Production plus review time is above the planned time, so the task shows more than 100%.') }}</span></div>
     </div>
     <p class="muted utilization-caution">{{ t('The fallback does not create a Work Order or rewrite historical records. It is used only for reporting and is labelled on every affected task.') }}</p>
     <div class="utilization-scale-note"><strong>{{ t('Utilization can exceed 100%') }}</strong><span>{{ t('100% means actual time matched the plan. Values above 100% show how much more time the project consumed than planned.') }}</span></div>
@@ -63,7 +64,7 @@
 {% if report.projects %}
 <section class="content-card project-time-overview">
   <div class="section-heading">
-    <div><span class="eyebrow">{{ t('PROJECT TIME OVERVIEW') }}</span><h2>{{ t('All-time hours by project') }}</h2><p>{{ t('Every project is shown. Totals combine recorded hours with clearly identified Start-to-Completion estimates.') }}</p></div>
+    <div><span class="eyebrow">{{ t('PROJECT TIME OVERVIEW') }}</span><h2>{{ t('All-time hours by project') }}</h2><p>{{ t('Every project is shown. Totals combine production time, saved review time, and clearly identified Start-to-Completion estimates.') }}</p></div>
     <strong class="project-time-total">{{ duration_label(report.summary.actual_project_minutes) }}</strong>
   </div>
   <div class="project-time-card-grid">
@@ -80,7 +81,8 @@
       <div class="project-utilization-bar {{ 'is-unavailable' if project.utilization is none else '' }}" role="progressbar" aria-label="{{ t('Project time utilization') }}" aria-valuemin="0" aria-valuemax="200" {% if project.utilization is not none %}aria-valuenow="{{ [project.utilization, 200]|min }}"{% endif %}>
         <i class="{{ 'over-target' if project.utilization is not none and project.utilization > 100 else '' }}" style="width: {{ [project.utilization, 200]|min / 2 if project.utilization is not none else 0 }}%"></i>
       </div>
-      <div class="project-time-card-meta"><span>{{ t('Recorded') }} · {{ duration_label(project.recorded_minutes) }}</span><span>{{ t('Fallback') }} · {{ duration_label(project.completion_fallback_minutes) }}</span></div>
+      <div class="project-time-card-meta"><span>{{ t('Production') }} · {{ duration_label(project.production_recorded_minutes) }}</span><span>{{ t('Review') }} · {{ duration_label(project.review_minutes) }}</span></div>
+      <div class="project-time-card-meta"><span>{{ t('Fallback') }} · {{ duration_label(project.completion_fallback_minutes) }}</span><span>{{ t('Recorded total') }} · {{ duration_label(project.recorded_minutes) }}</span></div>
       <div class="project-time-card-meta"><span>{{ t('Planned') }} · {{ duration_label(project.target_minutes) if project.target_minutes is not none else '—' }}</span><span>{{ t('Actual time') }} · {{ duration_label(project.measured_actual_minutes) }}</span></div>
     </a>
     {% endfor %}
@@ -100,7 +102,8 @@
     </div>
     <div class="time-project-metrics">
       <div><span>{{ t('All-time hours') }}</span><strong>{{ duration_label(project.actual_minutes) }}</strong></div>
-      <div><span>{{ t('Actually recorded') }}</span><strong>{{ duration_label(project.recorded_minutes) }}</strong></div>
+      <div><span>{{ t('Production recorded') }}</span><strong>{{ duration_label(project.production_recorded_minutes) }}</strong></div>
+      <div><span>{{ t('Review time') }}</span><strong>{{ duration_label(project.review_minutes) }}</strong></div>
       <div><span>{{ t('Completion estimate') }}</span><strong>{{ duration_label(project.completion_fallback_minutes) }}</strong></div>
       <div><span>{{ t('Planned') }}</span><strong>{{ duration_label(project.target_minutes) if project.target_minutes is not none else '—' }}</strong></div>
       <div><span>{{ t('Budget used') }}</span><strong>{{ '%.1f%%'|format(project.utilization) if project.utilization is not none else '—' }}</strong></div>
@@ -124,7 +127,8 @@
         <th data-sort-type="date">{{ t('Start') }}</th>
         <th data-sort-type="date">{{ t('Deadline') }}</th>
         <th data-sort-type="number">{{ t('Planned Time') }}</th>
-        <th data-sort-type="number">{{ t('Recorded Time') }}</th>
+        <th data-sort-type="number">{{ t('Production Time') }}</th>
+        <th data-sort-type="number">{{ t('Review Time') }}</th>
         <th data-sort-type="number">{{ t('Utilization Time') }}</th>
         <th data-sort-type="text">{{ t('Time Source') }}</th>
         <th data-sort-type="number">{{ t('Remaining / Overrun') }}</th>
@@ -139,12 +143,13 @@
           <td data-sort-value="{{ row.start_date }}">{{ row.start_date }}</td>
           <td data-sort-value="{{ row.deadline }}">{{ row.deadline }}</td>
           <td data-sort-value="{{ row.target_minutes if row.target_minutes is not none else -1 }}"><strong>{{ duration_label(row.target_minutes) if row.target_minutes is not none else '—' }}</strong>{% if row.scheduled_workdays is not none %}<small>{{ row.scheduled_workdays }} {{ t('workdays') }} × 8h</small>{% else %}<small>{{ t('Start and Deadline required') }}</small>{% endif %}</td>
-          <td data-sort-value="{{ row.recorded_minutes }}"><strong>{{ duration_label(row.recorded_minutes) }}</strong>{% if row.is_unlinked %}<small>{{ row.linked_entries }} {{ t('unlinked Daily Task entries') }}</small>{% elif row.linked_entries > 0 %}<small>{{ row.linked_entries }} {{ t('Work Order / Daily Task entries') }}</small>{% else %}<small>{{ t('No actual time recorded') }}</small>{% endif %}</td>
-          <td data-sort-value="{{ row.utilization_minutes }}"><strong>{{ duration_label(row.utilization_minutes) }}</strong>{% if row.uses_completion_fallback %}<small>{{ t('Start-to-Completion estimate used') }}</small>{% else %}<small>{{ t('Uses actual recorded time') }}</small>{% endif %}</td>
-          <td data-sort-value="{{ row.actual_time_source }}">{% if row.uses_completion_fallback %}<span class="metric-pill metric-neutral">{{ t('Completion estimate') }}</span>{% elif row.is_unlinked %}<span class="metric-pill metric-neutral">{{ t('Unlinked recorded time') }}</span>{% else %}<span class="metric-pill metric-good">{{ t('Recorded') }}</span>{% endif %}</td>
+          <td data-sort-value="{{ row.production_recorded_minutes }}"><strong>{{ duration_label(row.production_recorded_minutes) }}</strong>{% if row.is_unlinked %}<small>{{ row.linked_entries }} {{ t('unlinked Daily Task entries') }}</small>{% elif row.linked_entries > 0 %}<small>{{ row.linked_entries }} {{ t('Work Order / Daily Task entries') }}</small>{% else %}<small>{{ t('No production time recorded') }}</small>{% endif %}</td>
+          <td data-sort-value="{{ row.review_minutes }}"><strong>{{ duration_label(row.review_minutes) }}</strong><small>{% if row.review_minutes > 0 %}{{ t('Included in utilization') }}{% else %}{{ t('No saved review time') }}{% endif %}</small></td>
+          <td data-sort-value="{{ row.utilization_minutes }}"><strong>{{ duration_label(row.utilization_minutes) }}</strong>{% if row.uses_completion_fallback and row.review_minutes > 0 %}<small>{{ t('Completion estimate plus review time') }}</small>{% elif row.uses_completion_fallback %}<small>{{ t('Start-to-Completion estimate used') }}</small>{% elif row.review_minutes > 0 %}<small>{{ t('Production plus review time') }}</small>{% else %}<small>{{ t('Uses actual recorded production time') }}</small>{% endif %}</td>
+          <td data-sort-value="{{ row.actual_time_source }}">{% if row.uses_completion_fallback and row.review_minutes > 0 %}<span class="metric-pill metric-neutral">{{ t('Estimate + Review') }}</span>{% elif row.uses_completion_fallback %}<span class="metric-pill metric-neutral">{{ t('Completion estimate') }}</span>{% elif row.is_unlinked %}<span class="metric-pill metric-neutral">{{ t('Unlinked recorded time') }}</span>{% elif row.review_minutes > 0 and row.production_recorded_minutes > 0 %}<span class="metric-pill metric-good">{{ t('Production + Review') }}</span>{% elif row.review_minutes > 0 %}<span class="metric-pill metric-neutral">{{ t('Review only') }}</span>{% else %}<span class="metric-pill metric-good">{{ t('Recorded production') }}</span>{% endif %}</td>
           <td data-sort-value="{{ row.variance_minutes if row.variance_minutes is not none else 999999999 }}"><span class="{{ 'time-over' if row.variance_direction == 'over' else ('time-under' if row.variance_direction == 'under' else '') }}">{% if row.included_in_utilization %}{{ variance_text(row.variance_minutes, row.variance_absolute_minutes, row.variance_direction) }}{% else %}{{ t('No planned time') }}{% endif %}</span></td>
           <td data-sort-value="{{ row.utilization if row.utilization is not none else -1 }}">{% if row.utilization is not none %}<span class="metric-pill {{ 'metric-warning' if row.utilization > 100 else ('metric-neutral' if row.uses_completion_fallback else 'metric-good') }}">{{ '%.1f%%'|format(row.utilization) }}</span>{% else %}<span class="metric-pill metric-neutral">—</span>{% endif %}</td>
-          <td data-sort-value="{{ row.time_budget_status }}">{% if row.included_in_utilization %}<strong class="time-formula-cell">{{ duration_label(row.utilization_minutes) }} ÷ {{ duration_label(row.target_minutes) }} × 100</strong><small>{% if row.uses_completion_fallback %}{{ t('Start-to-Completion estimate used because no actual hours exist') }}{% else %}{{ t('Actual recorded time used') }}{% endif %}</small>{% else %}<strong>{{ t('Not calculated') }}</strong><small>{{ t('Complete Start and Deadline to calculate utilization.') }}</small>{% endif %}</td>
+          <td data-sort-value="{{ row.time_budget_status }}">{% if row.included_in_utilization %}<strong class="time-formula-cell">{{ duration_label(row.utilization_minutes) }} ÷ {{ duration_label(row.target_minutes) }} × 100</strong><small>{% if row.uses_completion_fallback and row.review_minutes > 0 %}{{ t('Completion estimate plus saved review time used') }}{% elif row.uses_completion_fallback %}{{ t('Start-to-Completion estimate used because no production hours exist') }}{% elif row.review_minutes > 0 %}{{ t('Recorded production time plus saved review time used') }}{% else %}{{ t('Recorded production time used') }}{% endif %}</small>{% else %}<strong>{{ t('Not calculated') }}</strong><small>{{ t('Complete Start and Deadline to calculate utilization.') }}</small>{% endif %}</td>
         </tr>
       {% endfor %}</tbody>
     </table>

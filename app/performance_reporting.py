@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.models import (
     DailyTask,
     Freelancer,
+    HRAdminAccount,
     PortalProject,
     PortalTask,
     PortalTaskAssignment,
@@ -325,13 +326,41 @@ def _days_difference(task: PortalTask) -> Optional[int]:
     return (completed - due).days
 
 
+def _administrator_rating_exclusions(database: Session) -> tuple[set[int], set[str]]:
+    """Return freelancer identities that represent Administrator accounts.
+
+    Ratings are intended to measure production members, not portal
+    administrators.  Staff review timers can create deterministic ``TS-*``
+    freelancer identities, and older deployments may also link an
+    ``HRAdminAccount.task_freelancer_id`` directly.  Both representations are
+    excluded at report time only; no account or assignment data is modified.
+    """
+    excluded_ids: set[int] = set()
+    excluded_codes: set[str] = set()
+    for account in database.scalars(select(HRAdminAccount)).all():
+        if str(account.role or "").strip().upper() != "ADMIN":
+            continue
+        if account.task_freelancer_id is not None:
+            excluded_ids.add(int(account.task_freelancer_id))
+        if account.id is not None:
+            excluded_codes.add(f"TS-{int(account.id):03d}")
+
+    if excluded_codes:
+        for profile in database.scalars(select(Freelancer)).all():
+            if str(profile.freelancer_code or "").strip().upper() in excluded_codes:
+                excluded_ids.add(int(profile.id))
+    return excluded_ids, excluded_codes
+
+
 def _member_identity_maps(database: Session) -> tuple[
     dict[int, int],
     set[int],
     dict[int, dict[str, Any]],
     dict[int, dict[str, Any]],
+    set[int],
 ]:
     """Return source mappings and display identities for HR and legacy members."""
+    excluded_admin_ids, excluded_admin_codes = _administrator_rating_exclusions(database)
     directory = list(database.scalars(select(ProjectMember)).all())
     placeholder_ids = {
         int(member.source_freelancer_id)
@@ -348,6 +377,11 @@ def _member_identity_maps(database: Session) -> tuple[
     hr_identities: dict[int, dict[str, Any]] = {}
     for profile in profiles:
         if int(profile.id) in placeholder_ids:
+            continue
+        if (
+            int(profile.id) in excluded_admin_ids
+            or str(profile.freelancer_code or "").strip().upper() in excluded_admin_codes
+        ):
             continue
         hr_identities[int(profile.id)] = {
             "key": f"hr:{int(profile.id)}",
@@ -373,7 +407,7 @@ def _member_identity_maps(database: Session) -> tuple[
             "is_active": bool(member.is_active),
             "is_legacy": True,
         }
-    return source_to_hr, placeholder_ids, hr_identities, legacy_identities
+    return source_to_hr, placeholder_ids, hr_identities, legacy_identities, excluded_admin_ids
 
 
 def _owner_key(
@@ -396,7 +430,7 @@ def _task_records_by_member(database: Session) -> tuple[
     list[PortalTask],
     dict[int, PortalProject],
 ]:
-    source_to_hr, placeholder_ids, hr_identities, legacy_identities = _member_identity_maps(database)
+    source_to_hr, placeholder_ids, hr_identities, legacy_identities, excluded_admin_ids = _member_identity_maps(database)
     identities: dict[str, dict[str, Any]] = {
         item["key"]: item for item in hr_identities.values()
     }
@@ -426,6 +460,8 @@ def _task_records_by_member(database: Session) -> tuple[
         if owner is None:
             continue
         owner_type, owner_id = owner
+        if owner_type == "hr" and owner_id in excluded_admin_ids:
+            continue
         key = f"{owner_type}:{owner_id}"
         if key not in identities:
             # Direct assignments can exist before a complete member directory

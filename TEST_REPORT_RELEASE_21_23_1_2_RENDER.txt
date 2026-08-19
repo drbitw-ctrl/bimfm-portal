@@ -1,0 +1,34 @@
+BIM PORTAL RELEASE 21.23.1.2 — RENDER VALIDATION REPORT
+=======================================================
+
+Release: 21.23.1.2
+Version: v3.0.23.1.2-release21.23.1.2-ratings-utilization-hotfix
+Baseline: Release 21.23.1.1 application + Release 21.22.10 database/schema boundary
+
+RESULTS
+-------
+Python compile                         PASS
+Full pytest suite                     PASS — 109 passed, 0 failed
+Administrator account rating filter   PASS
+Production + review utilization       PASS
+Completion fallback + review time     PASS
+Screen-sharing regression suite       PASS
+No Release 21.23.1.2 migration        PASS
+
+DATABASE SAFETY
+---------------
+Alembic migration tree                IDENTICAL to 21.22.10
+app/models                             IDENTICAL to 21.22.10
+app/database.py                        IDENTICAL to 21.22.10
+requirements.txt                       IDENTICAL to 21.22.10
+bundled data/hr.db                     IDENTICAL to 21.22.10
+
+Bundled SQLite SHA-256:
+c249cad105139ccbd85bdced8b86263734b152523d02390c18d2bb50fe33f354
+
+NOTES
+-----
+- ADMIN identities are removed at Ratings report-build time only.
+- Saved stopped review timer minutes are included in Project Utilization.
+- Active review time enters utilization after the review timer is stopped/saved.
+- No production PostgreSQL data is modified by these reporting changes.

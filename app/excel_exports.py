@@ -437,16 +437,17 @@ def _add_utilization_sheets(wb: Workbook, database: Session) -> None:
     _write_rows(
         wb.create_sheet("Project Time Utilization"),
         title="PROJECT TIME UTILIZATION",
-        subtitle="Planned time is Start Date through Deadline. Actual time uses recorded hours, or Start Date through Completion Date when no actual hours exist.",
-        headers=["Rank", "Project", "Code", "Status", "Tasks", "Tasks with Utilization", "Planned Time", "Utilization Time", "Actual Recorded Time", "Completion Estimate Time", "All-time Project Hours", "Recorded Without Plan", "Remaining / Overrun", "Time Budget Used %", "Unlinked Time"],
+        subtitle="Planned time is Start Date through Deadline. Utilization time includes production time plus saved review time; completed tasks without production hours use Start Date through Completion Date as the production estimate.",
+        headers=["Rank", "Project", "Code", "Status", "Tasks", "Tasks with Utilization", "Planned Time", "Utilization Time", "Production Recorded Time", "Review Time", "Recorded Total", "Completion Estimate Time", "All-time Project Hours", "Recorded Without Plan", "Remaining / Overrun", "Time Budget Used %", "Unlinked Time"],
         rows=[[
             row.get("actual_rank"), row.get("name"), row.get("code"), row.get("status"), row.get("task_count"),
             row.get("measured_task_count"), _duration(row.get("target_minutes")) if row.get("target_minutes") is not None else "—",
-            _duration(row.get("measured_actual_minutes")), _duration(row.get("recorded_minutes")), _duration(row.get("completion_fallback_minutes")),
-            _duration(row.get("actual_minutes")), _duration(row.get("excluded_actual_minutes")), row.get("variance_label"),
-            row.get("utilization") if row.get("utilization") is not None else "", _duration(row.get("unlinked_minutes")),
+            _duration(row.get("measured_actual_minutes")), _duration(row.get("production_recorded_minutes")), _duration(row.get("review_minutes")),
+            _duration(row.get("recorded_minutes")), _duration(row.get("completion_fallback_minutes")), _duration(row.get("actual_minutes")),
+            _duration(row.get("excluded_actual_minutes")), row.get("variance_label"), row.get("utilization") if row.get("utilization") is not None else "",
+            _duration(row.get("unlinked_minutes")),
         ] for row in report.get("projects", [])],
-        widths=[9, 30, 16, 14, 10, 18, 14, 16, 18, 18, 18, 20, 20, 18, 14],
+        widths=[9, 30, 16, 14, 10, 18, 14, 16, 20, 14, 16, 18, 18, 20, 20, 18, 14],
         status_column=4,
     )
     task_rows = []
@@ -458,26 +459,32 @@ def _add_utilization_sheets(wb: Workbook, database: Session) -> None:
                 else "Not calculated — complete Start and Deadline"
             )
             source = (
-                "Completion-date estimate"
+                "Completion-date estimate + review"
+                if row.get("uses_completion_fallback") and row.get("review_minutes")
+                else "Completion-date estimate"
                 if row.get("uses_completion_fallback")
                 else "Unlinked recorded time"
                 if row.get("is_unlinked")
-                else "Actual recorded time"
+                else "Production + review"
+                if row.get("production_recorded_minutes") and row.get("review_minutes")
+                else "Review time"
+                if row.get("review_minutes")
+                else "Recorded production time"
             )
             task_rows.append([
                 project.get("name"), row.get("title"), row.get("assignees"), row.get("status"), row.get("start_date"),
                 row.get("deadline"), _duration(row.get("target_minutes")) if row.get("target_minutes") is not None else "—",
-                _duration(row.get("recorded_minutes")), _duration(row.get("utilization_minutes")), source,
+                _duration(row.get("production_recorded_minutes")), _duration(row.get("review_minutes")), _duration(row.get("utilization_minutes")), source,
                 row.get("variance_label"), row.get("utilization") if row.get("utilization") is not None else "",
                 "Yes" if row.get("included_in_utilization") else "No", calculation, row.get("contributors"),
             ])
     _write_rows(
         wb.create_sheet("Task Time Details"),
         title="TASK TIME UTILIZATION DETAILS",
-        subtitle="Recorded time is used when available. Completed tasks without actual hours use Start Date through Completion Date, so utilization may be below or above 100%.",
-        headers=["Project", "Task", "Assigned Member", "Status", "Start Date", "Deadline", "Planned Time", "Recorded Time", "Utilization Time", "Time Source", "Remaining / Overrun", "Time Budget Used %", "Included", "Calculation", "Contributors"],
+        subtitle="Utilization includes recorded production time plus saved review time. Completed tasks without production hours use Start Date through Completion Date as the production estimate.",
+        headers=["Project", "Task", "Assigned Member", "Status", "Start Date", "Deadline", "Planned Time", "Production Time", "Review Time", "Utilization Time", "Time Source", "Remaining / Overrun", "Time Budget Used %", "Included", "Calculation", "Contributors"],
         rows=task_rows,
-        widths=[28, 34, 26, 15, 13, 13, 14, 14, 16, 22, 20, 18, 11, 30, 42],
+        widths=[28, 34, 26, 15, 13, 13, 14, 16, 14, 16, 22, 20, 18, 11, 30, 42],
         status_column=4,
         due_column=6,
     )
