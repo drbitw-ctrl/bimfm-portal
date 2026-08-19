@@ -935,17 +935,67 @@ def build_project_reports(
         " ".join(str(project.name or "").casefold().split()): int(project.id)
         for project in projects.values()
     }
+    project_code_lookup = {
+        " ".join(str(project.project_code or "").casefold().split()): int(project.id)
+        for project in projects.values()
+    }
     task_to_project = {int(task.id): int(task.project_id) for task in tasks}
+    freelancer_lookup = {
+        int(row.id): row for row in database.scalars(select(Freelancer)).all()
+    }
+    monthly_project_minutes: dict[tuple[str, int], int] = defaultdict(int)
+    monthly_project_member_minutes: dict[tuple[str, int], dict[int, int]] = defaultdict(lambda: defaultdict(int))
+
     for row in daily_in_period:
         project_id: Optional[int] = None
         if row.portal_task_id is not None:
             project_id = task_to_project.get(int(row.portal_task_id))
         if project_id is None:
+            project_id = project_code_lookup.get(
+                " ".join(str(row.project_code or "").casefold().split())
+            )
+        if project_id is None:
             project_id = project_name_lookup.get(
                 " ".join(str(row.project_name or "").casefold().split())
             )
         if project_id is not None:
-            project_minutes[project_id] += max(0, int(row.minutes_spent or 0))
+            minutes = max(0, int(row.minutes_spent or 0))
+            project_minutes[project_id] += minutes
+            task_date = _as_date(row.task_date)
+            if task_date is not None:
+                monthly_key = task_date.strftime("%Y-%m")
+                monthly_project_minutes[(monthly_key, project_id)] += minutes
+                monthly_project_member_minutes[(monthly_key, project_id)][int(row.freelancer_id)] += minutes
+
+    monthly_project_time_rows: list[dict[str, Any]] = []
+    for (monthly_key, project_id), total_minutes in monthly_project_minutes.items():
+        project = projects.get(project_id)
+        if project is None:
+            continue
+        members = []
+        for freelancer_id, minutes in monthly_project_member_minutes[(monthly_key, project_id)].items():
+            freelancer = freelancer_lookup.get(freelancer_id)
+            members.append({
+                "freelancer_id": freelancer_id,
+                "name": str(getattr(freelancer, "full_name", None) or f"Member {freelancer_id}"),
+                "code": str(getattr(freelancer, "freelancer_code", None) or ""),
+                "minutes": minutes,
+                "hours": round(minutes / 60, 2),
+                "label": f"{minutes // 60}h {minutes % 60:02d}m",
+            })
+        members.sort(key=lambda item: (-item["minutes"], item["name"].casefold()))
+        monthly_project_time_rows.append({
+            "month": monthly_key,
+            "project_id": project_id,
+            "project_name": str(project.name or project.project_code or f"Project {project_id}"),
+            "project_code": str(project.project_code or ""),
+            "total_minutes": total_minutes,
+            "total_hours": round(total_minutes / 60, 2),
+            "total_label": f"{total_minutes // 60}h {total_minutes % 60:02d}m",
+            "members": members,
+        })
+    monthly_project_time_rows.sort(key=lambda item: item["project_name"].casefold())
+    monthly_project_time_rows.sort(key=lambda item: item["month"], reverse=True)
 
     tasks_by_project: dict[int, list[PortalTask]] = defaultdict(list)
     for task in tasks:
@@ -1108,6 +1158,7 @@ def build_project_reports(
         "trend": trend,
         "member_rows": member_rows,
         "project_rows": project_rows,
+        "monthly_project_time_rows": monthly_project_time_rows,
         "top_member_output": [
             {"label": row["name"], "value": row["delivered_tasks"]}
             for row in member_rows if row["delivered_tasks"] > 0

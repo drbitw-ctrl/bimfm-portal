@@ -1,0 +1,12 @@
+{% if current_staff_role in ['ADMIN', 'FINANCE'] %}
+<section class="panel freelancer-bank-summary">
+  <div class="section-heading"><div><span class="eyebrow">PAYMENT DETAILS</span><h2>{{ t('Bank Details') }}</h2><p class="muted">{{ t('Payment information available to authorized Finance and Administrator staff.') }}</p></div></div>
+  <div class="bank-details-summary">
+    <div><span>{{ t('Account Name') }}</span><strong>{{ freelancer.bank_account_name or '—' }}</strong></div>
+    <div><span>{{ t('Account Number') }}</span><strong>{{ freelancer.bank_account_number or '—' }}</strong></div>
+    <div><span>{{ t('Bank Name') }}</span><strong>{{ freelancer.bank_name or '—' }}</strong></div>
+    <div><span>{{ t('SWIFT Code') }}</span><strong>{{ freelancer.bank_swift_code or '—' }}</strong></div>
+    <div><span>{{ t('Bank Branch Address') }}</span><strong>{{ freelancer.bank_branch_address or '—' }}</strong></div>
+  </div>
+</section>
+{% endif %}

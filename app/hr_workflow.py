@@ -299,8 +299,6 @@ def approve_leave_request(
 ) -> LeaveRecord:
     policy = get_policy(database)
     reason = reason.strip()
-    if len(reason) < 5:
-        raise ValueError("A review reason of at least 5 characters is required.")
     if request_record.status != "PENDING":
         raise ValueError("Only pending leave requests can be reviewed.")
 
@@ -369,7 +367,7 @@ def approve_leave_request(
     request_record.approved_minutes = approved
     request_record.reviewed_by_admin_id = admin_id
     request_record.reviewed_at = utc_now()
-    request_record.review_reason = reason
+    request_record.review_reason = reason or None
     invalidate_dtr(database, request_record.freelancer_id, request_record.leave_date.strftime("%Y-%m"))
     return leave
 

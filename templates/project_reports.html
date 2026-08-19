@@ -63,6 +63,22 @@
   </article>
 </section>
 
+<section class="content-card data-register-card report-table-card monthly-project-time-card">
+  <div class="section-heading"><div><span class="eyebrow">MONTHLY PROJECT WORK TIME</span><h2>Project Time by Member</h2><p>Logged production time is grouped by project and calendar month. Each project total is broken down by the members who recorded time against that project.</p></div></div>
+  {% if report.monthly_project_time_rows %}
+  <div class="table-toolbar" data-table-toolbar data-table-target="#monthlyProjectTimeTable" data-record-singular="project-month" data-record-plural="project-months"><label class="table-search"><span class="sr-only">Search project or member</span><input type="search" data-table-search placeholder="Search project, code, month, or member"></label><span class="table-result-count" data-result-count></span></div>
+  <div class="modern-table-wrap"><table class="modern-table smart-table report-data-table" id="monthlyProjectTimeTable" data-sortable-table data-card-table>
+    <thead><tr><th data-sort-type="text">Month</th><th data-sort-type="text">Project</th><th data-sort-type="number">Project Total</th><th>Member Time</th></tr></thead>
+    <tbody>{% for row in report.monthly_project_time_rows %}<tr>
+      <td data-sort-value="{{ row.month }}"><strong>{{ row.month }}</strong></td>
+      <td data-sort-value="{{ row.project_name }}"><div class="table-identity-cell"><div><strong>{{ row.project_name }}</strong><small>{{ row.project_code }}</small></div></div></td>
+      <td data-sort-value="{{ row.total_minutes }}"><strong class="project-time-total">{{ row.total_label }}</strong><small>{{ '%.2f'|format(row.total_hours) }} h</small></td>
+      <td><div class="project-member-time-list">{% for member in row.members %}<div class="project-member-time-row"><span><strong>{{ member.name }}</strong>{% if member.code %}<small>{{ member.code }}</small>{% endif %}</span><b>{{ member.label }}</b></div>{% endfor %}</div></td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="empty-state"><p>No logged project time is available for this reporting period.</p></div>{% endif %}
+</section>
+
 <section class="content-card data-register-card report-table-card">
   <div class="section-heading"><div><span class="eyebrow">MEMBER REPORT</span><h2>Team Performance</h2><p>Delivered work is period-specific. Active and overdue counts show the current workload.</p></div></div>
   {% if report.member_rows %}

@@ -68,7 +68,7 @@ def configure_leave_routes(legacy_namespace: dict[str, object]) -> APIRouter:
         csrf: str = Form(...),
         leave_date: str = Form(...),
         leave_type: str = Form(...),
-        reason: str = Form(...),
+        reason: str = Form(""),
     ):
         fallback = f"/leave?month={leave_date[:7]}"
         if not validate_csrf(request, csrf):

@@ -22,6 +22,7 @@
           <th>{{ t('Name') }}</th>
           <th>{{ t('Username') }}</th>
           <th>{{ t('Join Date') }}</th>
+          <th>{{ t('Bank Details') }}</th>
           <th>Password State</th>
           <th>{{ t('Status') }}</th>
           <th>Account Actions</th>
@@ -47,6 +48,16 @@
               <input type="date" name="join_date" value="{{ freelancer.join_date.isoformat() if freelancer.join_date else '' }}" aria-label="{{ t('Join Date') }}">
               <button class="button small secondary" type="submit">{{ t('Save') }}</button>
             </form>
+          </td>
+          <td class="bank-details-cell">
+            {% if freelancer.bank_account_name or freelancer.bank_account_number or freelancer.bank_name or freelancer.bank_swift_code or freelancer.bank_branch_address %}
+              <strong>{{ freelancer.bank_name or t('Bank details saved') }}</strong>
+              <small>{{ freelancer.bank_account_name or '—' }} · {{ freelancer.bank_account_number or '—' }}</small>
+              {% if freelancer.bank_swift_code %}<small>{{ t('SWIFT Code') }}: {{ freelancer.bank_swift_code }}</small>{% endif %}
+            {% else %}
+              <span class="muted">{{ t('Not provided') }}</span>
+            {% endif %}
+            <a class="button small secondary" href="/admin/freelancers/{{ freelancer.id }}/bank-details">{{ t('Edit Bank Details') }}</a>
           </td>
           <td>
             {% if freelancer.account and freelancer.account.must_change_password %}

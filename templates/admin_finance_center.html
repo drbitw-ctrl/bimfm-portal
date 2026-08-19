@@ -54,11 +54,12 @@
   <div class="responsive-table finance-factor-table-wrap">
     <table class="finance-factor-table finance-hourly-table modern-table smart-table" data-card-table>
       <thead><tr>
-        <th>{{ t('Freelancer') }}</th><th class="number-cell">{{ t('Days Worked') }}</th><th class="number-cell">{{ t('Worked Hours') }}</th><th class="number-cell">{{ t('Leave Days') }}</th><th class="number-cell">{{ t('Approved Leave Hours') }}</th><th class="number-cell">{{ t('OT Credit Applied') }}</th><th class="number-cell">{{ t('Unpaid Leave Hours') }}</th><th class="number-cell">{{ t('Absent') }}</th><th class="number-cell">{{ t('Total Deduction') }}</th><th>{{ t('Salary Coverage') }}</th><th>{{ t('Status') }}</th><th></th>
+        <th>{{ t('Freelancer') }}</th>{% if current_staff_role in ['ADMIN', 'FINANCE'] %}<th>{{ t('Bank Details') }}</th>{% endif %}<th class="number-cell">{{ t('Days Worked') }}</th><th class="number-cell">{{ t('Worked Hours') }}</th><th class="number-cell">{{ t('Leave Days') }}</th><th class="number-cell">{{ t('Approved Leave Hours') }}</th><th class="number-cell">{{ t('OT Credit Applied') }}</th><th class="number-cell">{{ t('Unpaid Leave Hours') }}</th><th class="number-cell">{{ t('Absent') }}</th><th class="number-cell">{{ t('Total Deduction') }}</th><th>{{ t('Salary Coverage') }}</th><th>{{ t('Status') }}</th><th></th>
       </tr></thead>
       <tbody>{% for row in rows %}
         <tr class="{{ 'needs-review-row' if row.status != 'READY' else '' }}">
           <td class="member-cell"><strong>{{ row.name }}</strong><small>{{ row.code }}</small></td>
+          {% if current_staff_role in ['ADMIN', 'FINANCE'] %}<td class="bank-details-cell">{% if row.bank_name or row.bank_account_number %}<strong>{{ row.bank_name or '—' }}</strong><small>{{ row.bank_account_name or '—' }}</small><small>{{ t('Account Number') }}: {{ row.bank_account_number or '—' }}</small>{% if row.bank_swift_code %}<small>{{ t('SWIFT Code') }}: {{ row.bank_swift_code }}</small>{% endif %}{% if row.bank_branch_address %}<small>{{ row.bank_branch_address }}</small>{% endif %}{% else %}<span class="muted">{{ t('Not provided') }}</span>{% endif %}</td>{% endif %}
           <td class="number-cell worked-value"><strong>{{ row.worked_days }}</strong></td>
           <td class="number-cell">{{ row.worked_hours }}h</td>
           <td class="number-cell">{{ row.regular_leave_taken_days }}</td>

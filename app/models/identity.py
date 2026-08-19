@@ -60,6 +60,11 @@ class Freelancer(Base):
         String(80), nullable=False, default=DEFAULT_TIMEZONE
     )
     join_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    bank_account_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    bank_account_number: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    bank_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    bank_swift_code: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    bank_branch_address: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now

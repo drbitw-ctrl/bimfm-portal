@@ -5,8 +5,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_release_version():
     config = (ROOT / "app" / "config.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "v3.0.23.1.2-release21.23.1.2-ratings-utilization-hotfix"' in config
-    assert 'APP_VERSION_NUMBER = "3.0.23.1.2"' in config
+    assert 'APP_VERSION = "v3.0.24.0-release21.24.0-finance-reporting-bank-details"' in config
+    assert 'APP_VERSION_NUMBER = "3.0.24.0"' in config
 
 
 def test_dashboard_embeds_live_work_room_for_management_roles():

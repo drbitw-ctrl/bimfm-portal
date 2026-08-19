@@ -430,6 +430,29 @@ def _add_performance_sheets(wb: Workbook, database: Session, month_key: str) -> 
         widths=[30, 16, 24, 16, 14, 12, 11, 10, 10, 10, 14, 11, 12, 14],
         status_column=5,
     )
+    monthly_time_rows = []
+    for project_row in reports.get("monthly_project_time_rows", []):
+        members = project_row.get("members", []) or []
+        if not members:
+            monthly_time_rows.append([
+                project_row.get("month"), project_row.get("project_name"), project_row.get("project_code"),
+                _duration(project_row.get("total_minutes")), "—", "", "0h 00m",
+            ])
+            continue
+        for member in members:
+            monthly_time_rows.append([
+                project_row.get("month"), project_row.get("project_name"), project_row.get("project_code"),
+                _duration(project_row.get("total_minutes")), member.get("name"), member.get("code"),
+                _duration(member.get("minutes")),
+            ])
+    _write_rows(
+        wb.create_sheet("Monthly Project Time"),
+        title=f"MONTHLY PROJECT WORK TIME — {reports.get('period_label', month_key)}",
+        subtitle="Logged production time by month, project, and member. Project Total repeats for each contributing member for easy filtering.",
+        headers=["Month", "Project", "Project Code", "Project Total", "Member", "Member Code", "Member Time"],
+        rows=monthly_time_rows,
+        widths=[12, 32, 18, 16, 28, 16, 16],
+    )
 
 
 def _add_utilization_sheets(wb: Workbook, database: Session) -> None:

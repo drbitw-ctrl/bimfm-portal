@@ -995,6 +995,35 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                 task_hourly_month_ledger(database, freelancer=freelancer, month_key=dtr.month_key)
                 if task_hourly_mode else None
             )
+            range_start, range_end = parse_month_key(dtr.month_key)
+            actual_leave_history = list(
+                database.scalars(
+                    select(LeaveRecord)
+                    .where(
+                        LeaveRecord.freelancer_id == freelancer.id,
+                        LeaveRecord.leave_date >= range_start,
+                        LeaveRecord.leave_date < range_end,
+                        LeaveRecord.status == "APPROVED",
+                    )
+                    .order_by(LeaveRecord.leave_date, LeaveRecord.id)
+                ).all()
+            )
+            month_overtime_claims = list(
+                database.scalars(
+                    select(OvertimeClaim)
+                    .where(
+                        OvertimeClaim.freelancer_id == freelancer.id,
+                        OvertimeClaim.attendance_date >= range_start,
+                        OvertimeClaim.attendance_date < range_end,
+                    )
+                    .order_by(OvertimeClaim.attendance_date, OvertimeClaim.id)
+                ).all()
+            )
+            actual_overtime_history = [
+                claim for claim in month_overtime_claims
+                if claim.final_submitted_at is not None
+                or str(claim.status or "").upper() in {"APPROVED", "REJECTED"}
+            ]
             return templates.TemplateResponse(
                 request=request,
                 name=("admin_dtr_task_hourly.html" if task_hourly_mode else "admin_dtr_detail.html"),
@@ -1013,6 +1042,8 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                     month_locked=month_is_locked(database, dtr.month_key),
                     task_hourly_mode=task_hourly_mode,
                     task_hourly_ledger=task_hourly_ledger,
+                    actual_leave_history=actual_leave_history,
+                    actual_overtime_history=actual_overtime_history,
                 ),
             )
 

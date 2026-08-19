@@ -1,0 +1,39 @@
+BIM Portal Release 21.24.0 — Validation Report
+================================================
+
+Release: 21.24.0
+Version: v3.0.24.0-release21.24.0-finance-reporting-bank-details
+Baseline: Release 21.23.1.2 Render
+Date: 2026-08-19
+
+Automated regression suite
+--------------------------
+115 passed
+0 failed
+
+Validation
+----------
+PASS  Python compileall
+PASS  JavaScript syntax check (screen-share.js)
+PASS  en.json parsing
+PASS  zh_TW.json parsing
+PASS  Project monthly time aggregation: project total + per-member minutes
+PASS  Leave approval reason optional; rejection reason guard retained
+PASS  Bank fields present in model and additive migration
+PASS  Bank update audit excludes sensitive values
+PASS  Bank information limited to Admin/Finance views
+PASS  DTR Summary actual leave/overtime tables present for Admin/Finance
+PASS  Monthly Project Time Excel worksheet present
+PASS  Alembic fresh upgrade through 20260819_0018
+PASS  Alembic 20260806_0017 -> 20260819_0018 with existing freelancer row preserved
+PASS  /health/ready on migrated temporary database: HTTP 200
+
+Database boundary
+-----------------
+One intentional additive migration only:
+  20260819_0018_freelancer_bank_details.py
+
+Five nullable fields are added to freelancers.
+No existing records are updated/deleted/backfilled.
+Packaged data/hr.db restored to Release 21.23.1.2 bytes.
+SHA-256: c249cad105139ccbd85bdced8b86263734b152523d02390c18d2bb50fe33f354

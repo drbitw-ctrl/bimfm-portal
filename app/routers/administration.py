@@ -1238,6 +1238,90 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
         set_flash(request, "Join Date updated.", "success")
         return RedirectResponse(redirect_path, status_code=303)
 
+    @router.get(
+        "/admin/freelancers/{freelancer_id}/bank-details",
+        response_class=HTMLResponse,
+    )
+    def freelancer_bank_details_page(freelancer_id: int, request: Request):
+        with SessionLocal() as database:
+            admin = get_current_admin(request, database)
+            if admin is None:
+                return RedirectResponse("/admin/login", status_code=303)
+            if not _staff_can_manage(admin):
+                return RedirectResponse("/admin?access=readonly", status_code=303)
+            freelancer = database.get(Freelancer, freelancer_id)
+            if freelancer is None:
+                set_flash(request, "Freelancer was not found.", "error")
+                return RedirectResponse("/admin/freelancers", status_code=303)
+            return templates.TemplateResponse(
+                request=request,
+                name="admin_freelancer_bank_details.html",
+                context=template_context(request, admin=admin, freelancer=freelancer),
+            )
+
+    @router.post("/admin/freelancers/{freelancer_id}/bank-details")
+    def update_freelancer_bank_details(
+        freelancer_id: int,
+        request: Request,
+        csrf: str = Form(...),
+        bank_account_name: str = Form(""),
+        bank_account_number: str = Form(""),
+        bank_name: str = Form(""),
+        bank_swift_code: str = Form(""),
+        bank_branch_address: str = Form(""),
+    ):
+        redirect_path = f"/admin/freelancers/{freelancer_id}/bank-details"
+        if not validate_csrf(request, csrf):
+            set_flash(request, "Invalid form token.", "error")
+            return RedirectResponse(redirect_path, status_code=303)
+
+        values = {
+            "bank_account_name": bank_account_name.strip(),
+            "bank_account_number": bank_account_number.strip(),
+            "bank_name": bank_name.strip(),
+            "bank_swift_code": bank_swift_code.strip().upper(),
+            "bank_branch_address": bank_branch_address.strip(),
+        }
+        limits = {
+            "bank_account_name": 200,
+            "bank_account_number": 120,
+            "bank_name": 200,
+            "bank_swift_code": 50,
+            "bank_branch_address": 1000,
+        }
+        for field, value in values.items():
+            if len(value) > limits[field]:
+                set_flash(request, "One or more bank-detail fields are too long.", "error")
+                return RedirectResponse(redirect_path, status_code=303)
+
+        with SessionLocal() as database:
+            admin = get_current_admin(request, database)
+            if admin is None:
+                return RedirectResponse("/admin/login", status_code=303)
+            if not _staff_can_manage(admin):
+                return RedirectResponse("/admin?access=readonly", status_code=303)
+            freelancer = database.get(Freelancer, freelancer_id)
+            if freelancer is None:
+                set_flash(request, "Freelancer was not found.", "error")
+                return RedirectResponse("/admin/freelancers", status_code=303)
+
+            for field, value in values.items():
+                setattr(freelancer, field, value or None)
+            write_audit(
+                database,
+                actor_type="HR_ADMIN",
+                actor_id=admin.id,
+                action="UPDATE_FREELANCER_BANK_DETAILS",
+                request=request,
+                target_type="FREELANCER",
+                target_id=freelancer.id,
+                details=f"Updated bank details for {freelancer.full_name}. Sensitive values omitted from audit details.",
+            )
+            database.commit()
+
+        set_flash(request, "Bank details updated.", "success")
+        return RedirectResponse("/admin/freelancers", status_code=303)
+
     @router.post("/admin/freelancers/{freelancer_id}/toggle")
     def toggle_freelancer(
         freelancer_id: int,
