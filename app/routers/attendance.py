@@ -1044,6 +1044,7 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                     task_hourly_ledger=task_hourly_ledger,
                     actual_leave_history=actual_leave_history,
                     actual_overtime_history=actual_overtime_history,
+                    format_local_datetime=format_local_datetime,
                 ),
             )
 
