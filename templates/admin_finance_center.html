@@ -45,29 +45,53 @@
   </div>
 </section>
 
-<section class="panel table-panel finance-summary-panel">
-  <div class="section-heading"><div><span class="eyebrow">{{ t('FINANCE OVERVIEW') }}</span><h2>{{ selected_month }}</h2><p class="muted">{{ t('Physical workdays remain separate from hourly leave-credit and salary-deduction calculations.') }}</p></div></div>
+<section class="panel table-panel finance-summary-panel finance-overview-table-panel">
+  <div class="section-heading"><div><span class="eyebrow">{{ t('FINANCE OVERVIEW') }}</span><h2>{{ selected_month }}</h2><p class="muted">{{ t('Grouped for faster review: work, leave/absence, overtime credit, salary, bank information, and direct history shortcuts.') }}</p></div></div>
   {% if rows %}
   <div class="responsive-table finance-factor-table-wrap">
-    <table class="finance-factor-table finance-hourly-table modern-table smart-table" data-card-table>
+    <table class="finance-factor-table finance-hourly-table finance-grouped-table modern-table smart-table" data-card-table>
       <thead><tr>
-        <th>{{ t('Freelancer') }}</th>{% if current_staff_role in ['ADMIN', 'FINANCE'] %}<th>{{ t('Bank Details') }}</th>{% endif %}<th class="number-cell">{{ t('Days Worked') }}</th><th class="number-cell">{{ t('Worked Hours') }}</th><th class="number-cell">{{ t('Leave Days') }}</th><th class="number-cell">{{ t('Approved Leave Hours') }}</th><th class="number-cell">{{ t('OT Credit Applied') }}</th><th class="number-cell">{{ t('Unpaid Leave Hours') }}</th><th class="number-cell">{{ t('Absent') }}</th><th class="number-cell">{{ t('Total Deduction') }}</th><th>{{ t('Salary Coverage') }}</th><th>{{ t('Status') }}</th><th></th>
+        <th>{{ t('Freelancer') }}</th>
+        <th>{{ t('Work') }}</th>
+        <th>{{ t('Leave / Absence') }}</th>
+        <th>{{ t('OT Credit') }}</th>
+        <th>{{ t('Salary') }}</th>
+        {% if current_staff_role in ['ADMIN', 'FINANCE'] %}<th>{{ t('Bank Details') }}</th>{% endif %}
+        <th>{{ t('Status') }}</th>
+        <th>{{ t('Quick View') }}</th>
       </tr></thead>
       <tbody>{% for row in rows %}
         <tr class="{{ 'needs-review-row' if row.status != 'READY' else '' }}">
           <td class="member-cell"><strong>{{ row.name }}</strong><small>{{ row.code }}</small></td>
-          {% if current_staff_role in ['ADMIN', 'FINANCE'] %}<td class="bank-details-cell">{% if row.bank_name or row.bank_account_number %}<strong>{{ row.bank_name or '—' }}</strong><small>{{ row.bank_account_name or '—' }}</small><small>{{ t('Account Number') }}: {{ row.bank_account_number or '—' }}</small>{% if row.bank_swift_code %}<small>{{ t('SWIFT Code') }}: {{ row.bank_swift_code }}</small>{% endif %}{% if row.bank_branch_address %}<small>{{ row.bank_branch_address }}</small>{% endif %}{% else %}<span class="muted">{{ t('Not provided') }}</span>{% endif %}</td>{% endif %}
-          <td class="number-cell worked-value"><strong>{{ row.worked_days }}</strong></td>
-          <td class="number-cell">{{ row.worked_hours }}h</td>
-          <td class="number-cell">{{ row.regular_leave_taken_days }}</td>
-          <td class="number-cell">{{ row.approved_leave_hours }}h</td>
-          <td class="number-cell credit-value">{{ row.comp_credit_hours_applied }}h</td>
-          <td class="number-cell deduction-value"><strong>{{ row.effective_unpaid_leave_hours }}h</strong></td>
-          <td class="number-cell deduction-value"><strong>{{ row.absent_days }}</strong><small>{{ row.effective_absent_hours }}h {{ t('uncovered') }}</small></td>
-          <td class="number-cell deduction-value"><strong>{{ row.total_deduction_hours }}h</strong></td>
-          <td class="treatment-cell"><strong>{{ row.payroll_percentage_display }}</strong><small>{{ row.payroll_treatment_display }}</small></td>
+          <td class="finance-group-cell">
+            <span><small>{{ t('Days Worked') }}</small><strong>{{ row.worked_days }}</strong></span>
+            <span><small>{{ t('Worked Hours') }}</small><strong>{{ row.worked_hours }}h</strong></span>
+          </td>
+          <td class="finance-group-cell">
+            <span><small>{{ t('Approved Leave') }}</small><strong>{{ row.approved_leave_hours }}h</strong></span>
+            <span class="deduction-value"><small>{{ t('Unpaid Leave') }}</small><strong>{{ row.effective_unpaid_leave_hours }}h</strong></span>
+            <span class="deduction-value"><small>{{ t('Absent') }}</small><strong>{{ row.absent_days }} · {{ row.effective_absent_hours }}h</strong></span>
+          </td>
+          <td class="finance-group-cell">
+            <span class="credit-value"><small>{{ t('Applied This Month') }}</small><strong>{{ row.comp_credit_hours_applied }}h</strong></span>
+            <span class="credit-balance-value"><small>{{ t('Available Now') }}</small><strong>{{ row.current_credit_label }}</strong></span>
+          </td>
+          <td class="finance-group-cell treatment-cell">
+            <span><small>{{ t('Salary Coverage') }}</small><strong>{{ row.payroll_percentage_display }}</strong></span>
+            <span><small>{{ t('Total Deduction') }}</small><strong>{{ row.total_deduction_hours }}h</strong></span>
+            <small>{{ row.payroll_treatment_display }}</small>
+          </td>
+          {% if current_staff_role in ['ADMIN', 'FINANCE'] %}<td class="bank-details-cell compact-bank-cell">{% if row.bank_name or row.bank_account_number %}<strong>{{ row.bank_name or '—' }}</strong><small>{{ row.bank_account_name or '—' }}</small><small>{{ t('Account Number') }}: {{ row.bank_account_number or '—' }}</small>{% if row.bank_swift_code %}<small>{{ t('SWIFT Code') }}: {{ row.bank_swift_code }}</small>{% endif %}{% else %}<span class="muted">{{ t('Not provided') }}</span>{% endif %}</td>{% endif %}
           <td><span class="badge {{ 'good' if row.status == 'READY' else 'warning' }}">{{ 'READY' if row.status == 'READY' else 'REVIEW' }}</span></td>
-          <td class="actions-cell"><a class="button small primary" href="/admin/dtr/{{ row.dtr_id }}">{{ t('Summary') }}</a><a class="button small secondary" href="/admin/dtr/{{ row.dtr_id }}/details">{{ t('Details') }}</a></td>
+          <td class="actions-cell finance-quick-actions">
+            <a class="button small primary" href="/admin/dtr/{{ row.dtr_id }}">{{ t('Summary') }}</a>
+            {% if current_staff_role in ['ADMIN', 'FINANCE'] %}
+            <a class="button small secondary" href="/admin/dtr/{{ row.dtr_id }}#overtime-history">{{ t('OT History') }}</a>
+            <a class="button small secondary" href="/admin/dtr/{{ row.dtr_id }}#overtime-credit-balance">{{ t('OT Credit') }}</a>
+            <a class="button small secondary" href="/admin/dtr/{{ row.dtr_id }}#leave-history">{{ t('Leave History') }}</a>
+            {% endif %}
+            <a class="button small secondary" href="/admin/dtr/{{ row.dtr_id }}/details">{{ t('Monthly Details') }}</a>
+          </td>
         </tr>
       {% endfor %}</tbody>
     </table>

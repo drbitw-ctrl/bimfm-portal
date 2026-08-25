@@ -65,6 +65,10 @@ def configure_finance_routes(legacy_namespace: dict[str, object]) -> APIRouter:
                 row["closing_label"] = minutes_label(row["closing_minutes"])
                 row["earned_label"] = minutes_label(row["comp_earned_minutes"])
                 row["approved_ot_label"] = minutes_label(row["approved_ot_minutes"])
+                dtr = database.get(MonthlyDTR, row["dtr_id"])
+                current_credit_minutes = comp_balance(database, dtr.freelancer_id) if dtr else 0
+                row["current_credit_minutes"] = current_credit_minutes
+                row["current_credit_label"] = minutes_label(current_credit_minutes)
             return templates.TemplateResponse(
                 request=request, name="admin_finance_center.html",
                 context=template_context(request, admin=admin, selected_month=selected_month, rows=rows, totals=totals),

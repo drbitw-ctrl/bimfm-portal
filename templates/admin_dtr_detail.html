@@ -9,6 +9,8 @@
 
 {% include "_freelancer_bank_summary.html" %}
 
+{% include "_finance_history_quick_nav.html" %}
+
 <section class="clear-dtr-grid">
   <article class="clear-dtr-card calendar"><span>{{ t('TOTAL CALENDAR DAYS') }}</span><strong>{{ compact.calendar_days|int }}</strong><small>{{ t('All days in the selected month') }}</small></article>
   <article class="clear-dtr-card worked"><span>{{ t('TOTAL WORK DAYS FOR THE MONTH') }}</span><strong>{{ compact.worked_days|int }}</strong><small>{{ compact.worked_hours }} {{ t('recorded hours') }}</small><em>{{ t('This is the actual number of days worked.') }}</em></article>

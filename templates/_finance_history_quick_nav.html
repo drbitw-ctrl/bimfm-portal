@@ -1,0 +1,14 @@
+{% if current_staff_role in ['ADMIN', 'FINANCE'] %}
+<section class="panel finance-quick-view" aria-label="Finance history shortcuts">
+  <div class="finance-quick-view-copy">
+    <span class="eyebrow">{{ t('FINANCE QUICK VIEW') }}</span>
+    <h2>{{ t('All-Time Finance History') }}</h2>
+    <p class="muted">{{ t('Use these shortcuts to review this freelancer across all recorded months.') }}</p>
+  </div>
+  <div class="finance-quick-view-actions">
+    <a class="button secondary" href="#overtime-history">{{ t('OT History') }}</a>
+    <a class="button secondary credit-shortcut" href="#overtime-credit-balance"><span>{{ t('OT Credit Balance') }}</span><strong>{{ current_comp_credit_label }}</strong></a>
+    <a class="button secondary" href="#leave-history">{{ t('Leave History') }}</a>
+  </div>
+</section>
+{% endif %}

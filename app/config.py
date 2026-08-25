@@ -2,8 +2,8 @@ import os
 from pathlib import Path
 
 APP_NAME = "BIM Portal"
-APP_VERSION = "v3.0.24.1-release21.24.1-project-report-period-localized-excel"
-APP_VERSION_NUMBER = "3.0.24.1"
+APP_VERSION = "v3.0.24.2-release21.24.2-finance-history-quick-view"
+APP_VERSION_NUMBER = "3.0.24.2"
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"

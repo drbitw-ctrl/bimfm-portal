@@ -1,0 +1,36 @@
+BIM Portal Release 21.24.2 — Validation Report
+================================================
+Baseline: uploaded BIM_PORTAL_RELEASE_21_24_1.zip
+Verified baseline version:
+  v3.0.24.1-release21.24.1-project-report-period-localized-excel
+
+Target version:
+  v3.0.24.2-release21.24.2-finance-history-quick-view
+
+Validation
+----------
+Python compile: PASS
+Jinja template compilation: PASS (59 templates)
+English locale JSON: PASS
+Traditional Chinese locale JSON: PASS
+pytest regression suite: 133 passed, 0 failed
+
+Database boundary
+-----------------
+alembic/: IDENTICAL to uploaded 21.24.1 baseline
+app/models/: IDENTICAL to uploaded 21.24.1 baseline
+app/database.py: IDENTICAL
+requirements.txt: IDENTICAL
+data/hr.db: IDENTICAL
+SHA-256 data/hr.db:
+c249cad105139ccbd85bdced8b86263734b152523d02390c18d2bb50fe33f354
+
+Functional coverage added
+-------------------------
+- DTR summary all-time approved leave history
+- DTR summary all-time actual/final OT history
+- Current OT-credit balance and all-time earned/used totals
+- Expandable all-time OT-credit ledger
+- Finance Center grouped table layout
+- Direct OT History / OT Credit / Leave History shortcuts
+- English + Traditional Chinese labels

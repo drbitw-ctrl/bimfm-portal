@@ -5,6 +5,8 @@
 
 {% include "_freelancer_bank_summary.html" %}
 
+{% include "_finance_history_quick_nav.html" %}
+
 <section class="panel task-hourly-admin-summary"><div class="section-heading"><div><span class="eyebrow">{{ t('WORK ORDER TIME BASIS') }}</span><h2>{{ t('Task-hourly member') }}</h2><p>{{ t('This member does not use attendance Time In or Time Out. The monthly DTR is based only on verified stopped Work Orders.') }}</p></div><span class="badge good">{{ t('TASK HOURS') }}</span></div>
 <div class="task-hourly-summary-grid"><article><span>{{ t('Worked days') }}</span><strong>{{ task_hourly_ledger.worked_day_count }}</strong></article><article><span>{{ t('Stopped work sessions') }}</span><strong>{{ task_hourly_ledger.session_count }}</strong></article><article class="featured"><span>{{ t('Total recorded task time') }}</span><strong>{{ task_hourly_ledger.total.label }}</strong><small>{{ t('Hours : Minutes : Seconds') }}</small></article></div></section>
 

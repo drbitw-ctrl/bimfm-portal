@@ -1,17 +1,49 @@
+{# ACTUAL LEAVE HISTORY / ACTUAL OVERTIME HISTORY — now shown ALL TIME for Finance #}
 {% if current_staff_role in ['ADMIN', 'FINANCE'] %}
-<section class="finance-history-grid">
-  <article class="panel">
-    <div class="section-heading"><div><span class="eyebrow">ACTUAL LEAVE HISTORY</span><h2>{{ t('Approved Leaves') }}</h2><p class="muted">{{ t('Approved leave actually recorded for this DTR month.') }}</p></div></div>
-    {% if actual_leave_history %}<div class="modern-table-wrap"><table class="modern-table smart-table" data-card-table><thead><tr><th>{{ t('Date') }}</th><th>{{ t('Type') }}</th><th>{{ t('Duration') }}</th><th>{{ t('OT Credit Used') }}</th><th>{{ t('Treatment') }}</th></tr></thead><tbody>
-    {% for item in actual_leave_history %}<tr><td><strong>{{ item.leave_date }}</strong></td><td>{{ item.leave_type.replace('_',' ').title() }}</td><td>{{ (item.duration_minutes or 0) // 60 }}h {{ '%02d'|format((item.duration_minutes or 0) % 60) }}m</td><td>{{ (item.comp_leave_minutes_used or 0) // 60 }}h {{ '%02d'|format((item.comp_leave_minutes_used or 0) % 60) }}m</td><td>{{ t('Paid') if item.is_paid else t('Unpaid / credit-applied') }}</td></tr>{% endfor %}
-    </tbody></table></div>{% else %}<p class="muted">{{ t('No approved leave was recorded for this month.') }}</p>{% endif %}
-  </article>
-  <article class="panel">
-    <div class="section-heading"><div><span class="eyebrow">ACTUAL OVERTIME HISTORY</span><h2>{{ t('Overtime Records') }}</h2><p class="muted">{{ t('Submitted actual overtime and final review results for this DTR month.') }}</p></div></div>
-    {% if actual_overtime_history %}<div class="modern-table-wrap"><table class="modern-table smart-table" data-card-table><thead><tr><th>{{ t('Date') }}</th><th>{{ t('Work') }}</th><th>{{ t('Actual End') }}</th><th>{{ t('Approved OT') }}</th><th>{{ t('Status') }}</th></tr></thead><tbody>
-    {% for item in actual_overtime_history %}<tr><td><strong>{{ item.attendance_date }}</strong></td><td>{{ item.work_description }}</td><td>{{ format_local_datetime(item.actual_time_out_utc or item.claimed_time_out_utc, freelancer.timezone_name) if (item.actual_time_out_utc or item.claimed_time_out_utc) else '—' }}</td><td>{{ (item.approved_minutes or 0) // 60 }}h {{ '%02d'|format((item.approved_minutes or 0) % 60) }}m</td><td><span class="badge {{ 'good' if item.status == 'APPROVED' else ('danger' if item.status == 'REJECTED' else 'warning') }}">{{ item.status.replace('_',' ') }}</span>{% if item.review_reason %}<small>{{ item.review_reason }}</small>{% endif %}</td></tr>{% endfor %}
-    </tbody></table></div>{% else %}<p class="muted">{{ t('No actual overtime records were submitted for this month.') }}</p>{% endif %}
-  </article>
+<section class="panel finance-credit-balance-panel" id="overtime-credit-balance">
+  <div class="section-heading">
+    <div>
+      <span class="eyebrow">{{ t('OVERTIME CREDIT BALANCE') }}</span>
+      <h2>{{ t('Current OT Credit Balance') }}</h2>
+      <p class="muted">{{ t('Current balance and all-time credit movement for this freelancer.') }}</p>
+    </div>
+    <div class="finance-credit-hero"><span>{{ t('Available Now') }}</span><strong>{{ current_comp_credit_label }}</strong></div>
+  </div>
+  <div class="finance-credit-lifetime-grid">
+    <div><span>{{ t('Earned All Time') }}</span><strong>{{ comp_credit_earned_label }}</strong></div>
+    <div><span>{{ t('Used All Time') }}</span><strong>{{ comp_credit_used_label }}</strong></div>
+    <div class="available"><span>{{ t('Available Now') }}</span><strong>{{ current_comp_credit_label }}</strong></div>
+  </div>
+  {% if comp_credit_transactions %}
+  <details class="finance-ledger-details">
+    <summary>{{ t('Show OT credit ledger history') }}</summary>
+    <div class="modern-table-wrap">
+      <table class="modern-table smart-table" data-card-table>
+        <thead><tr><th>{{ t('Date') }}</th><th>{{ t('Transaction') }}</th><th>{{ t('Change') }}</th><th>{{ t('Description') }}</th></tr></thead>
+        <tbody>{% for item in comp_credit_transactions %}<tr>
+          <td><strong>{{ item.transaction_date }}</strong></td>
+          <td>{{ item.transaction_type.replace('_',' ').title() }}</td>
+          <td class="{{ 'credit-value' if (item.amount_minutes or 0) > 0 else 'deduction-value' }}"><strong>{{ '+' if (item.amount_minutes or 0) > 0 else '-' }}{{ ((item.amount_minutes or 0)|abs) // 60 }}h {{ '%02d'|format(((item.amount_minutes or 0)|abs) % 60) }}m</strong></td>
+          <td>{{ item.description }}</td>
+        </tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </details>
+  {% endif %}
 </section>
 
+<section class="finance-history-grid finance-history-all-time">
+  <article class="panel" id="leave-history">
+    <div class="section-heading"><div><span class="eyebrow">{{ t('ALL-TIME LEAVE HISTORY') }}</span><h2>{{ t('Approved Leaves') }}</h2><p class="muted">{{ t('All approved leave records for this freelancer, across all recorded months.') }}</p></div><span class="history-count">{{ actual_leave_history|length }}</span></div>
+    {% if actual_leave_history %}<div class="modern-table-wrap finance-history-scroll"><table class="modern-table smart-table" data-card-table><thead><tr><th>{{ t('Date') }}</th><th>{{ t('Type') }}</th><th>{{ t('Duration') }}</th><th>{{ t('OT Credit Used') }}</th><th>{{ t('Treatment') }}</th></tr></thead><tbody>
+    {% for item in actual_leave_history %}<tr><td><strong>{{ item.leave_date }}</strong></td><td>{{ item.leave_type.replace('_',' ').title() }}</td><td>{{ (item.duration_minutes or 0) // 60 }}h {{ '%02d'|format((item.duration_minutes or 0) % 60) }}m</td><td>{{ (item.comp_leave_minutes_used or 0) // 60 }}h {{ '%02d'|format((item.comp_leave_minutes_used or 0) % 60) }}m</td><td>{{ t('Paid') if item.is_paid else t('Unpaid / credit-applied') }}</td></tr>{% endfor %}
+    </tbody></table></div>{% else %}<p class="muted">{{ t('No approved leave history is recorded for this freelancer.') }}</p>{% endif %}
+  </article>
+  <article class="panel" id="overtime-history">
+    <div class="section-heading"><div><span class="eyebrow">{{ t('ALL-TIME OVERTIME HISTORY') }}</span><h2>{{ t('Overtime Records') }}</h2><p class="muted">{{ t('All submitted actual overtime and final review results for this freelancer, across all recorded months.') }}</p></div><span class="history-count">{{ actual_overtime_history|length }}</span></div>
+    {% if actual_overtime_history %}<div class="modern-table-wrap finance-history-scroll"><table class="modern-table smart-table" data-card-table><thead><tr><th>{{ t('Date') }}</th><th>{{ t('Work') }}</th><th>{{ t('Actual End') }}</th><th>{{ t('Approved OT') }}</th><th>{{ t('Status') }}</th></tr></thead><tbody>
+    {% for item in actual_overtime_history %}<tr><td><strong>{{ item.attendance_date }}</strong></td><td>{{ item.work_description }}</td><td>{{ format_local_datetime(item.actual_time_out_utc or item.claimed_time_out_utc, freelancer.timezone_name) if (item.actual_time_out_utc or item.claimed_time_out_utc) else '—' }}</td><td>{{ (item.approved_minutes or 0) // 60 }}h {{ '%02d'|format((item.approved_minutes or 0) % 60) }}m</td><td><span class="badge {{ 'good' if item.status == 'APPROVED' else ('danger' if item.status == 'REJECTED' else 'warning') }}">{{ item.status.replace('_',' ') }}</span>{% if item.review_reason %}<small>{{ item.review_reason }}</small>{% endif %}</td></tr>{% endfor %}
+    </tbody></table></div>{% else %}<p class="muted">{{ t('No actual overtime history is recorded for this freelancer.') }}</p>{% endif %}
+  </article>
+</section>
 {% endif %}
