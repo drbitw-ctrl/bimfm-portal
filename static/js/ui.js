@@ -174,6 +174,25 @@
 
   document.querySelectorAll('[data-table-toolbar]').forEach(prepareTableFilter);
 
+  document.querySelectorAll('[data-overview-filter-key], [data-overview-filter-reset]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const toolbar = document.querySelector('#task-register-filters');
+      if (!toolbar) return;
+      const reset = toolbar.querySelector('[data-table-filter-reset]');
+      if (reset) reset.click();
+      if (!button.hasAttribute('data-overview-filter-reset')) {
+        const key = button.dataset.overviewFilterKey || '';
+        const value = button.dataset.overviewFilterValue || '';
+        const control = toolbar.querySelector(`[data-table-filter][data-filter-key="${key}"]`);
+        if (control) {
+          control.value = value;
+          control.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+      toolbar.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  });
+
   function prepareSortableTable(table) {
     const body = table.tBodies[0];
     if (!body) return;

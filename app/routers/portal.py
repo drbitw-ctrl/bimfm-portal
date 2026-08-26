@@ -1615,6 +1615,8 @@ def create_portal_router(
         section_title = "Operational records"
         section_note = "Current operational records, assignments, and delivery status."
         task_filters: dict[str, list[dict[str, str]]] | None = None
+        operations_overview: dict[str, Any] | None = None
+        availability_filter_options: list[dict[str, str]] = []
         can_edit_tasks = has_permission(normalize_role(account.role), Permission.PROJECT_EDIT)
         can_remind_tasks = has_permission(normalize_role(account.role), Permission.TASK_REMINDER_SEND)
 
@@ -1644,54 +1646,161 @@ def create_portal_router(
             ]
         elif module_name == "tasks":
             normalized_view = view if view in {"active", "completed", "unassigned"} else "all"
-            source_rows = task_overview_rows(database, status_mode=normalized_view, limit=1000)
-            selected_completed_period = "all"
+            all_task_rows = task_overview_rows(database, status_mode="all", limit=1000)
+            source_rows = (
+                all_task_rows
+                if normalized_view == "all"
+                else task_overview_rows(database, status_mode=normalized_view, limit=1000)
+            )
+
+            today = date.today()
+
+            def _completed_on(task_row: dict[str, object]) -> date | None:
+                raw_completed = task_row.get("completion_date")
+                if not raw_completed or raw_completed == "—":
+                    return None
+                try:
+                    return date.fromisoformat(str(raw_completed)[:10])
+                except (TypeError, ValueError):
+                    return None
+
+            def _month_window_start(months: int) -> date:
+                month_index = (today.year * 12 + today.month - 1) - (months - 1)
+                start_year, start_month_zero = divmod(month_index, 12)
+                return date(start_year, start_month_zero + 1, 1)
+
             completed_period_options = [
-                {"value": "7d", "label": "Last 1 Week"},
-                {"value": "14d", "label": "Last 2 Weeks"},
-                {"value": "21d", "label": "Last 3 Weeks"},
-                {"value": "30d", "label": "Last 30 Days"},
-                {"value": "this_month", "label": "This Month"},
-                {"value": "last_month", "label": "Last Month"},
-                {"value": "3m", "label": "Last 3 Months"},
+                {"value": "week", "label": "This Week"},
+                {"value": "2w", "label": "Last 2 Weeks"},
+                {"value": "month", "label": "Past Month"},
                 {"value": "6m", "label": "Last 6 Months"},
-                {"value": "all", "label": "All Completed Tasks"},
+                {"value": "12m", "label": "Last 12 Months"},
+                {"value": "all", "label": "All Time"},
             ]
+            completed_period_starts = {
+                "week": today - timedelta(days=today.weekday()),
+                "2w": today - timedelta(days=13),
+                "month": today - timedelta(days=29),
+                "6m": _month_window_start(6),
+                "12m": _month_window_start(12),
+                "all": None,
+            }
+            selected_completed_period = "all"
+
             if normalized_view == "completed":
+                legacy_period_aliases = {
+                    "7d": "week",
+                    "14d": "2w",
+                    "21d": "month",
+                    "30d": "month",
+                    "this_month": "month",
+                    "last_month": "month",
+                    "3m": "6m",
+                }
                 requested_period = str(request.query_params.get("period", "all") or "all").strip().lower()
+                requested_period = legacy_period_aliases.get(requested_period, requested_period)
                 allowed_periods = {option["value"] for option in completed_period_options}
                 selected_completed_period = requested_period if requested_period in allowed_periods else "all"
-                today = date.today()
-                period_start = None
-                period_end = today
-                if selected_completed_period in {"7d", "14d", "21d", "30d"}:
-                    days = int(selected_completed_period[:-1])
-                    period_start = today - timedelta(days=days - 1)
-                elif selected_completed_period == "this_month":
-                    period_start = today.replace(day=1)
-                elif selected_completed_period == "last_month":
-                    this_month_start = today.replace(day=1)
-                    period_end = this_month_start - timedelta(days=1)
-                    period_start = period_end.replace(day=1)
-                elif selected_completed_period in {"3m", "6m"}:
-                    months_back = int(selected_completed_period[:-1])
-                    month_index = (today.year * 12 + today.month - 1) - (months_back - 1)
-                    start_year, start_month_zero = divmod(month_index, 12)
-                    period_start = date(start_year, start_month_zero + 1, 1)
-
+                period_start = completed_period_starts[selected_completed_period]
                 if period_start is not None:
-                    filtered_rows = []
-                    for completed_row in source_rows:
-                        raw_completed = completed_row.get("completion_date")
-                        if not raw_completed or raw_completed == "—":
-                            continue
-                        try:
-                            completed_on = date.fromisoformat(str(raw_completed)[:10])
-                        except (TypeError, ValueError):
-                            continue
-                        if period_start <= completed_on <= period_end:
-                            filtered_rows.append(completed_row)
-                    source_rows = filtered_rows
+                    source_rows = [
+                        completed_row
+                        for completed_row in source_rows
+                        if (_completed_on(completed_row) is not None and period_start <= _completed_on(completed_row) <= today)
+                    ]
+
+                completed_all_rows = task_overview_rows(database, status_mode="completed", limit=1000)
+                period_counts = {}
+                for option in completed_period_options:
+                    period_key = option["value"]
+                    start_date = completed_period_starts[period_key]
+                    if start_date is None:
+                        count = len(completed_all_rows)
+                    else:
+                        count = sum(
+                            1 for completed_row in completed_all_rows
+                            if (_completed_on(completed_row) is not None and start_date <= _completed_on(completed_row) <= today)
+                        )
+                    period_counts[period_key] = count
+
+                tone_by_period = {
+                    "week": "available",
+                    "2w": "working",
+                    "month": "tasks",
+                    "6m": "assigned",
+                    "12m": "review",
+                    "all": "neutral",
+                }
+                operations_overview = {
+                    "eyebrow": "DELIVERY OVERVIEW",
+                    "title": "Completed Task Overview",
+                    "note": "Review completed-task volume by delivery window, then filter the register below.",
+                    "stats": [
+                        {
+                            "label": option["label"],
+                            "value": period_counts[option["value"]],
+                            "note": "Completed tasks",
+                            "href": f"/portal/tasks?view=completed&period={option['value']}",
+                            "active": option["value"] == selected_completed_period,
+                            "tone": tone_by_period[option["value"]],
+                        }
+                        for option in completed_period_options
+                    ],
+                }
+            elif normalized_view in {"active", "all"}:
+                overview_rows = source_rows if normalized_view == "active" else all_task_rows
+
+                def _is_overdue(task_row: dict[str, object]) -> bool:
+                    status_value = str(task_row.get("status") or "").upper()
+                    if status_value in {"COMPLETED", "CANCELLED"}:
+                        return False
+                    raw_due = task_row.get("due_date")
+                    if not raw_due or raw_due == "—":
+                        return False
+                    try:
+                        return date.fromisoformat(str(raw_due)[:10]) < today
+                    except (TypeError, ValueError):
+                        return False
+
+                status_counts = {
+                    status: sum(1 for task_row in overview_rows if str(task_row.get("status") or "").upper() == status)
+                    for status, _ in TASK_STATUSES
+                }
+                overdue_count = sum(1 for task_row in overview_rows if _is_overdue(task_row))
+                active_count = sum(
+                    1 for task_row in all_task_rows
+                    if str(task_row.get("status") or "").upper() not in {"COMPLETED", "CANCELLED"}
+                )
+
+                if normalized_view == "active":
+                    overview_stats = [
+                        {"label": "Active Tasks", "value": len(overview_rows), "note": "Open operational work", "reset": True, "tone": "tasks"},
+                        {"label": "Not Started", "value": status_counts.get("NOT_STARTED", 0), "note": "Awaiting start", "filter_key": "status", "filter_value": "NOT_STARTED", "tone": "neutral"},
+                        {"label": "In Progress", "value": status_counts.get("IN_PROGRESS", 0), "note": "Currently progressing", "filter_key": "status", "filter_value": "IN_PROGRESS", "tone": "working"},
+                        {"label": "Completed — For Review", "value": status_counts.get("FOR_REVIEW", 0), "note": "Awaiting review", "filter_key": "status", "filter_value": "FOR_REVIEW", "tone": "review"},
+                        {"label": "On Hold", "value": status_counts.get("ON_HOLD", 0), "note": "Paused work", "filter_key": "status", "filter_value": "ON_HOLD", "tone": "assigned"},
+                        {"label": "Overdue", "value": overdue_count, "note": "Past deadline", "filter_key": "risk", "filter_value": "overdue", "tone": "risk"},
+                    ]
+                    overview_title = "Active Task Overview"
+                    overview_note = "See the current workload at a glance and use a metric to filter the register below."
+                else:
+                    overview_stats = [
+                        {"label": "All Tasks", "value": len(all_task_rows), "note": "Complete register", "reset": True, "tone": "neutral"},
+                        {"label": "Active Tasks", "value": active_count, "note": "Open operational work", "href": "/portal/tasks?view=active", "tone": "tasks"},
+                        {"label": "In Progress", "value": status_counts.get("IN_PROGRESS", 0), "note": "Currently progressing", "filter_key": "status", "filter_value": "IN_PROGRESS", "tone": "working"},
+                        {"label": "Completed — For Review", "value": status_counts.get("FOR_REVIEW", 0), "note": "Awaiting review", "filter_key": "status", "filter_value": "FOR_REVIEW", "tone": "review"},
+                        {"label": "Completed Tasks", "value": status_counts.get("COMPLETED", 0), "note": "Delivered work", "href": "/portal/tasks?view=completed&period=month", "tone": "available"},
+                        {"label": "Overdue", "value": overdue_count, "note": "Past deadline", "filter_key": "risk", "filter_value": "overdue", "tone": "risk"},
+                    ]
+                    overview_title = "Task Register Overview"
+                    overview_note = "A management snapshot of the complete task register with quick filters into the detailed table."
+
+                operations_overview = {
+                    "eyebrow": "TASK COMMAND VIEW",
+                    "title": overview_title,
+                    "note": overview_note,
+                    "stats": overview_stats,
+                }
             if normalized_view == "active":
                 page_title = "Active Tasks"
                 description = "Open project tasks that still require action."
@@ -1759,6 +1868,7 @@ def create_portal_router(
                         "status": str(row["status"]),
                         "priority": str(row["priority"]),
                         "discipline": str(row["discipline"]),
+                        "risk": "overdue" if is_delayed else "normal",
                     },
                     "project": {
                         "primary": row["project_name"],
@@ -1807,6 +1917,9 @@ def create_portal_router(
                     {"value": value, "label": value}
                     for value in sorted({str(row["discipline"]) for row in source_rows if row["discipline"] != "—"})
                 ],
+                "risks": [
+                    {"value": "overdue", "label": "Overdue"},
+                ],
             }
         elif module_name == "team-workload":
             live_by_member = {
@@ -1840,6 +1953,7 @@ def create_portal_router(
                 )
                 rows.append({
                     "_row_highlight": availability_class,
+                    "_filters": {"availability": availability.casefold()},
                     "member": {"primary": row["name"], "secondary": row.get("member_code", "")},
                     "availability": availability,
                     "join_date": row.get("join_date", "—"),
@@ -1850,6 +1964,32 @@ def create_portal_router(
                     "overdue_task_count": row["overdue_task_count"],
                     "assignment_status": row["assignment_status"],
                 })
+
+            availability_filter_options = [
+                {"value": "working now", "label": "Working Now"},
+                {"value": "assigned", "label": "Assigned"},
+                {"value": "available", "label": "Available"},
+                {"value": "overdue", "label": "Overdue"},
+            ]
+            availability_counts = {
+                option["value"]: sum(
+                    1 for item in rows
+                    if str(item.get("availability") or "").casefold() == option["value"]
+                )
+                for option in availability_filter_options
+            }
+            operations_overview = {
+                "eyebrow": "TEAM CAPACITY VIEW",
+                "title": "Team Availability Overview",
+                "note": "See who is working, assigned, available, or at risk before reviewing individual member details.",
+                "stats": [
+                    {"label": "Team Members", "value": len(rows), "note": "Active portal members", "reset": True, "tone": "neutral"},
+                    {"label": "Working Now", "value": availability_counts.get("working now", 0), "note": "Active Work Order", "filter_key": "availability", "filter_value": "working now", "tone": "working"},
+                    {"label": "Assigned", "value": availability_counts.get("assigned", 0), "note": "Has active tasks", "filter_key": "availability", "filter_value": "assigned", "tone": "assigned"},
+                    {"label": "Available", "value": availability_counts.get("available", 0), "note": "No active assignment", "filter_key": "availability", "filter_value": "available", "tone": "available"},
+                    {"label": "Overdue", "value": availability_counts.get("overdue", 0), "note": "Has overdue work", "filter_key": "availability", "filter_value": "overdue", "tone": "risk"},
+                ],
+            }
 
         return templates.TemplateResponse(
             request=request,
@@ -1867,6 +2007,8 @@ def create_portal_router(
                 module_name=module_name,
                 task_view=view if view in {"active", "completed", "unassigned"} else "all",
                 task_filters=task_filters,
+                operations_overview=operations_overview,
+                availability_filter_options=availability_filter_options,
                 selected_completed_period=(selected_completed_period if module_name == "tasks" and view == "completed" else "all"),
                 completed_period_options=(completed_period_options if module_name == "tasks" and view == "completed" else []),
                 can_create_task=can_edit_tasks,

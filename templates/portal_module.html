@@ -13,6 +13,7 @@
     {% if module_name == 'team-workload' %}<a class="button secondary" href="/admin/project-team">{{ t('Project Team Detail') }}</a>{% endif %}
     {% if can(Permission.REPORT_EXPORT) %}<a class="button secondary" href="{{ '/portal/exports/tasks.xlsx' if module_name == 'tasks' else '/portal/exports' }}">⇩ {{ t('Export Excel') }}</a>{% endif %}
   </div>
+  {% if module_name not in ['tasks', 'team-workload'] %}
   <div class="operations-stat-strip">
     {% for card in cards %}
     <article class="operations-stat-chip">
@@ -20,7 +21,30 @@
     </article>
     {% endfor %}
   </div>
+  {% endif %}
 </section>
+
+{% if operations_overview %}
+<section class="content-card operations-overview-panel">
+  <div class="section-heading team-command-heading operations-overview-heading">
+    <div><span class="eyebrow">{{ t(operations_overview.eyebrow) }}</span><h2>{{ t(operations_overview.title) }}</h2><p>{{ t(operations_overview.note) }}</p></div>
+    <div class="team-command-heading-actions"><a class="button secondary" href="#task-register-filters">⚲ {{ t('Filter Register') }}</a></div>
+  </div>
+  <div class="team-command-stats operations-overview-stats{% if operations_overview.stats|length >= 5 %} team-command-stats-five{% endif %}">
+    {% for stat in operations_overview.stats %}
+      {% if stat.href %}
+      <a class="team-command-stat {{ stat.tone or 'neutral' }}{% if stat.active %} is-active{% endif %}" href="{{ stat.href }}">
+        <span>{{ t(stat.label) }}</span><strong>{{ stat.value }}</strong><small>{{ t(stat.note) }}</small>
+      </a>
+      {% else %}
+      <button class="team-command-stat overview-filter-card {{ stat.tone or 'neutral' }}" type="button" {% if stat.reset %}data-overview-filter-reset{% else %}data-overview-filter-key="{{ stat.filter_key }}" data-overview-filter-value="{{ stat.filter_value }}"{% endif %}>
+        <span>{{ t(stat.label) }}</span><strong>{{ stat.value }}</strong><small>{{ t(stat.note) }}</small>
+      </button>
+      {% endif %}
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
 
 <section class="content-card data-register-card">
   <div class="section-heading">
@@ -55,6 +79,7 @@
 
   {% if rows %}
   <div class="table-toolbar {% if module_name == 'tasks' %}task-register-toolbar{% endif %}"
+       {% if module_name in ['tasks', 'team-workload'] %}id="task-register-filters"{% endif %}
        data-table-toolbar
        data-table-target="#portalDataTable"
        data-record-singular="task"
@@ -98,6 +123,24 @@
       <select data-table-filter data-filter-key="discipline">
         <option value="">{{ t('All Disciplines') }}</option>
         {% for option in task_filters.disciplines %}<option value="{{ option.value }}">{{ t(option.label) }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="table-filter-select">
+      <span class="sr-only">{{ t('Filter by schedule risk') }}</span>
+      <select data-table-filter data-filter-key="risk">
+        <option value="">{{ t('All Schedule States') }}</option>
+        {% for option in task_filters.risks %}<option value="{{ option.value }}">{{ t(option.label) }}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="button secondary table-filter-reset" type="button" data-table-filter-reset>{{ t('Clear Filters') }}</button>
+    {% endif %}
+
+    {% if module_name == 'team-workload' and availability_filter_options %}
+    <label class="table-filter-select">
+      <span class="sr-only">{{ t('Filter by availability') }}</span>
+      <select data-table-filter data-filter-key="availability">
+        <option value="">{{ t('All Availability States') }}</option>
+        {% for option in availability_filter_options %}<option value="{{ option.value }}">{{ t(option.label) }}</option>{% endfor %}
       </select>
     </label>
     <button class="button secondary table-filter-reset" type="button" data-table-filter-reset>{{ t('Clear Filters') }}</button>

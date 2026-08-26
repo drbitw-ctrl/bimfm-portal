@@ -6548,3 +6548,96 @@ html[data-theme="dark"] .payroll-rule-step { background: var(--ui-surface-raised
 html:not([data-theme="dark"]) .finance-quick-view,html:not([data-theme="dark"]) .finance-credit-balance-panel,html:not([data-theme="dark"]) .finance-history-all-time article{color:var(--ui-text)}html:not([data-theme="dark"]) .finance-quick-view h2,html:not([data-theme="dark"]) .finance-credit-balance-panel h2,html:not([data-theme="dark"]) .finance-history-all-time h2{color:var(--ui-text-strong)}
 html[data-theme="dark"] .finance-quick-view{background:linear-gradient(135deg,var(--ui-surface),rgba(59,149,212,.08))}html[data-theme="dark"] .finance-credit-balance-panel{background:linear-gradient(145deg,var(--ui-surface),rgba(31,138,88,.08))}
 @media(max-width:1100px){.finance-quick-view{align-items:flex-start;flex-direction:column}.finance-quick-view-actions{justify-content:flex-start}.finance-credit-lifetime-grid{grid-template-columns:1fr}.finance-grouped-table{min-width:1050px}}@media(max-width:640px){.finance-quick-view-actions{display:grid;grid-template-columns:1fr;width:100%}.finance-quick-view-actions .button{width:100%}.finance-quick-actions{grid-template-columns:1fr}.finance-quick-actions .button.primary{grid-column:auto}}
+
+
+/* Release 21.24.3: operations overview panels, task register visual consistency, and overtime history navigation. */
+.operations-overview-panel {
+  margin: 0 0 18px;
+  padding: 22px 24px 20px;
+  border-color: color-mix(in srgb, var(--ui-brand-600) 20%, var(--ui-border));
+  background: linear-gradient(145deg, var(--ui-surface), color-mix(in srgb, var(--ui-brand-100) 34%, var(--ui-surface)));
+}
+.operations-overview-heading { margin-bottom: 16px; }
+.operations-overview-stats { margin-bottom: 0; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.overview-filter-card {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.team-command-stat.review { box-shadow: inset 3px 0 0 #8b5cf6; }
+.team-command-stat.neutral { box-shadow: inset 3px 0 0 #7a8b9a; }
+.team-command-stat.is-active {
+  border-color: color-mix(in srgb, var(--ui-brand-600) 58%, var(--ui-border));
+  background: color-mix(in srgb, var(--ui-brand-100) 72%, var(--ui-surface));
+  box-shadow: inset 0 -3px 0 var(--ui-brand-600);
+}
+
+/* Completed tasks keep one continuous green row, including sticky cells and quick-edit controls. */
+.task-register-table tbody tr.task-row-completed > td,
+.task-register-table tbody tr.task-row-completed > td:first-child,
+.task-register-table tbody tr.task-row-completed > td:last-child {
+  background: color-mix(in srgb, #35b779 16%, var(--ui-surface));
+}
+.task-register-table tbody tr.task-row-completed:hover > td,
+.task-register-table tbody tr.task-row-completed:hover > td:first-child,
+.task-register-table tbody tr.task-row-completed:hover > td:last-child {
+  background: color-mix(in srgb, #35b779 23%, var(--ui-surface));
+}
+.task-register-table tbody tr.task-row-completed > td:first-child {
+  border-left: 3px solid #35b779;
+}
+.task-register-table tbody tr.task-row-completed .task-quick-control,
+.task-register-table tbody tr.task-row-completed .task-percentage-select,
+.task-register-table tbody tr.task-row-completed .task-quick-date-control {
+  background: color-mix(in srgb, #35b779 9%, var(--ui-surface));
+  border-color: color-mix(in srgb, #35b779 28%, var(--ui-border));
+}
+.task-register-table tbody tr > td {
+  border-bottom-color: color-mix(in srgb, var(--ui-border) 82%, transparent);
+}
+.task-register-table tbody tr.task-row-attention > td:first-child { border-left: 3px solid #e3a008; }
+.task-register-table tbody tr.task-row-delayed > td:first-child { border-left: 3px solid #e85c63; }
+
+.overtime-register-heading { align-items: flex-start; }
+.overtime-history-nav { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: flex-end; }
+.overtime-period-banner {
+  display: flex;
+  align-items: baseline;
+  gap: .55rem;
+  margin: .25rem 0 .9rem;
+  padding: .65rem .85rem;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface-soft);
+}
+.overtime-period-banner span,
+.overtime-period-banner small { color: var(--ui-muted); }
+.overtime-period-banner strong { color: var(--ui-text-strong); }
+.ot-filter-bar label.is-disabled { opacity: .55; }
+.credit-ledger-details {
+  margin-top: .9rem;
+  padding-top: .8rem;
+  border-top: 1px solid var(--ui-border);
+}
+.credit-ledger-details summary { cursor: pointer; font-weight: 800; color: var(--ui-brand-700); }
+.credit-ledger-details[open] summary { margin-bottom: .75rem; }
+.credit-ledger-table-wrap { max-height: 360px; overflow: auto; }
+.credit-ledger-table { min-width: 760px; }
+.credit-ledger-table .positive { color: var(--ui-success); }
+.credit-ledger-table .negative { color: var(--ui-danger); }
+html[data-theme="dark"] .task-register-table tbody tr.task-row-completed > td,
+html[data-theme="dark"] .task-register-table tbody tr.task-row-completed > td:first-child,
+html[data-theme="dark"] .task-register-table tbody tr.task-row-completed > td:last-child {
+  background: color-mix(in srgb, #35b779 12%, var(--ui-surface));
+}
+html[data-theme="dark"] .task-register-table tbody tr.task-row-completed .task-quick-control,
+html[data-theme="dark"] .task-register-table tbody tr.task-row-completed .task-percentage-select,
+html[data-theme="dark"] .task-register-table tbody tr.task-row-completed .task-quick-date-control {
+  background: color-mix(in srgb, #35b779 7%, var(--ui-surface));
+}
+@media (max-width: 900px) {
+  .overtime-history-nav { justify-content: flex-start; width: 100%; }
+  .operations-overview-panel { padding: 18px; }
+}

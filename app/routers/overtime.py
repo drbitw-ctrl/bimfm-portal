@@ -127,29 +127,70 @@ def configure_overtime_routes(legacy_namespace: dict[str, object]) -> APIRouter:
         return RedirectResponse(target, 303)
 
     @router.get("/admin/overtime", response_class=HTMLResponse)
-    def admin_overtime(request: Request, month: str = "", status: str = "ALL"):
+    def admin_overtime(
+        request: Request,
+        month: str = "",
+        status: str = "ALL",
+        period: str = "month",
+    ):
         selected_month = month if parse_month_key(month) else current_month_key()
         first, next_month = parse_month_key(selected_month)
+        selected_period = "all" if str(period or "").strip().lower() in {"all", "all_time", "all-time"} else "month"
         with SessionLocal() as database:
             admin = get_current_admin(request, database)
             if admin is None:
                 return RedirectResponse("/admin/login", 303)
-            query = select(OvertimeClaim).where(
-                OvertimeClaim.attendance_date >= first,
-                OvertimeClaim.attendance_date < next_month,
-            )
+
+            query = select(OvertimeClaim)
+            if selected_period == "month":
+                query = query.where(
+                    OvertimeClaim.attendance_date >= first,
+                    OvertimeClaim.attendance_date < next_month,
+                )
+
             pending_states = ["PENDING_PLAN", "PENDING_FINAL", "PENDING_FINAL_MISSING", "PENDING"]
             if status == "PENDING":
                 query = query.where(OvertimeClaim.status.in_(pending_states))
             elif status and status != "ALL":
                 query = query.where(OvertimeClaim.status == status)
-            claims = list(database.scalars(query.order_by(OvertimeClaim.attendance_date.desc(), OvertimeClaim.id.desc())).all())
+
+            claims = list(
+                database.scalars(
+                    query.order_by(OvertimeClaim.attendance_date.desc(), OvertimeClaim.id.desc())
+                ).all()
+            )
             active_freelancer_list = get_active_freelancers(database)
-            freelancers = {f.id: f for f in active_freelancer_list}
-            attendance = {(r.freelancer_id, r.attendance_date): r for r in database.scalars(select(DailyAttendance).where(
-                DailyAttendance.attendance_date >= first,
-                DailyAttendance.attendance_date < next_month,
-            )).all()}
+
+            claim_member_ids = sorted({int(claim.freelancer_id) for claim in claims})
+            claim_members = list(
+                database.scalars(
+                    select(Freelancer).where(Freelancer.id.in_(claim_member_ids))
+                ).all()
+            ) if claim_member_ids else []
+            freelancers = {member.id: member for member in claim_members}
+
+            attendance = {}
+            if claims and claim_member_ids:
+                attendance_query = select(DailyAttendance).where(
+                    DailyAttendance.freelancer_id.in_(claim_member_ids)
+                )
+                if selected_period == "month":
+                    attendance_query = attendance_query.where(
+                        DailyAttendance.attendance_date >= first,
+                        DailyAttendance.attendance_date < next_month,
+                    )
+                else:
+                    earliest = min(claim.attendance_date for claim in claims)
+                    latest = max(claim.attendance_date for claim in claims)
+                    attendance_query = attendance_query.where(
+                        DailyAttendance.attendance_date >= earliest,
+                        DailyAttendance.attendance_date <= latest,
+                    )
+                attendance = {
+                    (record.freelancer_id, record.attendance_date): record
+                    for record in database.scalars(attendance_query).all()
+                }
+
             return templates.TemplateResponse(request=request, name="admin_overtime.html", context=template_context(
                 request,
                 admin=admin,
@@ -159,6 +200,8 @@ def configure_overtime_routes(legacy_namespace: dict[str, object]) -> APIRouter:
                 attendance=attendance,
                 selected_month=selected_month,
                 selected_status=status,
+                selected_period=selected_period,
+                period_label=("All Time" if selected_period == "all" else selected_month),
                 policy=get_policy(database),
                 utc_to_time_input=utc_to_time_input,
                 format_local_datetime=format_local_datetime,
@@ -223,6 +266,19 @@ def configure_overtime_routes(legacy_namespace: dict[str, object]) -> APIRouter:
                 used = sum(abs(min(0, int(tx.amount_minutes or 0))) for tx in member_transactions)
                 available = comp_balance(database, member.id)
                 latest = member_transactions[0] if member_transactions else None
+                running_balance = 0
+                chronological_ledger = []
+                for transaction in reversed(member_transactions):
+                    amount = int(transaction.amount_minutes or 0)
+                    running_balance += amount
+                    chronological_ledger.append({
+                        "transaction": transaction,
+                        "amount_minutes": amount,
+                        "amount_label": ("+" if amount > 0 else "−" if amount < 0 else "") + minutes_label(abs(amount)),
+                        "balance_minutes": running_balance,
+                        "balance_label": minutes_label(running_balance),
+                    })
+                ledger_rows = list(reversed(chronological_ledger))
                 rows.append({
                     "member": member,
                     "earned_minutes": earned,
@@ -232,6 +288,7 @@ def configure_overtime_routes(legacy_namespace: dict[str, object]) -> APIRouter:
                     "whole_days": whole_comp_days(available),
                     "remainder_minutes": comp_remainder_minutes(available),
                     "latest_transaction": latest,
+                    "ledger_rows": ledger_rows,
                 })
             rows.sort(key=lambda row: (-row["available_minutes"], row["member"].full_name.lower()))
             return templates.TemplateResponse(

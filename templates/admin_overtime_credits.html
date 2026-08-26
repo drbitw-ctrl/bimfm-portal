@@ -3,7 +3,7 @@
 {% block content %}
 <div class="toolbar">
   <div><span class="eyebrow">{{ t('COMPENSATORY CREDIT LEDGER') }}</span><h1>{{ t('Overtime Credit Balances') }}</h1><p class="muted">{{ t('Current earned, used, and available overtime credits for active portal members.') }}</p></div>
-  <a class="button secondary" href="/admin/overtime">{{ t('Back to Overtime Approval') }}</a>
+  <div class="action-row"><a class="button secondary" href="/admin/overtime?period=all&status=ALL">{{ t('All-Time OT History') }}</a><a class="button secondary" href="/admin/overtime">{{ t('Back to Overtime Approval') }}</a></div>
 </div>
 <section class="credit-summary-grid">
 {% for row in rows %}
@@ -16,6 +16,17 @@
   </div>
   <div class="credit-day-line"><b>{{ row.whole_days }}</b> {{ t('whole 8-hour days') }} · {{ row.remainder_minutes }} {{ t('remainder minutes') }}</div>
   {% if row.latest_transaction %}<small>{{ t('Latest activity') }}: {{ row.latest_transaction.transaction_date }} · {{ t(row.latest_transaction.transaction_type.replace('_',' ').title()) }} · {{ row.latest_transaction.amount_minutes }} {{ t('minutes') }}</small>{% else %}<small>{{ t('No overtime credit activity yet.') }}</small>{% endif %}
+  <details class="credit-ledger-details">
+    <summary>{{ t('View Full OT Credit Ledger') }} <span class="history-count">{{ row.ledger_rows|length }}</span></summary>
+    {% if row.ledger_rows %}
+    <div class="modern-table-wrap credit-ledger-table-wrap">
+      <table class="modern-table dense-table credit-ledger-table">
+        <thead><tr><th>{{ t('Date') }}</th><th>{{ t('Type') }}</th><th>{{ t('Description') }}</th><th>{{ t('Credit Change') }}</th><th>{{ t('Balance After') }}</th></tr></thead>
+        <tbody>{% for ledger in row.ledger_rows %}<tr><td>{{ ledger.transaction.transaction_date }}</td><td>{{ t(ledger.transaction.transaction_type.replace('_',' ').title()) }}</td><td>{{ ledger.transaction.description }}</td><td><strong class="{{ 'positive' if ledger.amount_minutes > 0 else 'negative' if ledger.amount_minutes < 0 else '' }}">{{ ledger.amount_label }}</strong></td><td><strong>{{ ledger.balance_label }}</strong></td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+    {% else %}<p class="muted">{{ t('No overtime credit activity yet.') }}</p>{% endif %}
+  </details>
 </article>
 {% else %}
 <div class="empty-state"><p>{{ t('No active portal members found.') }}</p></div>

@@ -20,9 +20,23 @@
 {% endif %}
 
 <section class="content-card ot-approval-register">
-  <div class="section-heading"><div><span class="eyebrow">{{ t('TWO-STAGE APPROVAL') }}</span><h1>{{ t('Overtime Approval Center') }}</h1><p>{{ t('Compare planned overtime with the verified actual duration before granting compensatory credit.') }}</p></div><a class="button secondary" href="/admin/overtime/credits">{{ t('Overtime Credit Balances') }}</a></div>
-  <form method="get" action="/admin/overtime" class="ot-filter-bar">
-    <label>{{ t('Month') }}<input type="month" name="month" value="{{ selected_month }}"></label>
+  <div class="section-heading overtime-register-heading">
+    <div><span class="eyebrow">{{ t('TWO-STAGE APPROVAL') }}</span><h1>{{ t('Overtime Approval Center') }}</h1><p>{{ t('Compare planned overtime with the verified actual duration before granting compensatory credit.') }}</p></div>
+    <div class="overtime-history-nav">
+      <a class="button secondary" href="/admin/overtime?period=month&month={{ selected_month }}&status=PENDING">{{ t('Current Claims') }}</a>
+      <a class="button secondary" href="/admin/overtime?period=all&status=ALL">{{ t('All-Time OT History') }}</a>
+      <a class="button secondary" href="/admin/overtime/credits">{{ t('OT Credit Ledger') }}</a>
+    </div>
+  </div>
+  <div class="overtime-period-banner"><span>{{ t('Showing') }}</span><strong>{{ t(period_label) if selected_period == 'all' else period_label }}</strong><small>{{ claims|length }} {{ t('claims') }}</small></div>
+  <form method="get" action="/admin/overtime" class="ot-filter-bar" data-overtime-period-form>
+    <label>{{ t('Period') }}
+      <select name="period" data-overtime-period-select>
+        <option value="month" {% if selected_period == 'month' %}selected{% endif %}>{{ t('Selected Month') }}</option>
+        <option value="all" {% if selected_period == 'all' %}selected{% endif %}>{{ t('All Time') }}</option>
+      </select>
+    </label>
+    <label data-overtime-month-label>{{ t('Month') }}<input type="month" name="month" value="{{ selected_month }}" data-overtime-month-input></label>
     <label>{{ t('Status') }}
       <select name="status">
         <option value="PENDING" {% if selected_status == 'PENDING' %}selected{% endif %}>{{ t('Pending approval') }}</option>
@@ -96,5 +110,21 @@
   </div>
   {% else %}<div class="empty-state"><p>{{ t('No overtime applications found.') }}</p></div>{% endif %}
 </section>
+<script>
+(function () {
+  const form = document.querySelector('[data-overtime-period-form]');
+  if (!form) return;
+  const period = form.querySelector('[data-overtime-period-select]');
+  const month = form.querySelector('[data-overtime-month-input]');
+  const monthLabel = form.querySelector('[data-overtime-month-label]');
+  function syncPeriod() {
+    const allTime = period && period.value === 'all';
+    if (month) month.disabled = allTime;
+    if (monthLabel) monthLabel.classList.toggle('is-disabled', allTime);
+  }
+  if (period) period.addEventListener('change', syncPeriod);
+  syncPeriod();
+})();
+</script>
 <script src="{{ url_for('static', path='/js/overtime-approval.js') }}?v={{ app_version }}"></script>
 {% endblock %}
