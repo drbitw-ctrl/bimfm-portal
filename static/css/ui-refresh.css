@@ -7001,3 +7001,140 @@ html[data-theme="dark"] .finance-my-work-shortcuts span { color:#b8e1fa; backgro
 @media(max-width:1300px){.finance-my-work-overview-grid{grid-template-columns:repeat(4,minmax(130px,1fr))}}
 @media(max-width:900px){.finance-my-work-command-head{flex-direction:column}.finance-my-work-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.finance-my-work-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.finance-my-work-overview-grid,.finance-my-work-shortcuts{grid-template-columns:1fr}}
+
+/* Release 21.24.3.6 — Finance member summary + freelancer assignment dark-mode contrast. */
+/* Finance / DTR member summary: replace legacy light cards with readable dark surfaces. */
+html[data-theme="dark"] .dtr-header-panel .dtr-status-row span { color:#aebdc7; }
+html[data-theme="dark"] .dtr-header-panel .dtr-status-row strong { color:#f4f8fb; }
+
+html[data-theme="dark"] .freelancer-bank-summary .section-heading h2 { color:#f5f9fc; }
+html[data-theme="dark"] .freelancer-bank-summary .section-heading .muted { color:#adbdc8; }
+html[data-theme="dark"] .bank-details-summary > div {
+  background:#16242e;
+  border-color:#3a4f5e;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.018);
+}
+html[data-theme="dark"] .bank-details-summary span { color:#9fb2be; }
+html[data-theme="dark"] .bank-details-summary strong { color:#f2f7fa; }
+
+html[data-theme="dark"] .clear-dtr-card { box-shadow:none; }
+html[data-theme="dark"] .clear-dtr-card.calendar { background:#173147; border-color:#3e6d8e; color:#bfe2fb; }
+html[data-theme="dark"] .clear-dtr-card.worked { background:#19372b; border-color:#3c7055; color:#bcebcf; }
+html[data-theme="dark"] .clear-dtr-card.leave { background:#41272b; border-color:#7f4a54; color:#ffc3c8; }
+html[data-theme="dark"] .clear-dtr-card.comp { background:#3c321d; border-color:#77632f; color:#ffe0a0; }
+html[data-theme="dark"] .clear-dtr-card strong { color:#f7fafc; }
+html[data-theme="dark"] .clear-dtr-card small { color:#b7c6cf; }
+html[data-theme="dark"] .clear-dtr-card em { background:rgba(0,0,0,.10); color:inherit; }
+
+html[data-theme="dark"] .summary-section h2,
+html[data-theme="dark"] .summary-section h3,
+html[data-theme="dark"] .glance-summary h2 { color:#f6f9fb; }
+html[data-theme="dark"] .summary-section .muted { color:#adbdc7; }
+html[data-theme="dark"] .summary-line { border-bottom-color:#354a59; color:#c8d4dc; }
+html[data-theme="dark"] .summary-line strong { color:#f4f8fb; }
+html[data-theme="dark"] .summary-line small { color:#a9bac5; }
+html[data-theme="dark"] .summary-line.emphasis {
+  background:#14232d;
+  border:1px solid #344a59;
+  color:#dce6ec;
+}
+
+html[data-theme="dark"] .conversion-equation {
+  background:#14232d;
+  border-color:#354a59;
+  color:#d7e2e9;
+}
+html[data-theme="dark"] .conversion-equation span { color:#aabac5; }
+html[data-theme="dark"] .conversion-equation strong { color:#f5f8fb; }
+html[data-theme="dark"] .conversion-equation > b { color:#91a7b6; }
+html[data-theme="dark"] .conversion-result.good { background:#19382c; color:#bcebd0; border:1px solid #3b7155; }
+html[data-theme="dark"] .conversion-result.warning { background:#3b321d; color:#ffe1a2; border:1px solid #77642f; }
+html[data-theme="dark"] .conversion-result.neutral { background:#18334a; color:#c4e4fb; border:1px solid #3f6f90; }
+
+html[data-theme="dark"] .summary-payroll-multiplier.full {
+  background:linear-gradient(145deg,#19382b,#153128);
+  border-color:#3e7658;
+  color:#c6efd7;
+}
+html[data-theme="dark"] .summary-payroll-multiplier.reduced {
+  background:linear-gradient(145deg,#3d321c,#332a1b);
+  border-color:#7c6731;
+  color:#ffe1a0;
+}
+html[data-theme="dark"] .summary-payroll-multiplier span,
+html[data-theme="dark"] .summary-payroll-multiplier small { color:inherit; opacity:.9; }
+html[data-theme="dark"] .summary-payroll-multiplier strong,
+html[data-theme="dark"] .summary-payroll-multiplier .treatment-title { color:#fff8e8; }
+html[data-theme="dark"] .summary-payroll-multiplier.full strong,
+html[data-theme="dark"] .summary-payroll-multiplier.full .treatment-title { color:#eafff2; }
+
+html[data-theme="dark"] .summary-payroll-metric {
+  background:#16242e;
+  border-color:#394e5d;
+  color:#d6e1e8;
+}
+html[data-theme="dark"] .summary-payroll-metric span,
+html[data-theme="dark"] .summary-payroll-metric small { color:#aabac5; }
+html[data-theme="dark"] .summary-payroll-metric strong { color:#f5f9fb; }
+html[data-theme="dark"] .summary-payroll-metric.calendar { background:#173147; border-color:#3d6e91; }
+html[data-theme="dark"] .summary-payroll-metric.credit { background:#292442; border-color:#655694; }
+html[data-theme="dark"] .summary-payroll-metric.credit strong { color:#e0d6ff; }
+html[data-theme="dark"] .summary-payroll-metric.deduction { background:#40272b; border-color:#80505a; }
+html[data-theme="dark"] .summary-payroll-metric.deduction strong { color:#ffc6cb; }
+html[data-theme="dark"] .summary-payroll-formula {
+  background:#14232d;
+  border:1px solid #344a59;
+}
+html[data-theme="dark"] .summary-payroll-formula span { color:#aabac5; }
+html[data-theme="dark"] .summary-payroll-formula strong { color:#eef5f8; }
+html[data-theme="dark"] .summary-payroll-formula b { color:#9be4bb; }
+html[data-theme="dark"] .finance-note { background:#18334a; border:1px solid #3e6d8d; color:#c5e5fb; }
+
+html[data-theme="dark"] .glance-equation {
+  background:#14232d;
+  border:1px solid #344a59;
+  color:#dbe5eb;
+}
+html[data-theme="dark"] .glance-equation strong,
+html[data-theme="dark"] .glance-equation b { color:#f3f8fa; }
+html[data-theme="dark"] .glance-equation span { color:#8499a7; }
+html[data-theme="dark"] .finance-sentence { background:#19382c; border:1px solid #3b7155; color:#c1edd3; }
+html[data-theme="dark"] .finance-sentence strong { color:#edfff4; }
+
+/* Freelancer dashboard — My Assigned Tasks. Keep the same task logic and actions,
+   but make the card hierarchy intentional and readable in dark mode. */
+html[data-theme="dark"] .assignment-section-heading h2 { color:#f6f9fb; }
+html[data-theme="dark"] .assignment-section-heading .muted { color:#afbec8; }
+html[data-theme="dark"] .compact-assignment-list { gap:10px; }
+html[data-theme="dark"] .compact-assignment-list .compact-assignment {
+  position:relative;
+  overflow:hidden;
+  background:linear-gradient(110deg,#172630 0%,#182a36 72%,#173349 100%);
+  border:1px solid #3d5363;
+  border-left:4px solid #3e9ad1;
+  color:#dbe6ec;
+  box-shadow:0 8px 18px rgba(0,0,0,.13);
+}
+html[data-theme="dark"] .compact-assignment-list .compact-assignment:hover {
+  background:linear-gradient(110deg,#1a2c38 0%,#1c303d 72%,#1a3a52 100%);
+  border-color:#4b687b;
+  border-left-color:#64b9ea;
+}
+html[data-theme="dark"] .compact-assignment-list .compact-assignment > div { min-width:0; }
+html[data-theme="dark"] .compact-assignment-list .compact-assignment strong {
+  color:#f5f9fc;
+  font-weight:850;
+}
+html[data-theme="dark"] .compact-assignment-list .compact-assignment p {
+  color:#d1dde4;
+  margin-top:.2rem;
+}
+html[data-theme="dark"] .compact-assignment-list .compact-assignment small {
+  color:#a9bbc7;
+  font-weight:650;
+}
+html[data-theme="dark"] .compact-assignment-list .compact-assignment .button.primary {
+  color:#fff;
+  border-color:#4a8fbc;
+  box-shadow:0 5px 12px rgba(0,0,0,.14);
+}
