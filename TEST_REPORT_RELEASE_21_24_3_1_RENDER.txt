@@ -1,0 +1,23 @@
+BIM Portal Release 21.24.3.1 — Validation Report
+=================================================
+Baseline: Release 21.24.3
+
+Python regression suite: 141 passed, 0 failed
+Jinja template compilation: 59 templates passed
+English locale JSON: PASS
+Traditional Chinese locale JSON: PASS
+Python route compilation: PASS
+
+New regression coverage verifies:
+- approved LeaveRecord lookup for each member's local current date
+- on-leave state removes a member from Available
+- dedicated On Leave dashboard lane and badge
+- bilingual English / Traditional Chinese labels
+- no new Alembic revision after existing 0018
+
+Database boundary after testing:
+- alembic/: IDENTICAL
+- app/models/: IDENTICAL
+- app/database.py: IDENTICAL
+- requirements.txt: IDENTICAL
+- data/hr.db: IDENTICAL

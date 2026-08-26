@@ -21,8 +21,8 @@ def _extract_function(source: str, name: str) -> str:
 
 def test_release_21_23_1_1_version_and_cache_bust():
     config = (ROOT / "app" / "config.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "v3.0.24.2-release21.24.2-finance-history-quick-view"' in config
-    assert 'APP_VERSION_NUMBER = "3.0.24.2"' in config
+    assert 'APP_VERSION = "v3.0.24.3.1-release21.24.3.1-dashboard-leave-availability-hotfix"' in config
+    assert 'APP_VERSION_NUMBER = "3.0.24.3.1"' in config
     for template in ["admin_dashboard.html", "freelancer_tasks.html", "screen_share_test.html"]:
         html = (ROOT / "templates" / template).read_text(encoding="utf-8")
         assert "screen-share.js?v=21.23.1.2" in html

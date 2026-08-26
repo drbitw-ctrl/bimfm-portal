@@ -2491,5 +2491,10 @@
   "No active assignment": "No active assignment",
   "Has overdue work": "Has overdue work",
   "Filter by availability": "Filter by availability",
-  "All Availability States": "All Availability States"
+  "All Availability States": "All Availability States",
+  "On Leave": "On Leave",
+  "On Leave Today": "On Leave Today",
+  "Approved leave today": "Approved leave today",
+  "No members are on approved leave today.": "No members are on approved leave today.",
+  "active tasks remain assigned": "active tasks remain assigned"
 }

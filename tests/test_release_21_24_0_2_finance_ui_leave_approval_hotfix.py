@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_release_version():
     config = (ROOT / "app" / "config.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "v3.0.24.2-release21.24.2-finance-history-quick-view"' in config
+    assert 'APP_VERSION = "v3.0.24.3.1-release21.24.3.1-dashboard-leave-availability-hotfix"' in config
 
 
 def test_leave_approval_form_reason_is_optional_at_fastapi_boundary():

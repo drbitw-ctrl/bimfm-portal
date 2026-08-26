@@ -26,7 +26,7 @@ def test_release_version_and_additive_bank_fields():
     config = (ROOT / "app" / "config.py").read_text(encoding="utf-8")
     identity = (ROOT / "app" / "models" / "identity.py").read_text(encoding="utf-8")
     migration = (ROOT / "alembic" / "versions" / "20260819_0018_freelancer_bank_details.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "v3.0.24.2-release21.24.2-finance-history-quick-view"' in config
+    assert 'APP_VERSION = "v3.0.24.3.1-release21.24.3.1-dashboard-leave-availability-hotfix"' in config
     for field in ("bank_account_name", "bank_account_number", "bank_name", "bank_swift_code", "bank_branch_address"):
         assert field in identity
         assert field in migration

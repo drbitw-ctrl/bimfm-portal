@@ -15,10 +15,15 @@
           <strong class="privacy-member-name" data-hidden-label="{{ t('Hidden member') }}">{{ row.name }}</strong>
           <small>{{ row.code }}{% if row.join_date and row.join_date != '—' %} · {{ t('Joined') }} {{ row.join_date }}{% endif %}</small>
         </div>
-        <span class="availability-badge {{ card_state }}"><i></i>{{ t('Available') if card_state == 'available' else (t('Working Now') if card_state == 'working' else (t('Assigned') if card_state == 'assigned' else t('Overdue'))) }}</span>
+        <span class="availability-badge {{ card_state }}"><i></i>{{ t('Available') if card_state == 'available' else (t('Working Now') if card_state == 'working' else (t('On Leave') if card_state == 'on_leave' else (t('Assigned') if card_state == 'assigned' else t('Overdue')))) }}</span>
       </div>
       {% if card_state == 'available' %}
       <div class="member-ready-state"><strong>{{ t('Ready for assignment') }}</strong><span>{{ row.project_count }} {{ t('projects') }} · {{ row.completed_task_count }} {{ t('completed tasks') }}</span></div>
+      {% elif card_state == 'on_leave' %}
+      <div class="member-ready-state leave-state">
+        <strong>{{ t('Approved leave today') }}</strong>
+        <span>{{ t(row.leave_type|replace('_',' ')|title) }} · {{ row.leave_minutes // 60 }}h {{ '%02d'|format(row.leave_minutes % 60) }}m{% if row.active_task_count %} · {{ row.active_task_count }} {{ t('active tasks remain assigned') }}{% endif %}</span>
+      </div>
       {% else %}
       <div class="member-current-tasks">
         {% for task in row.current_tasks %}
@@ -32,8 +37,13 @@
       </div>
       {% endif %}
       <div class="member-card-footer">
+        {% if card_state == 'on_leave' %}
+        <span class="attendance-mini status-on-leave">{{ t('Approved Leave') }}</span>
+        <span>{{ t(row.leave_type|replace('_',' ')|title) }}</span>
+        {% else %}
         <span class="attendance-mini status-{{ row.attendance_status|lower|replace(' ', '-') }}">{{ t(row.attendance_status) }}</span>
         {% if row.time_in and row.time_in not in ['—', 'Not recorded'] %}<span>{{ t('Time in') }} {{ row.time_in }}</span>{% endif %}
+        {% endif %}
       </div>
     </article>
     {% endfor %}
@@ -112,6 +122,7 @@
       <div class="team-command-legend" aria-label="{{ t('Availability legend') }}">
       <span class="availability-legend available"><i></i>{{ t('Available') }}</span>
       <span class="availability-legend working"><i></i>{{ t('Working Now') }}</span>
+      <span class="availability-legend on-leave"><i></i>{{ t('On Leave') }}{% if team_on_leave_count %} · {{ team_on_leave_count }}{% endif %}</span>
       <span class="availability-legend assigned"><i></i>{{ t('Assigned') }}</span>
       <span class="availability-legend overdue"><i></i>{{ t('Overdue') }}</span>
       </div>
@@ -130,6 +141,12 @@
       <div class="availability-group-heading"><div><span class="availability-dot available"></span><h3>{{ t('Available now') }}</h3></div><span class="availability-count">{{ available_member_rows|length }}</span></div>
       {{ availability_cards(available_member_rows, 'available', 'No members are currently available.') }}
     </section>
+    {% if on_leave_member_rows %}
+    <section class="availability-group availability-lane leave-group">
+      <div class="availability-group-heading"><div><span class="availability-dot on-leave"></span><h3>{{ t('On Leave Today') }}</h3></div><span class="availability-count">{{ on_leave_member_rows|length }}</span></div>
+      {{ availability_cards(on_leave_member_rows, 'on_leave', 'No members are on approved leave today.') }}
+    </section>
+    {% endif %}
     <section class="availability-group availability-lane assigned-group">
       <div class="availability-group-heading"><div><span class="availability-dot assigned"></span><h3>{{ t('Assigned members') }}</h3></div><span class="availability-count">{{ assigned_member_rows|length }}</span></div>
       {{ availability_cards(assigned_member_rows, 'assigned', 'No members currently have active assigned tasks.') }}

@@ -2491,5 +2491,10 @@
   "No active assignment": "目前無進行中指派",
   "Has overdue work": "存在逾期工作",
   "Filter by availability": "依可用狀態篩選",
-  "All Availability States": "全部可用狀態"
+  "All Availability States": "全部可用狀態",
+  "On Leave": "請假中",
+  "On Leave Today": "今日請假",
+  "Approved leave today": "今日已核准請假",
+  "No members are on approved leave today.": "今日無成員核准請假。",
+  "active tasks remain assigned": "個進行中任務仍維持指派"
 }

@@ -6641,3 +6641,51 @@ html[data-theme="dark"] .task-register-table tbody tr.task-row-completed .task-q
   .overtime-history-nav { justify-content: flex-start; width: 100%; }
   .operations-overview-panel { padding: 18px; }
 }
+
+/* Release 21.24.3.1 — approved leave visibility in Team Command Center.
+   Leave is informational, not an error state: use a calm violet treatment. */
+.availability-legend.on-leave i,
+.availability-dot.on-leave { background: #7c5ce6; }
+.availability-badge.on_leave {
+  background: #eee9ff;
+  color: #5a3fc0;
+}
+.availability-badge.on_leave i { background: #7c5ce6; }
+.member-availability-card.state-on_leave {
+  border-color: rgba(124,92,230,.38);
+  background: #faf8ff;
+}
+.availability-board-horizontal-details .leave-group {
+  background: linear-gradient(145deg,rgba(239,234,255,.97),rgba(255,255,255,.94));
+  border-color: rgba(124,92,230,.28);
+}
+.member-ready-state.leave-state {
+  background: linear-gradient(135deg,#f1edff,#fbfaff);
+  border: 1px solid rgba(124,92,230,.18);
+}
+.member-ready-state.leave-state strong { color: #5a3fc0; }
+.attendance-mini.status-on-leave {
+  background: #eee9ff;
+  color: #5a3fc0;
+  border: 1px solid rgba(124,92,230,.22);
+  padding: 4px 7px;
+}
+html[data-theme="dark"] .availability-board-horizontal-details .leave-group {
+  background: linear-gradient(145deg,#2d2742,#1c2932);
+  border-color: #6957a8;
+}
+html[data-theme="dark"] .member-availability-card.state-on_leave {
+  background: #27243a;
+  border-color: #6957a8;
+}
+html[data-theme="dark"] .availability-badge.on_leave,
+html[data-theme="dark"] .attendance-mini.status-on-leave {
+  background: #40345f;
+  color: #d9ceff;
+  border-color: #6957a8;
+}
+html[data-theme="dark"] .member-ready-state.leave-state {
+  background: #211f31;
+  border-color: #51447d;
+}
+html[data-theme="dark"] .member-ready-state.leave-state strong { color: #d9ceff; }

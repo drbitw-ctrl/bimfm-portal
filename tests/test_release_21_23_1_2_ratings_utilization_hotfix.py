@@ -188,8 +188,8 @@ def test_completion_fallback_still_adds_review_time():
 def test_release_21_23_1_2_version_ui_and_no_schema_change():
     config = (ROOT / "app" / "config.py").read_text(encoding="utf-8")
     template = (ROOT / "templates" / "task_time_utilization.html").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "v3.0.24.2-release21.24.2-finance-history-quick-view"' in config
-    assert 'APP_VERSION_NUMBER = "3.0.24.2"' in config
+    assert 'APP_VERSION = "v3.0.24.3.1-release21.24.3.1-dashboard-leave-availability-hotfix"' in config
+    assert 'APP_VERSION_NUMBER = "3.0.24.3.1"' in config
     assert "Review Time" in template
     assert "project.review_minutes" in template
     assert "row.review_minutes" in template

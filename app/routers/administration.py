@@ -66,9 +66,10 @@ def _dashboard_availability_groups(member_workload_rows):
     """Group dashboard members without hiding active Work Order users.
 
     The upper availability board intentionally has no separate Working Now
-    column. Members with a live timer therefore remain visible in the
-    Assigned members column, while their individual card keeps the blue
-    Working Now state. Overdue responsibility still has highest priority.
+    lane. Members with a live timer therefore remain visible in the Assigned
+    members lane, while their individual card keeps the blue Working Now state.
+    An approved LeaveRecord for the member's local current date removes that
+    member from Available and places them in the dedicated On Leave lane.
     """
     available_rows = sorted(
         (row for row in member_workload_rows if row["work_state"] == "available"),
@@ -76,6 +77,10 @@ def _dashboard_availability_groups(member_workload_rows):
     )
     working_rows = sorted(
         (row for row in member_workload_rows if row["work_state"] == "working"),
+        key=lambda row: str(row["name"]).casefold(),
+    )
+    on_leave_rows = sorted(
+        (row for row in member_workload_rows if row["work_state"] == "on_leave"),
         key=lambda row: str(row["name"]).casefold(),
     )
     assigned_without_timer_rows = sorted(
@@ -97,6 +102,7 @@ def _dashboard_availability_groups(member_workload_rows):
     return {
         "available": available_rows,
         "working": working_rows,
+        "on_leave": on_leave_rows,
         "assigned_without_timer": assigned_without_timer_rows,
         "assigned_display": assigned_display_rows,
         "overdue": overdue_rows,
@@ -264,8 +270,10 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                 1 for freelancer in hr_freelancers if freelancer.is_active
             )
             today_rows = []
+            current_date_by_member = {}
             for freelancer in hr_freelancers:
                 local_date = current_attendance_date(freelancer.timezone_name)
+                current_date_by_member[int(freelancer.id)] = local_date
                 record = get_daily_attendance(
                     database,
                     freelancer.id,
@@ -385,6 +393,19 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
             attendance_by_member = {
                 int(row["freelancer_id"]): row for row in today_rows
             }
+            leave_dates = sorted(set(current_date_by_member.values()))
+            leave_today_by_member = {}
+            if leave_dates:
+                for leave in database.scalars(
+                    select(LeaveRecord).where(
+                        LeaveRecord.status == "APPROVED",
+                        LeaveRecord.leave_date.in_(leave_dates),
+                    )
+                ).all():
+                    freelancer_id = int(leave.freelancer_id)
+                    if leave.leave_date == current_date_by_member.get(freelancer_id):
+                        leave_today_by_member[freelancer_id] = leave
+
             task_details_by_member = active_task_details_by_freelancer(database)
             live_work = live_work_rows(database)
             live_work_by_member = {int(row["freelancer_id"]): row for row in live_work}
@@ -394,18 +415,34 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                 current_tasks = task_details_by_member.get(freelancer_id, [])
                 attendance_row = attendance_by_member.get(freelancer_id, {})
                 active_tasks = int(team_row["active_task_count"])
+                leave_today = leave_today_by_member.get(freelancer_id)
+                has_live_work = freelancer_id in live_work_by_member
                 member_workload_rows.append(
                     {
                         **team_row,
-                        "availability_status": "Busy" if active_tasks else "Available",
-                        "attendance_status": attendance_row.get("status", "No Record"),
+                        "availability_status": (
+                            "Working" if has_live_work
+                            else "On Leave" if leave_today is not None
+                            else "Busy" if active_tasks
+                            else "Available"
+                        ),
+                        "attendance_status": (
+                            attendance_row.get("status", "No Record")
+                            if has_live_work or leave_today is None
+                            else "On Leave"
+                        ),
                         "time_in": attendance_row.get("time_in", "—"),
+                        "leave_today": leave_today is not None,
+                        "leave_type": getattr(leave_today, "leave_type", "") if leave_today is not None else "",
+                        "leave_minutes": int(getattr(leave_today, "duration_minutes", 0) or 0) if leave_today is not None else 0,
+                        "leave_paid": bool(getattr(leave_today, "is_paid", False)) if leave_today is not None else False,
                         "current_tasks": current_tasks[:3],
                         "remaining_task_count": max(0, len(current_tasks) - 3),
                         "live_work": live_work_by_member.get(freelancer_id),
                         "work_state": (
-                            "overdue" if int(team_row["overdue_task_count"]) > 0
-                            else "working" if freelancer_id in live_work_by_member
+                            "working" if has_live_work
+                            else "on_leave" if leave_today is not None
+                            else "overdue" if int(team_row["overdue_task_count"]) > 0
                             else "assigned" if active_tasks
                             else "available"
                         ),
@@ -415,12 +452,14 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
             availability_groups = _dashboard_availability_groups(member_workload_rows)
             available_member_rows = availability_groups["available"]
             working_member_rows = availability_groups["working"]
+            on_leave_member_rows = availability_groups["on_leave"]
             assigned_member_rows = availability_groups["assigned_display"]
             assigned_without_timer_rows = availability_groups["assigned_without_timer"]
             overdue_member_rows = availability_groups["overdue"]
             busy_member_rows = working_member_rows + assigned_without_timer_rows + overdue_member_rows
             team_available_count = len(available_member_rows)
             team_working_count = len(working_member_rows)
+            team_on_leave_count = len(on_leave_member_rows)
             team_assigned_count = len(assigned_without_timer_rows)
             team_with_overdue_count = len(overdue_member_rows)
             unassigned_task_rows = unassigned_task_overview_rows(database, limit=200)
@@ -468,10 +507,12 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                     active_tasks_without_assignees=project_health.active_tasks_without_assignees,
                     team_available_count=team_available_count,
                     team_working_count=team_working_count,
+                    team_on_leave_count=team_on_leave_count,
                     team_assigned_count=team_assigned_count,
                     team_with_overdue_count=team_with_overdue_count,
                     available_member_rows=available_member_rows,
                     working_member_rows=working_member_rows,
+                    on_leave_member_rows=on_leave_member_rows,
                     assigned_member_rows=assigned_member_rows,
                     overdue_member_rows=overdue_member_rows,
                     busy_member_rows=busy_member_rows,

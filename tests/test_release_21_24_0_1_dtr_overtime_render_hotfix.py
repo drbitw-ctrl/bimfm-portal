@@ -5,8 +5,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_hotfix_version_marker():
     config = (ROOT / "app" / "config.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "v3.0.24.2-release21.24.2-finance-history-quick-view"' in config
-    assert 'APP_VERSION_NUMBER = "3.0.24.2"' in config
+    assert 'APP_VERSION = "v3.0.24.3.1-release21.24.3.1-dashboard-leave-availability-hotfix"' in config
+    assert 'APP_VERSION_NUMBER = "3.0.24.3.1"' in config
 
 
 def test_dtr_route_passes_local_datetime_formatter_to_template_context():
