@@ -6710,3 +6710,181 @@ html[data-theme="dark"] .member-ready-state.leave-state strong { color: #d9ceff;
 @media (max-width: 760px) {
   .member-status-stack { align-items: flex-start; }
 }
+
+
+/* Release 21.24.3.4 — Live Work dark-mode contrast repair.
+   Scope is intentionally limited to Live Work / screen-sharing surfaces. */
+html[data-theme="dark"] .screen-share-prototype-card,
+html[data-theme="dark"] .screen-share-admin-panel,
+html[data-theme="dark"] .screen-share-safety-card,
+html[data-theme="dark"] .dashboard-live-control-room {
+  color: var(--ui-text);
+}
+html[data-theme="dark"] .screen-share-prototype-card h2,
+html[data-theme="dark"] .screen-share-prototype-card h3,
+html[data-theme="dark"] .screen-share-admin-panel h2,
+html[data-theme="dark"] .screen-share-admin-panel h3,
+html[data-theme="dark"] .screen-share-safety-card h2,
+html[data-theme="dark"] .screen-share-safety-card h3,
+html[data-theme="dark"] .dashboard-live-control-room h2,
+html[data-theme="dark"] .dashboard-live-control-room h3 {
+  color: #f8fbff;
+}
+html[data-theme="dark"] .screen-share-prototype-card p,
+html[data-theme="dark"] .screen-share-prototype-card .muted,
+html[data-theme="dark"] .screen-share-viewer-count,
+html[data-theme="dark"] .screen-share-admin-panel p,
+html[data-theme="dark"] .screen-share-safety-card p,
+html[data-theme="dark"] .dashboard-control-room-privacy,
+html[data-theme="dark"] .dashboard-live-control-room .muted {
+  color: #b9cad9;
+  opacity: 1;
+}
+html[data-theme="dark"] .screen-share-prototype-card .eyebrow,
+html[data-theme="dark"] .screen-share-admin-panel .eyebrow,
+html[data-theme="dark"] .screen-share-safety-card .eyebrow,
+html[data-theme="dark"] .dashboard-live-control-room .eyebrow {
+  color: #83c7ff;
+}
+html[data-theme="dark"] .live-work-summary span {
+  color: #e8f2fb;
+  background: #1b2b3c;
+  border-color: #40576c;
+}
+html[data-theme="dark"] .live-work-summary strong {
+  color: #ffffff;
+}
+html[data-theme="dark"] .live-work-order-card {
+  color: #dce8f3;
+  background: #172637;
+  border-color: #3a5167;
+  box-shadow: 0 14px 34px rgba(0,0,0,.30);
+}
+html[data-theme="dark"] .live-work-order-card.has-live-screen {
+  border-color: #3978a8;
+  box-shadow: 0 14px 34px rgba(0,0,0,.34), 0 0 0 1px rgba(83,169,235,.12);
+}
+html[data-theme="dark"] .live-work-order-body {
+  color: #dce8f3;
+  background: #172637;
+}
+html[data-theme="dark"] .live-work-order-head strong,
+html[data-theme="dark"] .live-work-order-body h3,
+html[data-theme="dark"] .live-work-order-meta strong {
+  color: #f8fbff;
+}
+html[data-theme="dark"] .live-work-order-body > p,
+html[data-theme="dark"] .live-work-order-actions > small {
+  color: #b4c7d8;
+  opacity: 1;
+}
+html[data-theme="dark"] .live-work-order-meta > div {
+  color: #dce8f3;
+  background: #101d2b;
+  border-color: #334b61;
+}
+html[data-theme="dark"] .live-work-order-meta span {
+  color: #9fb8cc;
+  opacity: 1;
+}
+html[data-theme="dark"] .live-work-order-preview {
+  border-bottom: 1px solid #334b61;
+  background: linear-gradient(145deg,#081321,#173c68);
+}
+html[data-theme="dark"] .live-preview-placeholder {
+  color: #f1f7ff;
+}
+html[data-theme="dark"] .live-preview-placeholder small {
+  color: #c2d4e6;
+  opacity: 1;
+}
+html[data-theme="dark"] .live-thumb-overlay {
+  color: #fff;
+  background: linear-gradient(to top,rgba(3,10,20,.96),rgba(7,19,34,.62));
+  border: 1px solid rgba(174,214,246,.16);
+}
+html[data-theme="dark"] .live-thumb-note {
+  color: #d5e5f4;
+  opacity: 1;
+}
+html[data-theme="dark"] .screen-share-viewer {
+  color: #dce8f3;
+  background: #101c29;
+  border-color: #3a5167;
+}
+html[data-theme="dark"] .screen-share-viewer-toolbar {
+  color: #f4f9fd;
+  background: #1b2b3c;
+  border-bottom: 1px solid #3a5167;
+}
+html[data-theme="dark"] .screen-share-viewer-toolbar strong,
+html[data-theme="dark"] .screen-share-viewer-toolbar span {
+  color: #f4f9fd;
+}
+html[data-theme="dark"] .screen-share-viewer > .muted {
+  color: #afc2d3;
+}
+html[data-theme="dark"] .screen-share-boundary-grid div,
+html[data-theme="dark"] .screen-share-privacy-note,
+html[data-theme="dark"] .screen-share-capture-tip {
+  color: #dce8f3;
+  background: #132231;
+  border-color: #3a5167;
+}
+html[data-theme="dark"] .screen-share-boundary-grid strong,
+html[data-theme="dark"] .screen-share-privacy-note strong,
+html[data-theme="dark"] .screen-share-capture-tip strong {
+  color: #f8fbff;
+}
+html[data-theme="dark"] .screen-share-boundary-grid span,
+html[data-theme="dark"] .screen-share-privacy-note span,
+html[data-theme="dark"] .screen-share-capture-tip span {
+  color: #b7c9d9;
+}
+html[data-theme="dark"] .screen-share-event-notice strong {
+  color: #f4f9fd;
+}
+html[data-theme="dark"] .screen-share-event-notice div > span {
+  color: #b8cad9;
+}
+html[data-theme="dark"] .screen-share-event-notice[data-state="live"] {
+  background: #112f26;
+  border-color: #2f6e56;
+}
+html[data-theme="dark"] .screen-share-event-notice[data-state="preparing"] {
+  background: #132a42;
+  border-color: #315d84;
+}
+html[data-theme="dark"] .screen-share-event-notice[data-state="paused"] {
+  background: #332a14;
+  border-color: #6e5b28;
+}
+html[data-theme="dark"] .screen-share-event-notice[data-state="error"] {
+  background: #351d23;
+  border-color: #73414b;
+}
+html[data-theme="dark"] .screen-share-local-preview-head {
+  color: #eef6fd;
+  background: #172637;
+  border-color: #3a5167;
+}
+html[data-theme="dark"] .screen-share-local-preview-card > .muted {
+  color: #afc2d3;
+}
+
+.role-work-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+@media(max-width:760px){.role-work-header-actions{justify-content:flex-start}}
+html[data-theme="dark"] .live-work-order-card .status-chip.status-available {
+  color: #8cf0bb;
+  background: #143a2a;
+  border-color: #2c6d50;
+}
+html[data-theme="dark"] .live-work-order-card .status-chip.status-neutral {
+  color: #d3e0eb;
+  background: #253649;
+  border-color: #435b70;
+}
+html[data-theme="dark"] .live-work-order-actions .button.primary,
+html[data-theme="dark"] .screen-share-prototype-actions .button.primary {
+  color: #ffffff;
+}

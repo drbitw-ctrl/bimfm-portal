@@ -14,9 +14,12 @@
       <p>{{ t('Finance overview: daily attendance, monthly records, DTR preparation, and Finance shortcuts.') }}</p>
     {% endif %}
   </div>
-  <span class="role-work-badge role-{{ role|lower }}">
-    {{ t('Administrator') if role == 'ADMIN' else (t('Supervisor') if role == 'SUPERVISOR' else t('Finance Head')) }}
-  </span>
+  <div class="role-work-header-actions">
+    {% if role == 'FINANCE' %}<a class="button primary" href="/admin/finance">{{ t('Finance Center') }}</a>{% endif %}
+    <span class="role-work-badge role-{{ role|lower }}">
+      {{ t('Administrator') if role == 'ADMIN' else (t('Supervisor') if role == 'SUPERVISOR' else t('Finance Head')) }}
+    </span>
+  </div>
 </section>
 
 {% if role in ['ADMIN', 'SUPERVISOR', 'FINANCE'] %}
