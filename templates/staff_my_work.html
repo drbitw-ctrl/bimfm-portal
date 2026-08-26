@@ -22,6 +22,50 @@
   </div>
 </section>
 
+{% if role == 'FINANCE' %}
+{% set finance = my_work.finance %}
+{% set center = finance.finance_center_summary if finance.finance_center_summary is defined else {'employees': 0, 'ready': 0, 'needs_review': 0, 'full_month_count': 0, 'worked_days': 0, 'worked_hours': 0, 'comp_credit_hours_applied': 0, 'effective_unpaid_leave_hours': 0, 'absent_days': 0, 'effective_absent_hours': 0} %}
+<section class="content-card finance-my-work-command">
+  <div class="finance-my-work-command-head">
+    <div>
+      <span class="eyebrow">{{ t('FINANCE CENTER OVERVIEW') }}</span>
+      <h2>{{ t('Finance Center') }} · {{ finance.month_key }}</h2>
+      <p>{{ t('A Finance Center snapshot for the current payroll month, with attendance, DTR readiness, leave/absence, and overtime-credit signals in one view.') }}</p>
+    </div>
+    <a class="button primary" href="/admin/finance?month={{ finance.month_key }}">{{ t('Open Finance Center') }}</a>
+  </div>
+  <div class="finance-my-work-overview-grid">
+    <a href="/admin/finance?month={{ finance.month_key }}" class="finance-overview-tile members">
+      <span>{{ t('Freelancers') }}</span><strong>{{ center.employees }}</strong><small>{{ t('Included in this review') }}</small>
+    </a>
+    <a href="/admin/finance?month={{ finance.month_key }}" class="finance-overview-tile ready">
+      <span>{{ t('Ready') }}</span><strong>{{ center.ready }}</strong><small>{{ t('Finance summaries ready') }}</small>
+    </a>
+    <a href="/admin/finance?month={{ finance.month_key }}" class="finance-overview-tile review">
+      <span>{{ t('Needs Review') }}</span><strong>{{ center.needs_review }}</strong><small>{{ t('Finance summaries requiring attention') }}</small>
+    </a>
+    <a href="/admin/finance?month={{ finance.month_key }}" class="finance-overview-tile worked">
+      <span>{{ t('Days Physically Worked') }}</span><strong>{{ center.worked_days }}</strong><small>{{ center.worked_hours }} {{ t('recorded hours') }}</small>
+    </a>
+    <a href="/admin/finance?month={{ finance.month_key }}" class="finance-overview-tile credit">
+      <span>{{ t('OT Credit Applied') }}</span><strong>{{ center.comp_credit_hours_applied }}h</strong><small>{{ t('Applied to approved leave and absence') }}</small>
+    </a>
+    <a href="/admin/finance?month={{ finance.month_key }}" class="finance-overview-tile leave">
+      <span>{{ t('Unpaid Leave') }}</span><strong>{{ center.effective_unpaid_leave_hours }}h</strong><small>{{ t('Approved leave not covered by OT credit') }}</small>
+    </a>
+    <a href="/admin/finance?month={{ finance.month_key }}" class="finance-overview-tile absent">
+      <span>{{ t('Absent') }}</span><strong>{{ center.absent_days }}</strong><small>{{ center.effective_absent_hours }}h {{ t('uncovered after comp credit') }}</small>
+    </a>
+  </div>
+  <div class="finance-my-work-shortcuts">
+    <a href="/admin/attendance/today"><span>01</span><strong>{{ t('Today’s Attendance') }}</strong></a>
+    <a href="/admin/attendance/monthly?month={{ finance.month_key }}"><span>02</span><strong>{{ t('Monthly Attendance') }}</strong></a>
+    <a href="/admin/dtr?month={{ finance.month_key }}"><span>03</span><strong>{{ t('Monthly DTR') }}</strong></a>
+    <a href="/admin/finance?month={{ finance.month_key }}" class="primary"><span>04</span><strong>{{ t('Finance Center') }}</strong></a>
+  </div>
+</section>
+{% endif %}
+
 {% if role in ['ADMIN', 'SUPERVISOR', 'FINANCE'] %}
 <section class="content-card screen-share-prototype-card">
   <div class="screen-share-prototype-grid">
@@ -211,19 +255,12 @@
 
 {% elif role == 'FINANCE' %}
 {% set finance = my_work.finance %}
-<section class="operations-stat-strip role-work-stats finance-work-stats">
+<section class="operations-stat-strip role-work-stats finance-work-stats finance-attendance-stats">
   <article class="operations-stat-chip success"><span>{{ t('Attendance Recorded Today') }}</span><strong>{{ finance.daily_summary.recorded }}/{{ finance.daily_summary.total }}</strong><small>{{ t('Complete or currently working') }}</small></article>
   <article class="operations-stat-chip info"><span>{{ t('Currently Working') }}</span><strong>{{ finance.daily_summary.working }}</strong><small>{{ t('Open attendance sessions') }}</small></article>
   <article class="operations-stat-chip danger"><span>{{ t('Attendance Issues') }}</span><strong>{{ finance.daily_summary.issues }}</strong><small>{{ t('Missing or invalid records') }}</small></article>
   <article class="operations-stat-chip"><span>{{ t('DTR Generated') }}</span><strong>{{ finance.dtr_summary.generated }}</strong><small>{{ finance.month_key }}</small></article>
   <article class="operations-stat-chip warning"><span>{{ t('DTR Not Generated') }}</span><strong>{{ finance.dtr_summary.missing }}</strong><small>{{ t('Active freelancers') }}</small></article>
-</section>
-
-<section class="finance-work-launches">
-  <a href="/admin/attendance/today"><span>01</span><strong>{{ t('Today’s Attendance') }}</strong><small>{{ t('Open daily attendance records') }}</small></a>
-  <a href="/admin/attendance/monthly?month={{ finance.month_key }}"><span>02</span><strong>{{ t('Monthly Attendance') }}</strong><small>{{ t('Review monthly attendance totals') }}</small></a>
-  <a href="/admin/dtr?month={{ finance.month_key }}"><span>03</span><strong>{{ t('Monthly DTR') }}</strong><small>{{ t('Generate and export DTR records') }}</small></a>
-  <a class="primary-launch" href="/admin/finance?month={{ finance.month_key }}"><span>04</span><strong>{{ t('Finance Center') }}</strong><small>{{ t('Open payroll and Finance review') }}</small></a>
 </section>
 
 <section class="content-card role-work-panel">

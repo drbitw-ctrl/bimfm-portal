@@ -6888,3 +6888,116 @@ html[data-theme="dark"] .live-work-order-actions .button.primary,
 html[data-theme="dark"] .screen-share-prototype-actions .button.primary {
   color: #ffffff;
 }
+
+
+/* Release 21.24.3.5 — Freelancer/Finance dark-mode contrast + Finance My Work command overview */
+.finance-my-work-command {
+  margin-bottom: 18px;
+  padding: 22px 24px;
+  border: 1px solid color-mix(in srgb, var(--ui-brand-600) 26%, var(--ui-border));
+  background: linear-gradient(145deg, var(--ui-surface), color-mix(in srgb, var(--ui-brand-100) 48%, var(--ui-surface)));
+}
+.finance-my-work-command-head { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; margin-bottom:16px; }
+.finance-my-work-command-head h2 { margin:.2rem 0 .35rem; }
+.finance-my-work-command-head p { margin:0; max-width:780px; color:var(--ui-muted); }
+.finance-my-work-overview-grid { display:grid; grid-template-columns:repeat(7,minmax(118px,1fr)); gap:10px; }
+.finance-overview-tile { display:flex; min-height:118px; flex-direction:column; justify-content:space-between; gap:5px; padding:15px; border:1px solid var(--ui-border); border-radius:15px; background:var(--ui-surface-raised); color:var(--ui-text); text-decoration:none; box-shadow:var(--ui-shadow-xs); }
+.finance-overview-tile:hover { transform:translateY(-1px); border-color:var(--ui-brand-500); }
+.finance-overview-tile span { color:var(--ui-muted); font-size:.69rem; font-weight:850; letter-spacing:.055em; text-transform:uppercase; }
+.finance-overview-tile strong { color:var(--ui-text-strong); font-size:1.65rem; line-height:1; }
+.finance-overview-tile small { color:var(--ui-muted); line-height:1.35; }
+.finance-overview-tile.ready { border-color:color-mix(in srgb,var(--ui-success) 34%,var(--ui-border)); background:color-mix(in srgb,var(--ui-success-soft) 72%,var(--ui-surface)); }
+.finance-overview-tile.review,.finance-overview-tile.leave { border-color:color-mix(in srgb,var(--ui-warning) 34%,var(--ui-border)); background:color-mix(in srgb,var(--ui-warning-soft) 72%,var(--ui-surface)); }
+.finance-overview-tile.absent { border-color:color-mix(in srgb,var(--ui-danger) 34%,var(--ui-border)); background:color-mix(in srgb,var(--ui-danger-soft) 72%,var(--ui-surface)); }
+.finance-overview-tile.worked { border-color:color-mix(in srgb,var(--ui-info) 34%,var(--ui-border)); background:color-mix(in srgb,var(--ui-info-soft) 72%,var(--ui-surface)); }
+.finance-overview-tile.credit { border-color:color-mix(in srgb,#7c63d4 38%,var(--ui-border)); background:color-mix(in srgb,#4d3c7c 18%,var(--ui-surface)); }
+.finance-my-work-shortcuts { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; margin-top:12px; }
+.finance-my-work-shortcuts a { display:flex; align-items:center; gap:10px; min-height:44px; padding:10px 13px; border:1px solid var(--ui-border); border-radius:12px; background:var(--ui-surface); color:var(--ui-text); text-decoration:none; }
+.finance-my-work-shortcuts span { display:grid; place-items:center; min-width:27px; height:27px; border-radius:8px; background:var(--ui-brand-100); color:var(--ui-brand-700); font-size:.7rem; font-weight:900; }
+.finance-my-work-shortcuts strong { color:var(--ui-text-strong); font-size:.82rem; }
+.finance-my-work-shortcuts a.primary { border-color:color-mix(in srgb,var(--ui-brand-500) 60%,var(--ui-border)); background:color-mix(in srgb,var(--ui-brand-100) 68%,var(--ui-surface)); }
+
+/* Freelancer dashboard: remove hard-coded light surfaces when dark mode is active. */
+html[data-theme="dark"] .attendance-command-card {
+  background:#182631;
+  border-color:#3b5060;
+  color:#dce7ee;
+  box-shadow:0 18px 42px rgba(0,0,0,.18);
+}
+html[data-theme="dark"] .attendance-command-head h2 { color:#f7fbff; }
+html[data-theme="dark"] .attendance-command-head p { color:#b5c4ce; }
+html[data-theme="dark"] .attendance-state-orb { background:#1d3a51; color:#b8e2ff; border:1px solid #3b6684; }
+html[data-theme="dark"] .attendance-time-display article { background:#14212b; border-color:#354957; }
+html[data-theme="dark"] .attendance-time-display span,
+html[data-theme="dark"] .attendance-time-display small { color:#aebfca; }
+html[data-theme="dark"] .attendance-time-display strong { color:#f4f9fc; }
+html[data-theme="dark"] .attendance-time-line { background:#385164; }
+html[data-theme="dark"] .attendance-time-line i { background:#62b8ea; box-shadow:0 0 0 5px rgba(98,184,234,.12); }
+html[data-theme="dark"] .attendance-result-grid article { background:#15232d; border-color:#354957; }
+html[data-theme="dark"] .attendance-result-grid span { color:#aebfca; }
+html[data-theme="dark"] .attendance-result-grid strong { color:#f2f8fb; }
+html[data-theme="dark"] .attendance-result-grid .featured { background:#173246; border-color:#3d7395; }
+html[data-theme="dark"] .attendance-complete-banner { background:#193a2c; color:#b9efd0; border:1px solid #356b51; }
+html[data-theme="dark"] .member-monthly-summary .section-heading h2,
+html[data-theme="dark"] .member-monthly-summary .member-summary-card strong,
+html[data-theme="dark"] .member-monthly-summary .member-credit-strip strong { color:#f4f8fb; }
+html[data-theme="dark"] .member-monthly-summary .section-heading .muted,
+html[data-theme="dark"] .member-monthly-summary .member-summary-card small,
+html[data-theme="dark"] .member-monthly-summary .member-credit-strip span { color:#b0c0ca; }
+html[data-theme="dark"] .member-credit-strip > div { background:#15232d; border-color:#344a59; }
+
+/* Finance Center: style.css still defines white table cells; explicitly replace them in dark mode. */
+html[data-theme="dark"] .finance-page-header { color:var(--ui-text); }
+html[data-theme="dark"] .finance-page-header h1,
+html[data-theme="dark"] .finance-summary-panel h2,
+html[data-theme="dark"] .finance-factor-table td strong,
+html[data-theme="dark"] .finance-factor-table .member-cell strong,
+html[data-theme="dark"] .bank-details-cell strong { color:#f4f8fb; }
+html[data-theme="dark"] .finance-page-header .muted,
+html[data-theme="dark"] .finance-summary-panel .muted,
+html[data-theme="dark"] .finance-factor-table td,
+html[data-theme="dark"] .finance-factor-table td small,
+html[data-theme="dark"] .bank-details-cell small { color:#b5c3cd; }
+html[data-theme="dark"] .finance-factor-table th { background:#111f2a !important; color:#b9c8d2 !important; border-color:#3a4e5d !important; }
+html[data-theme="dark"] .finance-factor-table td,
+html[data-theme="dark"] .finance-factor-table .needs-review-row td { background:#182631 !important; border-color:#344958 !important; }
+html[data-theme="dark"] .finance-factor-table tbody tr:nth-child(even) td,
+html[data-theme="dark"] .finance-factor-table .needs-review-row:nth-child(even) td { background:#1b2a36 !important; }
+html[data-theme="dark"] .finance-factor-table tbody tr:hover td,
+html[data-theme="dark"] .finance-factor-table .needs-review-row:hover td { background:#213646 !important; }
+html[data-theme="dark"] .finance-factor-table .finance-group-cell > span { border-color:#344a59; }
+html[data-theme="dark"] .finance-factor-table .credit-value strong { color:#d7c7ff; }
+html[data-theme="dark"] .finance-factor-table .credit-balance-value strong { color:#9be4bb; }
+html[data-theme="dark"] .finance-factor-table .deduction-value strong { color:#ffbec4; }
+html[data-theme="dark"] .finance-factor-table .treatment-cell > small { color:#c0ced7; }
+html[data-theme="dark"] .finance-factor-table .button.secondary { background:#20303c; border-color:#405667; color:#eaf2f7; }
+html[data-theme="dark"] .finance-factor-table .button.secondary:hover { background:#294052; border-color:#5a7890; }
+html[data-theme="dark"] .finance-factor-table .button.primary { color:#fff; }
+html[data-theme="dark"] .finance-overview-cards .stat-card { color:var(--ui-text); background:var(--ui-surface-raised); border-color:var(--ui-border); }
+html[data-theme="dark"] .finance-overview-cards .stat-card strong { color:#f6fbff; }
+html[data-theme="dark"] .finance-overview-cards .stat-card span,
+html[data-theme="dark"] .finance-overview-cards .stat-card small { color:#b4c3cd; }
+html[data-theme="dark"] .finance-overview-cards .calendar-card { background:#18334a; border-color:#3b6d91; }
+html[data-theme="dark"] .finance-overview-cards .credit-card { background:#292442; border-color:#625493; }
+html[data-theme="dark"] .finance-overview-cards .warning-card { background:#3b321b; border-color:#76632e; }
+html[data-theme="dark"] .finance-overview-cards .good-card { background:#19392c; border-color:#397055; }
+html[data-theme="dark"] .finance-filter-panel label { color:#c8d4dc; }
+
+html[data-theme="dark"] .finance-my-work-command { background:linear-gradient(145deg,#182631,#182f43); border-color:#3d5d73; }
+html[data-theme="dark"] .finance-my-work-command-head h2 { color:#f8fbfd; }
+html[data-theme="dark"] .finance-my-work-command-head p { color:#b6c6d0; }
+html[data-theme="dark"] .finance-overview-tile { box-shadow:none; }
+html[data-theme="dark"] .finance-overview-tile.members { background:#1b2a36; border-color:#405464; }
+html[data-theme="dark"] .finance-overview-tile.ready { background:#19382c; border-color:#3b7256; }
+html[data-theme="dark"] .finance-overview-tile.review,
+html[data-theme="dark"] .finance-overview-tile.leave { background:#3b321d; border-color:#78662f; }
+html[data-theme="dark"] .finance-overview-tile.absent { background:#41262b; border-color:#85505a; }
+html[data-theme="dark"] .finance-overview-tile.worked { background:#18354b; border-color:#3f6f91; }
+html[data-theme="dark"] .finance-overview-tile.credit { background:#2a2542; border-color:#635593; }
+html[data-theme="dark"] .finance-my-work-shortcuts a { background:#172631; border-color:#3b5060; }
+html[data-theme="dark"] .finance-my-work-shortcuts a.primary { background:#173b58; border-color:#4a83aa; }
+html[data-theme="dark"] .finance-my-work-shortcuts span { color:#b8e1fa; background:#22435b; }
+
+@media(max-width:1300px){.finance-my-work-overview-grid{grid-template-columns:repeat(4,minmax(130px,1fr))}}
+@media(max-width:900px){.finance-my-work-command-head{flex-direction:column}.finance-my-work-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.finance-my-work-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.finance-my-work-overview-grid,.finance-my-work-shortcuts{grid-template-columns:1fr}}

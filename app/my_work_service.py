@@ -16,6 +16,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.config import DEFAULT_TIMEZONE
+from app.finance_service import finance_rows
 from app.models import (
     AttendanceCorrection,
     DailyAttendance,
@@ -363,6 +364,25 @@ def finance_work_overview(database: Session) -> dict[str, Any]:
     generated_ids = {int(row.freelancer_id) for row in dtrs}
     missing_dtr_count = sum(int(row.id) not in generated_ids for row in freelancers)
 
+    # Read-only Finance Center snapshot for Finance Head My Work.  This uses the
+    # same finance-row calculation already used by /admin/finance, but does not
+    # create, update, or backfill any DTR/finance records.  If Finance Center has
+    # not generated summaries for the month yet, the snapshot simply shows the
+    # currently available rows and the DTR missing count remains visible.
+    center_rows = finance_rows(database, month_key)
+    center_summary = {
+        "employees": len(center_rows),
+        "ready": sum(str(row.get("status") or "").upper() == "READY" for row in center_rows),
+        "needs_review": sum(str(row.get("status") or "").upper() != "READY" for row in center_rows),
+        "full_month_count": sum(int(row.get("total_deduction_minutes") or 0) == 0 for row in center_rows),
+        "worked_days": sum(int(row.get("worked_days") or 0) for row in center_rows),
+        "worked_hours": round(sum(float(row.get("worked_hours") or 0) for row in center_rows), 2),
+        "comp_credit_hours_applied": round(sum(float(row.get("comp_credit_hours_applied") or 0) for row in center_rows), 2),
+        "effective_unpaid_leave_hours": round(sum(float(row.get("effective_unpaid_leave_hours") or 0) for row in center_rows), 2),
+        "absent_days": sum(int(row.get("absent_days") or 0) for row in center_rows),
+        "effective_absent_hours": round(sum(float(row.get("effective_absent_hours") or 0) for row in center_rows), 2),
+    }
+
     return {
         "today": today.isoformat(),
         "month_key": month_key,
@@ -391,6 +411,7 @@ def finance_work_overview(database: Session) -> dict[str, Any]:
             "finalized": dtr_status_counts["FINALIZED"],
             "missing": missing_dtr_count,
         },
+        "finance_center_summary": center_summary,
     }
 
 
