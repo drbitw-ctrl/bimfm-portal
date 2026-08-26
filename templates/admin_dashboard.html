@@ -8,14 +8,23 @@
   <div class="availability-state-grid">
     {% for row in rows %}
     {% set card_state = row.work_state if row.work_state else state %}
-    <article class="member-availability-card state-{{ card_state }}{% if card_state == 'overdue' %} has-overdue{% endif %}">
+    {% set is_working = row.live_work is not none and row.live_work %}
+    {% set visual_state = 'working' if is_working and card_state == 'assigned' else card_state %}
+    <article class="member-availability-card state-{{ visual_state }}{% if card_state == 'overdue' %} has-overdue{% endif %}">
       <div class="member-card-head">
         <span class="person-avatar member-command-avatar privacy-member-avatar" aria-hidden="true">{{ row.name[:1]|upper }}</span>
         <div class="member-card-identity">
           <strong class="privacy-member-name" data-hidden-label="{{ t('Hidden member') }}">{{ row.name }}</strong>
           <small>{{ row.code }}{% if row.join_date and row.join_date != '—' %} · {{ t('Joined') }} {{ row.join_date }}{% endif %}</small>
         </div>
-        <span class="availability-badge {{ card_state }}"><i></i>{{ t('Available') if card_state == 'available' else (t('Working Now') if card_state == 'working' else (t('On Leave') if card_state == 'on_leave' else (t('Assigned') if card_state == 'assigned' else t('Overdue')))) }}</span>
+        <div class="member-status-stack">
+          {% if is_working and card_state == 'assigned' %}
+          <span class="availability-badge working"><i></i>{{ t('Working Now') }}</span>
+          {% else %}
+          <span class="availability-badge {{ card_state }}"><i></i>{{ t('Available') if card_state == 'available' else (t('On Leave') if card_state == 'on_leave' else (t('Assigned') if card_state == 'assigned' else t('Overdue'))) }}</span>
+          {% if is_working %}<span class="availability-badge working activity-overlay"><i></i>{{ t('Working Now') }}</span>{% endif %}
+          {% endif %}
+        </div>
       </div>
       {% if card_state == 'available' %}
       <div class="member-ready-state"><strong>{{ t('Ready for assignment') }}</strong><span>{{ row.project_count }} {{ t('projects') }} · {{ row.completed_task_count }} {{ t('completed tasks') }}</span></div>

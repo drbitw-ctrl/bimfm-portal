@@ -63,48 +63,47 @@ def _staff_can_manage(account) -> bool:
 
 
 def _dashboard_availability_groups(member_workload_rows):
-    """Group dashboard members without hiding active Work Order users.
+    """Group members by responsibility state while tracking live work separately.
 
-    The upper availability board intentionally has no separate Working Now
-    lane. Members with a live timer therefore remain visible in the Assigned
-    members lane, while their individual card keeps the blue Working Now state.
-    An approved LeaveRecord for the member's local current date removes that
-    member from Available and places them in the dedicated On Leave lane.
+    A member belongs to one responsibility lane only: On Leave, Overdue,
+    Assigned, or Available. Live Work Order activity is an independent overlay
+    so a member can correctly appear under Overdue Responsibility while still
+    carrying the blue Working Now indicator.
     """
     available_rows = sorted(
         (row for row in member_workload_rows if row["work_state"] == "available"),
         key=lambda row: str(row["name"]).casefold(),
     )
     working_rows = sorted(
-        (row for row in member_workload_rows if row["work_state"] == "working"),
+        (row for row in member_workload_rows if row.get("live_work")),
         key=lambda row: str(row["name"]).casefold(),
     )
     on_leave_rows = sorted(
         (row for row in member_workload_rows if row["work_state"] == "on_leave"),
         key=lambda row: str(row["name"]).casefold(),
     )
-    assigned_without_timer_rows = sorted(
+    assigned_rows = sorted(
         (row for row in member_workload_rows if row["work_state"] == "assigned"),
+        key=lambda row: (
+            not bool(row.get("live_work")),
+            -int(row["active_task_count"]),
+            str(row["name"]).casefold(),
+        ),
+    )
+    assigned_without_timer_rows = sorted(
+        (row for row in assigned_rows if not row.get("live_work")),
         key=lambda row: (-int(row["active_task_count"]), str(row["name"]).casefold()),
     )
     overdue_rows = sorted(
         (row for row in member_workload_rows if row["work_state"] == "overdue"),
         key=lambda row: (-int(row["overdue_task_count"]), str(row["name"]).casefold()),
     )
-    assigned_display_rows = sorted(
-        [*working_rows, *assigned_without_timer_rows],
-        key=lambda row: (
-            row["work_state"] != "working",
-            -int(row["active_task_count"]),
-            str(row["name"]).casefold(),
-        ),
-    )
     return {
         "available": available_rows,
         "working": working_rows,
         "on_leave": on_leave_rows,
         "assigned_without_timer": assigned_without_timer_rows,
-        "assigned_display": assigned_display_rows,
+        "assigned_display": assigned_rows,
         "overdue": overdue_rows,
     }
 
@@ -439,9 +438,12 @@ def configure_administration_routes(legacy_namespace: dict[str, object]) -> APIR
                         "current_tasks": current_tasks[:3],
                         "remaining_task_count": max(0, len(current_tasks) - 3),
                         "live_work": live_work_by_member.get(freelancer_id),
+                        # Responsibility lane is independent from live activity.
+                        # Leave takes first priority, then overdue responsibility,
+                        # then assigned, then available. A live Work Order is kept
+                        # in ``live_work`` and rendered as a Working Now overlay.
                         "work_state": (
-                            "working" if has_live_work
-                            else "on_leave" if leave_today is not None
+                            "on_leave" if leave_today is not None
                             else "overdue" if int(team_row["overdue_task_count"]) > 0
                             else "assigned" if active_tasks
                             else "available"

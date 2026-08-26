@@ -6689,3 +6689,24 @@ html[data-theme="dark"] .member-ready-state.leave-state {
   border-color: #51447d;
 }
 html[data-theme="dark"] .member-ready-state.leave-state strong { color: #d9ceff; }
+
+
+/* Release 21.24.3.2 — responsibility lane and live-activity separation. */
+.member-status-stack {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 4px;
+}
+.member-status-stack .availability-badge { margin: 0; }
+.member-status-stack .activity-overlay {
+  padding: 4px 7px;
+  font-size: 0.61rem;
+}
+.member-availability-card.has-overdue .member-current-task.overdue {
+  border-color: color-mix(in srgb, var(--ui-danger) 45%, var(--ui-border));
+}
+@media (max-width: 760px) {
+  .member-status-stack { align-items: flex-start; }
+}
