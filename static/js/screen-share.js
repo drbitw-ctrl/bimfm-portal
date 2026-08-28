@@ -3,6 +3,8 @@
 
   const wsUrl = (path) => `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}${path}`;
   const iceServers = [{ urls: ['stun:stun.l.google.com:19302'] }];
+  const MAX_DIRECT_CONNECTION_ATTEMPTS = 3;
+  const DIRECT_RETRY_DELAYS_MS = [1500, 2500];
 
   function setText(node, value) {
     if (node) node.textContent = value;
@@ -257,6 +259,8 @@
     const state = root.querySelector('[data-screen-viewer-state]');
     const close = root.querySelector('[data-screen-viewer-close]');
     const viewerPeers = new Map();
+    const directAttemptCounts = new Map();
+    const directRetryTimers = new Map();
     let expanded = null;
 
     function formatElapsed(startedAt) {
@@ -270,8 +274,17 @@
       return `${h}:${m}:${sec}`;
     }
 
-    function disconnectViewerPeer(freelancerId) {
+    function clearDirectRetryState(freelancerId) {
       const key = String(freelancerId);
+      const timer = directRetryTimers.get(key);
+      if (timer) window.clearTimeout(timer);
+      directRetryTimers.delete(key);
+      directAttemptCounts.delete(key);
+    }
+
+    function disconnectViewerPeer(freelancerId, options = {}) {
+      const key = String(freelancerId);
+      if (!options.preserveRetryState) clearDirectRetryState(key);
       const entry = viewerPeers.get(key);
       if (!entry) return;
       viewerPeers.delete(key);
@@ -280,6 +293,41 @@
       try { if (entry.pc) entry.pc.close(); } catch (_) {}
       if (entry.thumbnailVideo) entry.thumbnailVideo.srcObject = null;
       if (expanded?.freelancerId === key && video) video.srcObject = null;
+    }
+
+    function scheduleFreshDirectRetry(key, entry) {
+      if (entry.closing || directRetryTimers.has(key)) return;
+      if (entry.attempt >= MAX_DIRECT_CONNECTION_ATTEMPTS) return;
+
+      const nextAttempt = entry.attempt + 1;
+      const delayIndex = Math.min(entry.attempt - 1, DIRECT_RETRY_DELAYS_MS.length - 1);
+      const delay = DIRECT_RETRY_DELAYS_MS[Math.max(0, delayIndex)];
+      setThumbnailStatus(
+        entry,
+        `Retrying ${nextAttempt}/${MAX_DIRECT_CONNECTION_ATTEMPTS}…`,
+        'Starting a fresh direct WebRTC connection',
+      );
+      if (expanded?.freelancerId === key) {
+        setText(state, `Direct connection retry ${nextAttempt}/${MAX_DIRECT_CONNECTION_ATTEMPTS}…`);
+      }
+
+      const timer = window.setTimeout(() => {
+        directRetryTimers.delete(key);
+        if (viewerPeers.get(key) !== entry || entry.closing) return;
+
+        const card = list.querySelector(`.live-work-order-card[data-fid="${key}"]`);
+        if (!card) {
+          disconnectViewerPeer(key);
+          return;
+        }
+        const videoNode = card.querySelector('.live-work-thumb');
+        const badgeNode = card.querySelector('.live-thumb-badge');
+        const noteNode = card.querySelector('.live-thumb-note');
+
+        disconnectViewerPeer(key, { preserveRetryState: true });
+        ensureViewerPeer(key, videoNode, badgeNode, noteNode);
+      }, delay);
+      directRetryTimers.set(key, timer);
     }
 
     function stopExpandedViewer() {
@@ -350,6 +398,8 @@
         return entry;
       }
 
+      const attempt = (directAttemptCounts.get(key) || 0) + 1;
+      directAttemptCounts.set(key, attempt);
       entry = {
         freelancerId: key,
         thumbnailVideo: videoNode || null,
@@ -359,6 +409,7 @@
         pc: null,
         ws: null,
         closing: false,
+        attempt,
       };
       viewerPeers.set(key, entry);
 
@@ -383,11 +434,16 @@
         (connectionState) => {
           if (viewerPeers.get(key) !== entry) return;
           if (connectionState === 'connected') {
+            clearDirectRetryState(key);
             setThumbnailStatus(entry, '● LIVE GLIMPSE', 'Live thumbnail — not recorded or stored');
             if (expanded?.freelancerId === key) setText(state, 'LIVE — direct WebRTC');
           } else if (connectionState === 'failed') {
-            setThumbnailStatus(entry, 'Preview failed', 'Live connection could not be established');
-            if (expanded?.freelancerId === key) setText(state, 'Direct connection failed');
+            if (entry.attempt < MAX_DIRECT_CONNECTION_ATTEMPTS) {
+              scheduleFreshDirectRetry(key, entry);
+            } else {
+              setThumbnailStatus(entry, 'Preview failed', 'Direct WebRTC failed after 3 fresh attempts');
+              if (expanded?.freelancerId === key) setText(state, 'Direct connection failed after 3 attempts');
+            }
           } else if (connectionState === 'disconnected') {
             setThumbnailStatus(entry, 'Preview interrupted', 'Attempting to retain the live connection');
             if (expanded?.freelancerId === key) setText(state, 'Connection interrupted');
