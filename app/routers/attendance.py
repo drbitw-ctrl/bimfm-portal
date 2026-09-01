@@ -582,6 +582,8 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                 return RedirectResponse(redirect_path, status_code=303)
 
             policy = get_policy(database)
+            missing_task_count = 0
+            unreviewed_task_months = 0
             if policy.require_daily_task_for_dtr:
                 completed_records = list(
                     database.scalars(
@@ -593,7 +595,6 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                         )
                     ).all()
                 )
-                missing_task_count = 0
                 involved_freelancer_ids: set[int] = set()
                 for attendance_record in completed_records:
                     involved_freelancer_ids.add(attendance_record.freelancer_id)
@@ -616,15 +617,10 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                 )
                 involved_freelancer_ids.update(task_freelancer_ids)
 
-                if missing_task_count:
-                    set_flash(
-                        request,
-                        f"Complete {missing_task_count} missing daily-task report(s) before locking.",
-                        "error",
-                    )
-                    return RedirectResponse(redirect_path, status_code=303)
+                # Release 21.24.3.10: task-report completeness is advisory for
+                # attendance month locking. Attendance/HR blockers remain strict.
+                # Preserve the count for the audit trail and success message.
 
-                unreviewed_task_months = 0
                 for involved_freelancer_id in involved_freelancer_ids:
                     task_review = get_task_review(
                         database,
@@ -634,13 +630,8 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                     if task_review is None or task_review.status != "REVIEWED":
                         unreviewed_task_months += 1
 
-                if unreviewed_task_months:
-                    set_flash(
-                        request,
-                        f"Review {unreviewed_task_months} freelancer monthly task report(s) before locking.",
-                        "error",
-                    )
-                    return RedirectResponse(redirect_path, status_code=303)
+                # Monthly task-review completeness is also advisory. It remains
+                # visible for follow-up but no longer blocks the attendance lock.
 
             month_lock = get_month_lock(database, month_key)
             if month_lock is None:
@@ -673,6 +664,12 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                 .values(is_locked=True)
             )
 
+            audit_details = f"Month {month_key}; reason: {reason}"
+            if missing_task_count:
+                audit_details += f"; missing daily-task reports at lock: {missing_task_count}"
+            if unreviewed_task_months:
+                audit_details += f"; unreviewed monthly task reports at lock: {unreviewed_task_months}"
+
             write_audit(
                 database,
                 actor_type="HR_ADMIN",
@@ -680,11 +677,26 @@ def configure_attendance_routes(legacy_namespace: dict[str, object]) -> APIRoute
                 action="LOCK_ATTENDANCE_MONTH",
                 request=request,
                 target_type="ATTENDANCE_MONTH",
-                details=f"Month {month_key}; reason: {reason}",
+                details=audit_details,
             )
             database.commit()
 
-        set_flash(request, f"Attendance month {month_key} locked.", "success")
+        task_follow_up: list[str] = []
+        if missing_task_count:
+            task_follow_up.append(f"{missing_task_count} missing daily-task report(s)")
+        if unreviewed_task_months:
+            task_follow_up.append(f"{unreviewed_task_months} unreviewed monthly task report(s)")
+
+        if task_follow_up:
+            set_flash(
+                request,
+                f"Attendance month {month_key} locked. Task-report follow-up remains: "
+                + "; ".join(task_follow_up)
+                + ".",
+                "success",
+            )
+        else:
+            set_flash(request, f"Attendance month {month_key} locked.", "success")
         return RedirectResponse(redirect_path, status_code=303)
 
 
