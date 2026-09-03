@@ -45,6 +45,33 @@
   </div>
 </section>
 
+
+{% if hidden_rows %}
+<section class="panel finance-hidden-members-panel">
+  <div class="section-heading">
+    <div>
+      <span class="eyebrow">{{ t('VIEW FILTER') }}</span>
+      <h2>{{ t('Hidden from Finance View') }} · {{ hidden_count }}</h2>
+      <p class="muted">{{ t('Hidden members are excluded only from this selected month in Finance Center and its visible totals. Their attendance, DTR, Work Order, and payroll records are not deleted or changed.') }}</p>
+    </div>
+    <form method="post" action="/admin/finance/show-all">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <input type="hidden" name="month" value="{{ selected_month }}">
+      <button class="button secondary" type="submit">{{ t('Show All Hidden') }}</button>
+    </form>
+  </div>
+  <div class="action-row finance-hidden-member-list">
+    {% for hidden in hidden_rows %}
+    <form method="post" action="/admin/finance/show/{{ hidden.freelancer_id }}" class="inline-action-form">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <input type="hidden" name="month" value="{{ selected_month }}">
+      <button class="button small secondary" type="submit">{{ hidden.name }} · {{ t('Show Again') }}</button>
+    </form>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 <section class="panel table-panel finance-summary-panel finance-overview-table-panel">
   <div class="section-heading"><div><span class="eyebrow">{{ t('FINANCE OVERVIEW') }}</span><h2>{{ selected_month }}</h2><p class="muted">{{ t('Grouped for faster review: work, leave/absence, overtime credit, salary, bank information, and direct history shortcuts.') }}</p></div></div>
   {% if rows %}
@@ -89,8 +116,14 @@
             <a class="button small secondary" href="/admin/dtr/{{ row.dtr_id }}#overtime-history">{{ t('OT History') }}</a>
             <a class="button small secondary" href="/admin/dtr/{{ row.dtr_id }}#overtime-credit-balance">{{ t('OT Credit') }}</a>
             <a class="button small secondary" href="/admin/dtr/{{ row.dtr_id }}#leave-history">{{ t('Leave History') }}</a>
+            <a class="button small secondary" href="/admin/finance/work-orders/{{ row.freelancer_id }}?month={{ selected_month }}">{{ t('Work Order Times') }}</a>
             {% endif %}
             <a class="button small secondary" href="/admin/dtr/{{ row.dtr_id }}/details">{{ t('Monthly Details') }}</a>
+            <form method="post" action="/admin/finance/hide/{{ row.freelancer_id }}" class="inline-action-form">
+              <input type="hidden" name="csrf" value="{{ csrf_token }}">
+              <input type="hidden" name="month" value="{{ selected_month }}">
+              <button class="button small secondary" type="submit">{{ t('Hide from View') }}</button>
+            </form>
           </td>
         </tr>
       {% endfor %}</tbody>

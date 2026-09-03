@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Work Order Times') }} · {{ freelancer.full_name }} · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="toolbar finance-page-header">
+  <div>
+    <span class="eyebrow">{{ t('FINANCE RECONCILIATION') }}</span>
+    <h1>{{ t('Work Order Times') }} · {{ freelancer.full_name }}</h1>
+    <p class="muted">{{ freelancer.freelancer_code }} · {{ selected_month }} · {{ freelancer.timezone_name }}</p>
+  </div>
+  <div class="action-row">
+    <a class="button secondary" href="/admin/finance?month={{ selected_month }}">{{ t('Finance Center') }}</a>
+    <a class="button secondary" href="/admin/dtr?month={{ selected_month }}">{{ t('Monthly DTR') }}</a>
+  </div>
+</div>
+
+<section class="panel finance-filter-panel">
+  <form method="get" action="/admin/finance/work-orders/{{ freelancer.id }}" class="inline-filter">
+    <div><label>{{ t('Payroll Month') }}</label><input type="month" name="month" value="{{ selected_month }}" required></div>
+    <div class="filter-action"><button class="primary">{{ t('View Month') }}</button></div>
+  </form>
+</section>
+
+<section class="stats-grid finance-overview-cards">
+  <article class="stat-card"><span>{{ t('Work Orders') }}</span><strong>{{ rows|length }}</strong><small>{{ t('Recorded sessions in selected month') }}</small></article>
+  <article class="stat-card {{ 'warning-card' if month_locked else 'good-card' }}"><span>{{ t('Attendance Month') }}</span><strong>{{ t('Locked') if month_locked else t('Open') }}</strong><small>{{ t('Unlock the month before correcting times') if month_locked else t('Time corrections are permitted for Administrator accounts') }}</small></article>
+  <article class="stat-card {{ 'warning-card' if dtr_finalized else '' }}"><span>{{ t('DTR Status') }}</span><strong>{{ dtr.status if dtr else t('Not generated') }}</strong><small>{{ t('Finalized DTRs cannot be changed') if dtr_finalized else t('Non-finalized DTR will be regenerated after correction') }}</small></article>
+</section>
+
+<section class="panel">
+  <div class="section-heading">
+    <div>
+      <span class="eyebrow">{{ t('CONTROLLED CORRECTION') }}</span>
+      <h2>{{ t('Reconcile Work Order time') }}</h2>
+      <p class="muted">{{ t('Use this only to reconcile an existing Work Order against verified external records such as an approved Excel timesheet. The original and corrected timestamps are retained in the audit log.') }}</p>
+    </div>
+  </div>
+  {% if current_staff_role != 'ADMIN' %}
+  <div class="notice info"><strong>{{ t('Read only') }}</strong> · {{ t('Only an Administrator can save Work Order time corrections.') }}</div>
+  {% elif month_locked %}
+  <div class="notice warning"><strong>{{ t('Month locked') }}</strong> · {{ t('Unlock the attendance month before correcting Work Order time.') }}</div>
+  {% elif dtr_finalized %}
+  <div class="notice warning"><strong>{{ t('DTR finalized') }}</strong> · {{ t('A finalized DTR cannot be changed through this correction page.') }}</div>
+  {% endif %}
+</section>
+
+<section class="panel table-panel">
+  {% if rows %}
+  <div class="responsive-table">
+    <table class="modern-table smart-table" data-card-table>
+      <thead><tr>
+        <th>{{ t('Work Order') }}</th>
+        <th>{{ t('Project / Task') }}</th>
+        <th>{{ t('Recorded Time') }}</th>
+        <th>{{ t('Duration') }}</th>
+        <th>{{ t('Daily Task') }}</th>
+        <th>{{ t('Correction') }}</th>
+      </tr></thead>
+      <tbody>
+      {% for row in rows %}
+        {% set session = row.session %}
+        <tr>
+          <td><strong>#{{ session.id }}</strong><small>{{ session.status }}</small></td>
+          <td><strong>{{ session.project_name }}</strong><small>{{ session.task_title }}</small>{% if session.notes %}<small>{{ session.notes }}</small>{% endif %}</td>
+          <td><strong>{{ row.started_display }}</strong><small>→ {{ row.stopped_display }}</small></td>
+          <td><strong>{{ row.duration_label }}</strong><small>{{ session.duration_minutes }} {{ t('minutes') }}</small></td>
+          <td>{% if row.daily_task %}<strong>{{ row.daily_task.task_date }}</strong><small>{{ row.daily_task.minutes_spent }} {{ t('minutes') }}</small>{% else %}<span class="badge warning">{{ t('Missing link') }}</span>{% endif %}</td>
+          <td class="work-order-correction-cell">
+            {% if current_staff_role == 'ADMIN' and row.can_edit and not month_locked and not dtr_finalized %}
+            <form method="post" action="/admin/finance/work-orders/{{ session.id }}/correct" class="stack-form compact-correction-form">
+              <input type="hidden" name="csrf" value="{{ csrf_token }}">
+              <input type="hidden" name="month" value="{{ selected_month }}">
+              <label>{{ t('Start Time') }}<input type="datetime-local" name="started_at_local" value="{{ row.started_local }}" required></label>
+              <label>{{ t('End Time') }}<input type="datetime-local" name="stopped_at_local" value="{{ row.stopped_local }}" required></label>
+              <label>{{ t('Correction Reason') }}<input type="text" name="reason" minlength="8" maxlength="500" placeholder="{{ t('Example: Reconciled against approved Excel timesheet') }}" required></label>
+              <button class="button small primary" type="submit">{{ t('Save Time Correction') }}</button>
+            </form>
+            {% else %}
+              <span class="muted">{{ t('Not editable') }}</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><h2>{{ t('No Work Orders') }}</h2><p>{{ t('No Work Order sessions were recorded for this member in the selected month.') }}</p></div>
+  {% endif %}
+</section>
+{% endblock %}
